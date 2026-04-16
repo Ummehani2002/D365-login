@@ -11,7 +11,6 @@
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #f3f2f1;
             color: #323130;
-            display: flex;
             min-height: 100vh;
         }
         .sidebar {
@@ -19,6 +18,12 @@
             background: #fff;
             border-right: 1px solid #edebe9;
             padding: 12px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 10;
         }
         .logo {
             padding: 10px 16px 18px;
@@ -49,7 +54,8 @@
             border-left: 2px solid #edebe9;
         }
         .main {
-            flex: 1;
+            margin-left: 260px;
+            width: calc(100% - 260px);
             padding: 12px 16px;
             overflow: auto;
         }
