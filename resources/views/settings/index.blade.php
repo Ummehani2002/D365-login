@@ -114,14 +114,18 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            text-align: center;
+            padding: 0 12px;
         }
         .countdown-time {
-            font-size: 30px;
+            font-size: 18px;
             font-weight: 700;
-            font-family: Consolas, "Courier New", monospace;
-            letter-spacing: 0.5px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
             color: #201f1e;
             line-height: 1;
+            white-space: nowrap;
         }
         .countdown-label {
             margin-top: 2px;
