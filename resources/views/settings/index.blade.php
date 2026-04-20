@@ -22,6 +22,7 @@
             border: 1px solid #edebe9;
             border-radius: 4px;
             padding: 24px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
         .card h2 {
             margin: 0 0 20px;
@@ -31,7 +32,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
         .token-head h3 {
             margin: 0;
@@ -59,7 +60,7 @@
             display: flex;
             gap: 8px;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
         .btn {
             border: 1px solid #8a8886;
@@ -84,12 +85,12 @@
         .countdown-wrap {
             display: flex;
             justify-content: center;
-            margin: 8px 0 16px;
+            margin: 4px 0 18px;
         }
         .countdown-ring {
             position: relative;
-            width: 150px;
-            height: 150px;
+            width: 170px;
+            height: 170px;
         }
         .countdown-ring svg {
             transform: rotate(-90deg);
@@ -115,8 +116,10 @@
             align-items: center;
         }
         .countdown-time {
-            font-size: 38px;
+            font-size: 30px;
             font-weight: 700;
+            font-family: Consolas, "Courier New", monospace;
+            letter-spacing: 0.5px;
             color: #201f1e;
             line-height: 1;
         }
@@ -128,7 +131,7 @@
         .info-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin: 0 0 12px;
         }
         .info-table tr {
             border-bottom: 1px solid #edebe9;
@@ -158,7 +161,7 @@
             border-radius: 3px;
             padding: 10px;
             background: #f8f7f6;
-            max-height: 72px;
+            max-height: 76px;
             overflow: hidden;
             word-break: break-all;
             transition: max-height 0.2s;
