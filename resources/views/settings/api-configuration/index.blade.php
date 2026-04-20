@@ -150,6 +150,10 @@
             color: #605e5c;
             font-size: 12px;
         }
+        .help.warn {
+            color: #a4262c;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -207,6 +211,7 @@
             <button id="copy-token-btn" class="btn" type="button">Copy</button>
         </div>
         <p id="token-status" class="help">Use this token in Postman: Authorization -> Bearer Token.</p>
+        <p id="token-countdown" class="help">Token not generated yet.</p>
     </div>
 </main>
 <script>
@@ -236,8 +241,53 @@
     const copyTokenBtn = document.getElementById('copy-token-btn');
     const generatedTokenInput = document.getElementById('generated-token');
     const tokenStatus = document.getElementById('token-status');
+    const tokenCountdown = document.getElementById('token-countdown');
+    let countdownTimer = null;
+
+    const clearCountdown = () => {
+        if (!countdownTimer) return;
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    };
+
+    const formatRemaining = (secondsLeft) => {
+        const hours = Math.floor(secondsLeft / 3600);
+        const minutes = Math.floor((secondsLeft % 3600) / 60);
+        const seconds = Math.floor(secondsLeft % 60);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
+
+    const startCountdown = (expiresAtIso) => {
+        clearCountdown();
+        const expiresAtMs = new Date(expiresAtIso).getTime();
+        if (Number.isNaN(expiresAtMs)) {
+            tokenCountdown.textContent = 'Unable to read expiry time.';
+            tokenCountdown.classList.remove('warn');
+            return;
+        }
+
+        const tick = () => {
+            const remainingMs = expiresAtMs - Date.now();
+            if (remainingMs <= 0) {
+                clearCountdown();
+                tokenCountdown.textContent = 'Token expired. Generate a new token.';
+                tokenCountdown.classList.add('warn');
+                return;
+            }
+
+            const secondsLeft = Math.ceil(remainingMs / 1000);
+            tokenCountdown.textContent = `Token expires in ${formatRemaining(secondsLeft)}.`;
+            tokenCountdown.classList.toggle('warn', secondsLeft <= 300);
+        };
+
+        tick();
+        countdownTimer = setInterval(tick, 1000);
+    };
 
     generateTokenBtn.addEventListener('click', async () => {
+        clearCountdown();
+        tokenCountdown.textContent = 'Calculating expiry...';
+        tokenCountdown.classList.remove('warn');
         tokenStatus.textContent = 'Generating token...';
         try {
             const response = await fetch("{{ route('settings.api-configuration.generate-token') }}", {
@@ -256,8 +306,11 @@
             generatedTokenInput.value = payload.token;
             const expiresAt = payload.expires_at ? new Date(payload.expires_at).toLocaleString() : 'in 1 hour';
             tokenStatus.textContent = `Token generated. Expires at: ${expiresAt}`;
+            startCountdown(payload.expires_at);
         } catch (error) {
             tokenStatus.textContent = error.message;
+            tokenCountdown.textContent = 'Token not generated.';
+            tokenCountdown.classList.remove('warn');
         }
     });
 
