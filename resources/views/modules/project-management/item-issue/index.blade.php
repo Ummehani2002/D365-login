@@ -594,6 +594,7 @@
                 });
 
                 const payload = await callPostJson(endpoints.post, {
+                    ui_only: true,
                     company,
                     project_id: projectId,
                     description,

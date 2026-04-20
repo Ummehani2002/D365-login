@@ -84,6 +84,7 @@ class ItemIssueController extends Controller
     public function post(Request $request, D365ItemIssueService $service): JsonResponse
     {
         $validated = $request->validate([
+            'ui_only' => ['nullable', 'boolean'],
             'company' => ['required', 'string', 'max:20'],
             'project_id' => ['required', 'string', 'max:100'],
             'description' => ['required', 'string', 'max:255'],
@@ -108,6 +109,31 @@ class ItemIssueController extends Controller
         $dataAreaId = $this->resolveCompanyDataAreaId($validated['company']);
         $inventSiteId = $validated['invent_site_id'];
         $inventLocationId = $validated['invent_location_id'];
+
+        // UI-only mode skips D365 call and returns a simulated successful post.
+        if (($validated['ui_only'] ?? false) === true) {
+            $journalId = 'TEST-' . now()->format('YmdHis');
+
+            return response()->json([
+                'status' => true,
+                'message' => 'UI test mode: item issue simulated successfully.',
+                'request_id' => $requestId,
+                'journal_id' => $journalId,
+                'response_preview' => 'UI only mode, no D365 call made.',
+                'data' => [
+                    '_request' => [
+                        'DataAreaId' => $dataAreaId,
+                        'ItemIssueHeader' => [
+                            'RequestId' => $requestId,
+                            'Description' => $validated['description'],
+                            'InventSiteId' => $inventSiteId,
+                            'InventLocationId' => $inventLocationId,
+                        ],
+                        'ItemIssueLines' => $validated['lines'],
+                    ],
+                ],
+            ]);
+        }
 
         $d365Payload = [
             '_request' => [
