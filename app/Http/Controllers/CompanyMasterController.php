@@ -71,4 +71,5 @@ class CompanyMasterController extends Controller
                 ->withErrors(['sync' => 'Failed to sync companies from D365. Check API settings and logs.']);
         }
     }
+
 }

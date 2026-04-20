@@ -1,0 +1,189 @@
+{
+	"info": {
+		"_postman_id": "d265-web-app-1",
+		"name": "WEB APP 1",
+		"description": "API calls for this Laravel app. Set collection variables: base_url, api_bearer_token (same as WEBAPP_API_BEARER_TOKEN on the server). Companies come first — create companies before projects that reference company_id.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000"
+		},
+		{
+			"key": "api_bearer_token",
+			"value": ""
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{api_bearer_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Companies",
+			"item": [
+				{
+					"name": "List companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/companies"
+					}
+				},
+				{
+					"name": "Create company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"d365_id\": \"C001\",\n  \"name\": \"Example Company\"\n}"
+						},
+						"url": "{{base_url}}/api/companies"
+					}
+				},
+				{
+					"name": "Get company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/companies/1"
+					}
+				},
+				{
+					"name": "Update company",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"d365_id\": \"C001\",\n  \"name\": \"Updated name\"\n}"
+						},
+						"url": "{{base_url}}/api/companies/1"
+					}
+				},
+				{
+					"name": "Delete company",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": "{{base_url}}/api/companies/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "List projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "projects"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Numeric company id or companies.d365_id"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"company_id\": \"C001\",\n  \"d365_id\": \"PRJ-NEW\",\n  \"name\": \"New project\"\n}"
+						},
+						"url": "{{base_url}}/api/projects"
+					}
+				},
+				{
+					"name": "Get project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/projects/PRJ-002"
+					}
+				},
+				{
+					"name": "Update project",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"company_id\": \"C001\",\n  \"d365_id\": \"PRJ-002\",\n  \"name\": \"Updated project\"\n}"
+						},
+						"url": "{{base_url}}/api/projects/PRJ-002"
+					}
+				},
+				{
+					"name": "Delete project",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": "{{base_url}}/api/projects/PRJ-002"
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Create customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": "{{base_url}}/api/customers"
+					}
+				}
+			]
+		}
+	]
+}

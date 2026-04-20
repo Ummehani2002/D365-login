@@ -97,7 +97,30 @@
 <body>
     <div class="header">
         <h1>Company Master</h1>
-    
+    </div>
+
+    <div class="card">
+        <h2>Add company</h2>
+        @if (session('status'))
+            <div class="status">{{ session('status') }}</div>
+        @endif
+        @if ($errors->any())
+            <div class="error">{{ $errors->first() }}</div>
+        @endif
+        <form method="post" action="{{ route('masters.company.store') }}">
+            @csrf
+            <div class="form-row">
+                <div>
+                    <label for="d365_id">D365 ID</label>
+                    <input id="d365_id" name="d365_id" type="text" value="{{ old('d365_id') }}" placeholder="e.g. C001" required maxlength="100">
+                </div>
+                <div>
+                    <label for="name">Name</label>
+                    <input id="name" name="name" type="text" value="{{ old('name') }}" placeholder="Company name" required maxlength="255">
+                </div>
+            </div>
+            <button type="submit" style="background:#106ebe;border-color:#106ebe;">Save company</button>
+        </form>
     </div>
 
     <div class="card">
@@ -106,7 +129,7 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>D365CCCC ID</th>
+                    <th>D365 ID</th>
                     <th>Name</th>
                     <th>Created At</th>
                     <th>Action</th>
@@ -124,9 +147,15 @@
         const companiesTbody = document.querySelector('tbody');
         const companiesApiUrl = '/api/companies';
         const apiBearerToken = document.querySelector('meta[name="api-bearer-token"]')?.content ?? '';
-        const defaultHeaders = {
-            Accept: 'application/json',
-            Authorization: `Bearer ${apiBearerToken}`,
+        let activeApiToken = apiBearerToken;
+
+        const defaultHeaders = () => {
+            const headers = { Accept: 'application/json' };
+            if (activeApiToken) {
+                headers.Authorization = `Bearer ${activeApiToken}`;
+            }
+
+            return headers;
         };
 
         const formatDate = (value) => {
@@ -140,7 +169,7 @@
 
             try {
                 const response = await fetch(companiesApiUrl, {
-                    headers: defaultHeaders
+                    headers: defaultHeaders()
                 });
 
                 if (!response.ok) {
@@ -182,7 +211,7 @@
             try {
                 const response = await fetch(`${companiesApiUrl}/${companyId}`, {
                     method: 'DELETE',
-                    headers: defaultHeaders
+                    headers: defaultHeaders()
                 });
 
                 if (!response.ok) {

@@ -221,6 +221,21 @@
                     </div>
                 </div>
             </div>
+
+            <div class="nav-group">
+                <button type="button" class="nav-group-header" data-nav-target="nav-settings" aria-expanded="true">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.54 1z"/>
+                        </svg>
+                    </span>
+                    <span class="nav-label">Settings</span>
+                    <span class="chevron" aria-hidden="true">▲</span>
+                </button>
+                <div class="nav-group-body" id="nav-settings">
+                    <a class="nav-link {{ request()->routeIs('settings.api-configuration') ? 'active' : '' }}" href="{{ route('settings.api-configuration') }}">API Configuration</a>
+                </div>
+            </div>
         </nav>
 
         <div class="logout-row">

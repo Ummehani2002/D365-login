@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\ItemIssueController;
 use App\Http\Controllers\ProjectMasterController;
+use App\Http\Controllers\SettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +92,11 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.project-management.item-issue.api.projects.lookup');
     Route::post('/modules/project-management/item-issue/api/post', [ItemIssueController::class, 'post'])
         ->name('modules.project-management.item-issue.api.post');
+
+    Route::get('/settings/api-configuration', [SettingsController::class, 'apiConfiguration'])
+        ->name('settings.api-configuration');
+    Route::post('/settings/api-configuration/generate-token', [SettingsController::class, 'generateApiToken'])
+        ->name('settings.api-configuration.generate-token');
 
     // Laravel expects /home after login, so redirect it to dashboard
     Route::get('/home', function () {
