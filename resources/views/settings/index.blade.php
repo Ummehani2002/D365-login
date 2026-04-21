@@ -205,9 +205,7 @@
                 <span class="badge">No token</span>
             @endif
         </div>
-        <p class="token-help" style="margin: 0 0 12px; font-size: 14px; color: #444; max-width: 52rem;">
-            This token is renewed automatically when you use D365 features, when you open this page, and on a schedule in the background. You can still copy it below for debugging.
-        </p>
+      
 
         <div class="countdown-wrap">
             <div class="countdown-ring">
