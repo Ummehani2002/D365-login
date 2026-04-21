@@ -2,6 +2,7 @@
  
 namespace App\Services;
  
+use App\Models\AppSetting;
 use App\Models\D365Token;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -55,12 +56,13 @@ class D365ItemIssueService
  
     protected function postToConfiguredPath(string $pathConfigKey, array $payload): array
     {
-        $token   = $this->getAccessToken();
-        $baseUrl = rtrim((string) config('services.d365.base_url'), '/');
+        $token = $this->getAccessToken();
+
+        $baseUrl = rtrim((string) AppSetting::get('d365_base_url'), '/');
         $path    = (string) config("services.d365.{$pathConfigKey}");
  
         if ($baseUrl === '') {
-            throw new RuntimeException('D365 base URL is not configured.');
+            throw new RuntimeException('D365 base URL is not configured. Go to Settings > D365 Credentials and save your credentials first.');
         }
  
         if ($path === '') {
@@ -70,6 +72,8 @@ class D365ItemIssueService
         $response = Http::withToken($token)
             ->acceptJson()
             ->asJson()
+            ->connectTimeout(10)
+            ->timeout(25)
             ->post($baseUrl . '/' . ltrim($path, '/'), $payload);
  
         if ($response->failed()) {
@@ -100,29 +104,35 @@ class D365ItemIssueService
  
     /**
      * Fetches a fresh token from Azure AD, saves it in the DB, and returns it.
+     * Credentials are read from the DB (app_settings) first, then fall back to .env.
      */
     public function fetchAndStoreToken(string $generatedBy = 'system'): string
     {
-        $tenantId     = (string) config('services.d365.tenant_id');
-        $clientId     = (string) config('services.d365.client_id');
-        $clientSecret = (string) config('services.d365.client_secret');
-        $scope        = (string) config('services.d365.scope');
+        $creds = AppSetting::d365Creds();
+
+        $tenantId     = $creds['d365_tenant_id'] ?? '';
+        $clientId     = $creds['d365_client_id'] ?? '';
+        $clientSecret = $creds['d365_client_secret'] ?? '';
+        $scope        = $creds['d365_scope'] ?? '';
  
         if (! $tenantId || ! $clientId || ! $clientSecret || ! $scope) {
-            throw new RuntimeException('D365 credentials are not fully configured in .env');
+            throw new RuntimeException('D365 credentials are not configured. Go to Settings > D365 Credentials and save your credentials first.');
         }
  
         $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
  
-        $response = Http::asForm()->post($tokenUrl, [
-            'grant_type'    => 'client_credentials',
-            'client_id'     => $clientId,
-            'client_secret' => $clientSecret,
-            'scope'         => $scope,
-        ]);
+        $response = Http::asForm()
+            ->connectTimeout(10)
+            ->timeout(15)
+            ->post($tokenUrl, [
+                'grant_type'    => 'client_credentials',
+                'client_id'     => $clientId,
+                'client_secret' => $clientSecret,
+                'scope'         => $scope,
+            ]);
  
         if ($response->failed()) {
-            throw new RuntimeException('Failed to get Azure access token: ' . $response->status() . ' — ' . $response->body());
+            throw new RuntimeException('Failed to get Azure access token: ' . $response->status() . ' - ' . $response->body());
         }
  
         $accessToken = $response->json('access_token');
