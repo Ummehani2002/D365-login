@@ -90,6 +90,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.project-management.item-issue.api.items.lookup');
     Route::post('/modules/project-management/item-issue/api/projects/lookup', [ItemIssueController::class, 'lookupProjects'])
         ->name('modules.project-management.item-issue.api.projects.lookup');
+    Route::post('/modules/project-management/item-issue/api/onhand/lookup', [ItemIssueController::class, 'lookupOnHand'])
+        ->name('modules.project-management.item-issue.api.onhand.lookup');
+    Route::post('/modules/project-management/item-issue/api/units/lookup', [ItemIssueController::class, 'lookupUnits'])
+        ->name('modules.project-management.item-issue.api.units');
     Route::post('/modules/project-management/item-issue/api/post', [ItemIssueController::class, 'post'])
         ->name('modules.project-management.item-issue.api.post');
 
