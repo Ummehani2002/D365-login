@@ -29,12 +29,8 @@ class MicrosoftOAuthController extends Controller
                 return redirect('/')->with('error', 'Microsoft authentication is not properly configured. Please contact the administrator.');
             }
             
-            // Use 'login' prompt to force fresh authentication
-            // This may help with authentication method selection
             return Socialite::driver('microsoft')
                 ->redirectUrl($redirectUri)
-                ->scopes(['openid', 'profile', 'email', 'User.Read'])
-                ->with(['prompt' => 'login'])
                 ->redirect();
         } catch (\Exception $e) {
             \Log::error('Microsoft OAuth redirect failed: ' . $e->getMessage(), [
