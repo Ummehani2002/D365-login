@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8">
     <title>Settings - D365 Token</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         * { box-sizing: border-box; }
         body {
@@ -55,32 +54,6 @@
         .badge-expired {
             background: #fde7e9;
             color: #a4262c;
-        }
-        .toolbar {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .btn {
-            border: 1px solid #8a8886;
-            background: #fff;
-            color: #323130;
-            border-radius: 2px;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-primary {
-            border-color: #106ebe;
-            background: #106ebe;
-            color: #fff;
-        }
-        .btn-primary:disabled {
-            background: #c8c6c4;
-            border-color: #c8c6c4;
-            cursor: not-allowed;
         }
         .countdown-wrap {
             display: flex;
@@ -232,9 +205,9 @@
                 <span class="badge">No token</span>
             @endif
         </div>
-        <div class="toolbar">
-            <button id="generate-btn" class="btn btn-primary" type="button">Generate New Token</button>
-        </div>
+        <p class="token-help" style="margin: 0 0 12px; font-size: 14px; color: #444; max-width: 52rem;">
+            This token is renewed automatically when you use D365 features, when you open this page, and on a schedule in the background. You can still copy it below for debugging.
+        </p>
 
         <div class="countdown-wrap">
             <div class="countdown-ring">
@@ -287,16 +260,10 @@
 </div>
 
 <script>
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-    const generateBtn = document.getElementById('generate-btn');
     const copyBtn = document.getElementById('copy-btn');
     const toggleBtn = document.getElementById('toggle-btn');
     const tokenBox = document.getElementById('token-box');
     const alertBox = document.getElementById('alert-box');
-    const infoGenerated = document.getElementById('info-generated');
-    const infoExpires = document.getElementById('info-expires');
-    const infoBy = document.getElementById('info-by');
-    const infoDuration = document.getElementById('info-duration');
     const countdownTime = document.getElementById('countdown-time');
     const ringFg = document.getElementById('ring-fg');
     const CIRC = 2 * Math.PI * 60;
@@ -352,39 +319,6 @@
     toggleBtn.addEventListener('click', () => {
         const expanded = tokenBox.classList.toggle('expanded');
         toggleBtn.textContent = expanded ? 'Collapse token' : 'Show full token';
-    });
-
-    generateBtn.addEventListener('click', async () => {
-        generateBtn.disabled = true;
-        alertBox.style.display = 'none';
-        clearTicker();
-        try {
-            const response = await fetch("{{ route('settings.token.generate') }}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    Accept: 'application/json',
-                },
-            });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok || payload?.status !== true) {
-                throw new Error(payload?.message || 'Token generation failed.');
-            }
-
-            tokenBox.textContent = payload.full_token || '—';
-            tokenBox.classList.remove('expanded');
-            toggleBtn.textContent = 'Show full token';
-            infoGenerated.textContent = payload.generated_at_human ?? '—';
-            infoExpires.textContent = payload.expires_at_human ?? '—';
-            infoBy.textContent = payload.generated_by ?? '—';
-            infoDuration.textContent = `Valid for ${payload.duration_minutes ?? 60} min — Azure usually issues 3599 seconds tokens.`;
-            startTicker(payload.seconds_remaining || 0);
-            setAlert(`Token generated - valid for ${formatTime(payload.seconds_remaining || 0)}.`, 'success');
-        } catch (error) {
-            setAlert(error.message, 'error');
-        } finally {
-            generateBtn.disabled = false;
-        }
     });
 
     copyBtn.addEventListener('click', async () => {

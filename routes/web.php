@@ -95,7 +95,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Settings
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->name('settings.token.generate');
 
     // Laravel expects /home after login, so redirect it to dashboard
     Route::get('/home', function () {
