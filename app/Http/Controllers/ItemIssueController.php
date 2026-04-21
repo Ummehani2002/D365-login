@@ -55,10 +55,12 @@ class ItemIssueController extends Controller
         } catch (Throwable $e) {
             report($e);
  
+            $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : 'Unknown error during item lookup.';
+
             return response()->json([
                 'status' => false,
-                'message' => 'Item lookup failed.',
-                'error' => $e->getMessage(),
+                'message' => $errorMessage,
+                'error' => $errorMessage,
             ], 500);
         }
     }
@@ -81,10 +83,12 @@ class ItemIssueController extends Controller
         } catch (Throwable $e) {
             report($e);
  
+            $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : 'Unknown error during project lookup.';
+
             return response()->json([
                 'status' => false,
-                'message' => 'Project lookup failed.',
-                'error' => $e->getMessage(),
+                'message' => $errorMessage,
+                'error' => $errorMessage,
             ], 500);
         }
     }
@@ -190,10 +194,12 @@ class ItemIssueController extends Controller
         } catch (Throwable $e) {
             report($e);
  
+            $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : 'Unknown error during item issue post.';
+
             return response()->json([
                 'status' => false,
-                'message' => 'Item issue post failed.',
-                'error' => $e->getMessage(),
+                'message' => $errorMessage,
+                'error' => $errorMessage,
             ], 500);
         }
     }
@@ -222,10 +228,12 @@ class ItemIssueController extends Controller
         } catch (Throwable $e) {
             report($e);
  
+            $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : 'Unknown error during on-hand lookup.';
+
             return response()->json([
                 'status'  => false,
-                'message' => 'On-hand lookup failed.',
-                'error'   => $e->getMessage(),
+                'message' => $errorMessage,
+                'error'   => $errorMessage,
             ], 500);
         }
     }
@@ -254,10 +262,12 @@ class ItemIssueController extends Controller
         } catch (Throwable $e) {
             report($e);
  
+            $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : 'Unknown error during unit lookup.';
+
             return response()->json([
                 'status'  => false,
-                'message' => 'Unit lookup failed.',
-                'error'   => $e->getMessage(),
+                'message' => $errorMessage,
+                'error'   => $errorMessage,
             ], 500);
         }
     }

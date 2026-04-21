@@ -282,7 +282,7 @@
                 body:    JSON.stringify(body),
             });
             const payload = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(payload?.message || payload?.error || 'API request failed.');
+            if (!res.ok) throw new Error(payload?.error || payload?.message || `API request failed (${res.status}).`);
             return payload;
         };
  

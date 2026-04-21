@@ -7,6 +7,8 @@ use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\ItemIssueController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\SettingsController;
+use App\Services\D365ItemIssueService;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -100,6 +102,48 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.project-management.item-issue.api.onhand');
     Route::post('/modules/project-management/item-issue/api/units', [ItemIssueController::class, 'lookupUnits'])
         ->name('modules.project-management.item-issue.api.units');
+
+    // Quick connectivity check for D365 item lookup
+    Route::get('/health/d365-item-lookup', function (Request $request, D365ItemIssueService $service) {
+        $company = (string) $request->query('company', '');
+        $projectId = (string) $request->query('project_id', '');
+
+        if ($company === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Missing query parameter: company',
+                'example' => url('/health/d365-item-lookup?company=C001&project_id=PS'),
+            ], 422);
+        }
+
+        try {
+            $data = $service->lookupItems($company, $projectId !== '' ? $projectId : null);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'D365 item lookup succeeded.',
+                'meta' => [
+                    'base_url_set' => config('services.d365.base_url') !== null && config('services.d365.base_url') !== '',
+                    'item_lookup_path' => config('services.d365.item_lookup_path'),
+                    'company' => $company,
+                    'project_id' => $projectId,
+                    'result_count' => is_array($data) ? count($data) : null,
+                ],
+                'data_preview' => is_array($data) ? array_slice($data, 0, 3) : $data,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'meta' => [
+                    'base_url_set' => config('services.d365.base_url') !== null && config('services.d365.base_url') !== '',
+                    'item_lookup_path' => config('services.d365.item_lookup_path'),
+                    'company' => $company,
+                    'project_id' => $projectId,
+                ],
+            ], 500);
+        }
+    })->name('health.d365-item-lookup');
 
     // Settings
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
