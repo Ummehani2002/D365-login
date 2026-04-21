@@ -394,6 +394,14 @@
             statusBox.className = 'status-box';
         };
 
+        const clearItemOptions = (placeholder = 'Select project to load items') => {
+            itemOptions.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = placeholder;
+            itemOptions.appendChild(option);
+        };
+
         const generateRequestId = () => {
             const now = new Date();
             const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
@@ -446,6 +454,7 @@
             document.getElementById('project-id').value = '';
             document.getElementById('request-id').value = generateRequestId();
             document.getElementById('description').value = 'Issue of items for project';
+            clearItemOptions('Select project to load items');
             linesBody.innerHTML = '<tr><td class="empty-note" colspan="4">No journal items found</td></tr>';
             setAccountingDate();
             toggleNewLineButton();
@@ -525,6 +534,12 @@
             clearStatus();
             try {
                 const company = document.getElementById('item-data-area').value.trim();
+                const projectId = extractIdFromProjectInput();
+                if (!projectId) {
+                    clearItemOptions('Select project to load items');
+                    return;
+                }
+
                 const payload = await callPostJson(endpoints.itemLookup, {
                     company,
                     ItemId: '',
@@ -532,6 +547,11 @@
 
                 const rows = normalizeResponseRows(payload);
                 itemOptions.innerHTML = '';
+                if (!rows.length) {
+                    clearItemOptions('No items found for selected project');
+                    return;
+                }
+
                 rows.forEach((row) => {
                     const id = row.ItemId || row.itemId || row.ItemNumber || '';
                     if (!id) return;
@@ -540,15 +560,20 @@
                     option.value = name ? `${id} - ${name}` : id;
                     itemOptions.appendChild(option);
                 });
+                if (!itemOptions.querySelector('option')) {
+                    clearItemOptions('No items found for selected project');
+                }
             } catch (error) {
                 showStatus(`Item list could not be loaded: ${error.message}`, 'error');
+                clearItemOptions('Unable to load items');
             }
         };
 
         projectInput.addEventListener('change', toggleNewLineButton);
         projectInput.addEventListener('input', toggleNewLineButton);
+        projectInput.addEventListener('change', loadItemOptions);
         setAccountingDate();
-        loadItemOptions();
+        clearItemOptions('Select project to load items');
 
         postBtn.addEventListener('click', async () => {
             clearStatus();
