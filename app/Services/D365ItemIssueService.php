@@ -53,6 +53,11 @@ class D365ItemIssueService
  
         return $this->postToConfiguredPath('unit_lookup_path', $payload);
     }
+
+    public function postPurchaseRequisition(array $payload): array
+    {
+        return $this->postToConfiguredPath('purchase_requisition_post_path', $payload);
+    }
  
     protected function postToConfiguredPath(string $pathConfigKey, array $payload): array
     {

@@ -66,6 +66,8 @@ return [
     'item_lookup_path' => env('D365_ITEM_LOOKUP_PATH', '/item-lookup'),
     'project_lookup_path' => env('D365_PROJECT_LOOKUP_PATH', '/project-lookup'),
     'item_issue_post_path' => env('D365_ITEM_ISSUE_POST_PATH', '/item-issue-post'),
+    'purchase_requisition_post_path' => env('D365_PURCHASE_REQUISITION_POST_PATH', '/api/services/TIWebServiceGroup/PurchaseRequisitionService/Create'),
+    'purch_req_post_path' => env('D365_PURCH_REQ_POST_PATH', '/api/services/TIWebServiceGroup/PurchReqService/Create'),
     'item_onhand_path' => env('D365_ITEM_ONHAND_PATH', '/item-onhand'),
     'unit_lookup_path' => env('D365_UNIT_LOOKUP_PATH', '/unit-lookup'),
 ],

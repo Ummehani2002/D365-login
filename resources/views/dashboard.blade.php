@@ -210,7 +210,7 @@
                         </button>
                         <div class="nav-subgroup-body" id="nav-procurement">
                             <a class="nav-link nested {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}">Quotation</a>
-                            <a class="nav-link nested {{ request()->routeIs('purchase-requisitions.*') ? 'active' : '' }}" href="{{ route('purchase-requisitions.index') }}">Purchase Requisition</a>
+                            <a class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}" href="{{ route('modules.procurement.purch-req') }}">Purchase Requisition</a>
                             <a class="nav-link nested {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index') }}">Purchase Order</a>
                             <a class="nav-link nested {{ request()->routeIs('grns.*') ? 'active' : '' }}" href="{{ route('grns.index') }}">Goods Receive Note</a>
                             <a class="nav-link nested {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">Inventory</a>

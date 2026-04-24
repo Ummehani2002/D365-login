@@ -18,7 +18,7 @@ class MicrosoftOAuthController extends Controller
             // Check if required configuration is present
             $clientId = config('services.microsoft.client_id');
             $clientSecret = config('services.microsoft.client_secret');
-            $redirectUri = route('auth.microsoft.callback');
+            $redirectUri = (string) config('services.microsoft.redirect');
             
             if (empty($clientId) || empty($clientSecret)) {
                 \Log::error('Microsoft OAuth configuration missing', [
@@ -44,7 +44,7 @@ class MicrosoftOAuthController extends Controller
     public function handleMicrosoftCallback(Request $request)
     {
         try {
-            $redirectUri = route('auth.microsoft.callback');
+            $redirectUri = (string) config('services.microsoft.redirect');
 
             $microsoftUser = Socialite::driver('microsoft')
                 ->redirectUrl($redirectUri)

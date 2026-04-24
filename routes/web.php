@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\MicrosoftOAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\ItemIssueController;
+use App\Http\Controllers\PurchReqController;
+use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\SettingsController;
 
@@ -124,9 +126,22 @@ Route::middleware(['auth'])->group(function () {
     })->name('quotations.index');
     
     // Purchase Requisition Module
-    Route::get('/purchase-requisitions', function () {
-        return "Purchase Requisition Module - Coming Soon";
-    })->name('purchase-requisitions.index');
+    Route::get('/purchase-requisitions', [PurchaseRequisitionController::class, 'index'])
+        ->name('purchase-requisitions.index');
+    Route::post('/purchase-requisitions/api/post', [PurchaseRequisitionController::class, 'post'])
+        ->name('purchase-requisitions.api.post');
+    Route::get('/modules/procurement/purch-req', [PurchReqController::class, 'index'])
+        ->name('modules.procurement.purch-req');
+    Route::post('/modules/procurement/purch-req/api/post', [PurchReqController::class, 'post'])
+        ->name('modules.procurement.purch-req.post');
+    Route::post('/modules/procurement/purch-req/api/units', [PurchReqController::class, 'lookupUnits'])
+        ->name('modules.procurement.purch-req.api.units');
+    Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}', [PurchReqController::class, 'downloadAttachment'])
+        ->name('modules.procurement.purch-req.attachment')
+        ->where('index', '[0-9]+');
+    Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}/base64', [PurchReqController::class, 'viewBase64'])
+        ->name('modules.procurement.purch-req.attachment.base64')
+        ->where('index', '[0-9]+');
     
     // Purchase Order Module
     Route::get('/purchase-orders', function () {
