@@ -31,7 +31,8 @@
         .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
         .crumb { font-size: 12px; color: #605e5c; }
         .toolbar { margin-bottom: 12px; }
-        .toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .toolbar-row { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
+        .toolbar-actions { margin-top: 8px; }
         .title { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
         .search { width: 240px; border: 1px solid #8a8886; border-radius: 2px; padding: 7px 10px; font-size: 13px; margin-top: 10px; }
         .btn { border: 1px solid #8a8886; background: #fff; color: #323130; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -108,6 +109,8 @@
                 <div id="journal-toolbar" class="toolbar">
                     <div class="toolbar-row">
                         <div><h1 class="title">Item Issue</h1></div>
+                    </div>
+                    <div class="toolbar-actions">
                         <button id="create-journal-btn" class="btn btn-primary" type="button">+ Create New Journal</button>
                     </div>
                     <input class="search" type="text" placeholder="Search journals..." disabled>
