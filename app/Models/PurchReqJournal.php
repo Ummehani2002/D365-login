@@ -11,6 +11,7 @@ class PurchReqJournal extends Model
         'request_id',
         'pr_no',
         'company',
+        'buying_legal_entity',
         'pr_date',
         'warehouse',
         'pool_id',

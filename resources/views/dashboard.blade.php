@@ -109,6 +109,10 @@
         }
         .main-header {
             margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
         }
         .main-header h2 {
             margin: 0 0 6px;
@@ -145,6 +149,10 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
+    @php
+        $companyQuery = $currentCompanyCode ? ['company' => strtoupper((string) $currentCompanyCode)] : [];
+    @endphp
     <aside class="sidebar" aria-label="Main navigation">
         <div class="sidebar-brand">
             <h1>MENU</h1>
@@ -163,23 +171,23 @@
                     <span class="chevron" aria-hidden="true">▲</span>
                 </button>
                 <div class="nav-group-body" id="nav-masters">
-                    <a class="nav-link {{ request()->routeIs('masters.company.index') ? 'active' : '' }}" href="{{ route('masters.company.index') }}">Companies</a>
-                    <a class="nav-link {{ request()->routeIs('masters.categories.index') ? 'active' : '' }}" href="{{ route('masters.categories.index') }}">Categories</a>
-                    <a class="nav-link {{ request()->routeIs('masters.items.index') ? 'active' : '' }}" href="{{ route('masters.items.index') }}">Items</a>
-                    <a class="nav-link {{ request()->routeIs('masters.sizes.index') ? 'active' : '' }}" href="{{ route('masters.sizes.index') }}">Sizes</a>
-                    <a class="nav-link {{ request()->routeIs('masters.colors.index') ? 'active' : '' }}" href="{{ route('masters.colors.index') }}">Colors</a>
-                    <a class="nav-link {{ request()->routeIs('masters.styles.index') ? 'active' : '' }}" href="{{ route('masters.styles.index') }}">Styles</a>
-                    <a class="nav-link {{ request()->routeIs('masters.locations.index') ? 'active' : '' }}" href="{{ route('masters.locations.index') }}">Locations</a>
-                    <a class="nav-link {{ request()->routeIs('masters.sites.index') ? 'active' : '' }}" href="{{ route('masters.sites.index') }}">Sites</a>
-                    <a class="nav-link {{ request()->routeIs('masters.warehouses.index') ? 'active' : '' }}" href="{{ route('masters.warehouses.index') }}">Warehouses</a>
-                    <a class="nav-link {{ request()->routeIs('masters.currencies.index') ? 'active' : '' }}" href="{{ route('masters.currencies.index') }}">Currencies</a>
-                    <a class="nav-link {{ request()->routeIs('masters.units.index') ? 'active' : '' }}" href="{{ route('masters.units.index') }}">Units</a>
-                    <a class="nav-link {{ request()->routeIs('masters.pools.index') ? 'active' : '' }}" href="{{ route('masters.pools.index') }}">Pools</a>
-                    <a class="nav-link {{ request()->routeIs('masters.project.index') ? 'active' : '' }}" href="{{ route('masters.project.index') }}">Projects</a>
-                    <a class="nav-link {{ request()->routeIs('masters.batches.index') ? 'active' : '' }}" href="{{ route('masters.batches.index') }}">Batches</a>
-                    <a class="nav-link {{ request()->routeIs('masters.sales-tax-groups.index') ? 'active' : '' }}" href="{{ route('masters.sales-tax-groups.index') }}">Sales Tax Groups</a>
-                    <a class="nav-link {{ request()->routeIs('masters.item-sales-tax-groups.index') ? 'active' : '' }}" href="{{ route('masters.item-sales-tax-groups.index') }}">Item Sales Tax Groups</a>
-                    <a class="nav-link {{ request()->routeIs('masters.department-managers.index') ? 'active' : '' }}" href="{{ route('masters.department-managers.index') }}">Department Managers</a>
+                    <a class="nav-link {{ request()->routeIs('masters.company.index') ? 'active' : '' }}" href="{{ route('masters.company.index', $companyQuery) }}">Companies</a>
+                    <a class="nav-link {{ request()->routeIs('masters.categories.index') ? 'active' : '' }}" href="{{ route('masters.categories.index', $companyQuery) }}">Categories</a>
+                    <a class="nav-link {{ request()->routeIs('masters.items.index') ? 'active' : '' }}" href="{{ route('masters.items.index', $companyQuery) }}">Items</a>
+                    <a class="nav-link {{ request()->routeIs('masters.sizes.index') ? 'active' : '' }}" href="{{ route('masters.sizes.index', $companyQuery) }}">Sizes</a>
+                    <a class="nav-link {{ request()->routeIs('masters.colors.index') ? 'active' : '' }}" href="{{ route('masters.colors.index', $companyQuery) }}">Colors</a>
+                    <a class="nav-link {{ request()->routeIs('masters.styles.index') ? 'active' : '' }}" href="{{ route('masters.styles.index', $companyQuery) }}">Styles</a>
+                    <a class="nav-link {{ request()->routeIs('masters.locations.index') ? 'active' : '' }}" href="{{ route('masters.locations.index', $companyQuery) }}">Locations</a>
+                    <a class="nav-link {{ request()->routeIs('masters.sites.index') ? 'active' : '' }}" href="{{ route('masters.sites.index', $companyQuery) }}">Sites</a>
+                    <a class="nav-link {{ request()->routeIs('masters.warehouses.index') ? 'active' : '' }}" href="{{ route('masters.warehouses.index', $companyQuery) }}">Warehouses</a>
+                    <a class="nav-link {{ request()->routeIs('masters.currencies.index') ? 'active' : '' }}" href="{{ route('masters.currencies.index', $companyQuery) }}">Currencies</a>
+                    <a class="nav-link {{ request()->routeIs('masters.units.index') ? 'active' : '' }}" href="{{ route('masters.units.index', $companyQuery) }}">Units</a>
+                    <a class="nav-link {{ request()->routeIs('masters.pools.index') ? 'active' : '' }}" href="{{ route('masters.pools.index', $companyQuery) }}">Pools</a>
+                    <a class="nav-link {{ request()->routeIs('masters.project.index') ? 'active' : '' }}" href="{{ route('masters.project.index', $companyQuery) }}">Projects</a>
+                    <a class="nav-link {{ request()->routeIs('masters.batches.index') ? 'active' : '' }}" href="{{ route('masters.batches.index', $companyQuery) }}">Batches</a>
+                    <a class="nav-link {{ request()->routeIs('masters.sales-tax-groups.index') ? 'active' : '' }}" href="{{ route('masters.sales-tax-groups.index', $companyQuery) }}">Sales Tax Groups</a>
+                    <a class="nav-link {{ request()->routeIs('masters.item-sales-tax-groups.index') ? 'active' : '' }}" href="{{ route('masters.item-sales-tax-groups.index', $companyQuery) }}">Item Sales Tax Groups</a>
+                    <a class="nav-link {{ request()->routeIs('masters.department-managers.index') ? 'active' : '' }}" href="{{ route('masters.department-managers.index', $companyQuery) }}">Department Managers</a>
                 </div>
             </div>
 
@@ -200,7 +208,7 @@
                             <span class="chevron-sm" aria-hidden="true">▲</span>
                         </button>
                         <div class="nav-subgroup-body" id="nav-pm">
-                            <a class="nav-link nested {{ request()->routeIs('modules.project-management.item-issue') ? 'active' : '' }}" href="{{ route('modules.project-management.item-issue') }}">Item Issue</a>
+                            <a class="nav-link nested {{ request()->routeIs('modules.project-management.item-issue') ? 'active' : '' }}" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
                         </div>
                     </div>
                     <div class="nav-subgroup">
@@ -209,14 +217,14 @@
                             <span class="chevron-sm" aria-hidden="true">▲</span>
                         </button>
                         <div class="nav-subgroup-body" id="nav-procurement">
-                            <a class="nav-link nested {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}">Quotation</a>
-                            <a class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}" href="{{ route('modules.procurement.purch-req') }}">Purchase Requisition</a>
-                            <a class="nav-link nested {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index') }}">Purchase Order</a>
-                            <a class="nav-link nested {{ request()->routeIs('grns.*') ? 'active' : '' }}" href="{{ route('grns.index') }}">Goods Receive Note</a>
-                            <a class="nav-link nested {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">Inventory</a>
-                            <a class="nav-link nested {{ request()->routeIs('vendors.*') ? 'active' : '' }}" href="{{ route('vendors.index') }}">Vendors</a>
-                            <a class="nav-link nested {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">Customers</a>
-                            <a class="nav-link nested {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">Reports</a>
+                            <a class="nav-link nested {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index', $companyQuery) }}">Quotation</a>
+                            <a class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
+                            <a class="nav-link nested {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index', $companyQuery) }}">Purchase Order</a>
+                            <a class="nav-link nested {{ request()->routeIs('grns.*') ? 'active' : '' }}" href="{{ route('grns.index', $companyQuery) }}">Goods Receive Note</a>
+                            <a class="nav-link nested {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index', $companyQuery) }}">Inventory</a>
+                            <a class="nav-link nested {{ request()->routeIs('vendors.*') ? 'active' : '' }}" href="{{ route('vendors.index', $companyQuery) }}">Vendors</a>
+                            <a class="nav-link nested {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index', $companyQuery) }}">Customers</a>
+                            <a class="nav-link nested {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index', $companyQuery) }}">Reports</a>
                         </div>
                     </div>
                 </div>
@@ -233,7 +241,7 @@
                     <span class="chevron" aria-hidden="true">▲</span>
                 </button>
                 <div class="nav-group-body" id="nav-settings">
-                    <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index') }}">API Configuration</a>
+                    <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery) }}">API Configuration</a>
                 </div>
             </div>
         </nav>
@@ -249,7 +257,6 @@
     <main class="main">
         <div class="main-header">
             <h2>Dashboard</h2>
-          
         </div>
 
         <div class="info-card">
@@ -281,6 +288,7 @@
                 body.hidden = open;
             });
         });
+
     </script>
 </body>
 </html>

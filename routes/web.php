@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\MicrosoftOAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\ItemIssueController;
+use App\Http\Controllers\GrnController;
 use App\Http\Controllers\PurchReqController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\ProjectMasterController;
@@ -103,6 +104,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.project-management.item-issue.api.onhand');
     Route::post('/modules/project-management/item-issue/api/units', [ItemIssueController::class, 'lookupUnits'])
         ->name('modules.project-management.item-issue.api.units');
+    Route::get('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'showJournal'])
+        ->name('modules.project-management.item-issue.api.journals.show');
+    Route::delete('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'destroyJournal'])
+        ->name('modules.project-management.item-issue.api.journals.destroy');
 
     // Settings
     Route::get('/settings', fn() => redirect()->route('settings.token'))->name('settings.index');
@@ -134,6 +139,14 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.procurement.purch-req');
     Route::post('/modules/procurement/purch-req/api/post', [PurchReqController::class, 'post'])
         ->name('modules.procurement.purch-req.post');
+    Route::post('/modules/procurement/purch-req/api/save', [PurchReqController::class, 'saveDraft'])
+        ->name('modules.procurement.purch-req.save');
+    Route::put('/modules/procurement/purch-req/api/drafts/{journal}', [PurchReqController::class, 'updateDraft'])
+        ->name('modules.procurement.purch-req.drafts.update');
+    Route::get('/modules/procurement/purch-req/api/journals/{journal}', [PurchReqController::class, 'showJournal'])
+        ->name('modules.procurement.purch-req.journals.show');
+    Route::delete('/modules/procurement/purch-req/api/journals/{journal}', [PurchReqController::class, 'destroyJournal'])
+        ->name('modules.procurement.purch-req.journals.destroy');
     Route::post('/modules/procurement/purch-req/api/units', [PurchReqController::class, 'lookupUnits'])
         ->name('modules.procurement.purch-req.api.units');
     Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}', [PurchReqController::class, 'downloadAttachment'])
@@ -149,9 +162,13 @@ Route::middleware(['auth'])->group(function () {
     })->name('purchase-orders.index');
     
     // Goods Receive Note (GRN) Module
-    Route::get('/grns', function () {
-        return "GRN Module - Coming Soon";
-    })->name('grns.index');
+    Route::get('/grns', [GrnController::class, 'index'])->name('grns.index');
+    Route::post('/modules/procurement/grn/api/headers', [GrnController::class, 'lookupHeaders'])
+        ->name('modules.procurement.grn.api.headers');
+    Route::post('/modules/procurement/grn/api/lines', [GrnController::class, 'lookupLines'])
+        ->name('modules.procurement.grn.api.lines');
+    Route::post('/modules/procurement/grn/api/post', [GrnController::class, 'post'])
+        ->name('modules.procurement.grn.api.post');
     
     // Inventory Module
     Route::get('/inventory', function () {

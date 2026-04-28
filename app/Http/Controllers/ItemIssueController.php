@@ -12,21 +12,48 @@ use Throwable;
  
 class ItemIssueController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $companies = Company::query()
             ->select(['id', 'd365_id', 'name'])
             ->whereNotNull('d365_id')
             ->orderBy('name')
             ->get();
+
+        $defaultCompany = $companies->first(function (Company $company) {
+            return strtoupper((string) $company->d365_id) === 'PS'
+                || strtoupper((string) $company->name) === 'PS';
+        });
+
+        $fallbackCompany = $defaultCompany ?? $companies->first();
+        $requestedCompanyCode = strtoupper(trim((string) $request->query('company', '')));
+        $selectedCompany = $companies->first(function (Company $company) use ($requestedCompanyCode) {
+            return strtoupper((string) $company->d365_id) === $requestedCompanyCode;
+        }) ?? $fallbackCompany;
+
+        if ($selectedCompany && strtoupper((string) $selectedCompany->d365_id) !== $requestedCompanyCode) {
+            return redirect()->route('modules.project-management.item-issue', [
+                'company' => strtoupper((string) $selectedCompany->d365_id),
+            ]);
+        }
  
         $projects = Project::query()
             ->select(['id', 'd365_id', 'name'])
+            ->whereHas('company', function ($query) use ($selectedCompany) {
+                if (!$selectedCompany) {
+                    return;
+                }
+
+                $query->where('id', $selectedCompany->id);
+            })
             ->orderBy('name')
             ->get();
  
         $journals = ItemIssueJournal::query()
             ->with('postedBy:id,name')
+            ->when($selectedCompany, function ($query) use ($selectedCompany) {
+                $query->where('company', $selectedCompany->d365_id);
+            })
             ->orderByDesc('created_at')
             ->get();
  
@@ -34,6 +61,7 @@ class ItemIssueController extends Controller
             'companies' => $companies,
             'projects'  => $projects,
             'journals'  => $journals,
+            'currentCompanyCode' => $selectedCompany?->d365_id,
         ]);
     }
  
@@ -169,7 +197,7 @@ class ItemIssueController extends Controller
  
             $journalId = $this->extractJournalId($result);
  
-            ItemIssueJournal::create([
+            $savedJournal = ItemIssueJournal::create([
                 'request_id'         => $requestId,
                 'journal_id'         => $journalId,
                 'company'            => $validated['company'],
@@ -186,6 +214,7 @@ class ItemIssueController extends Controller
             return response()->json([
                 'status'           => true,
                 'message'          => 'Item issue posted to D365.',
+                'journal_db_id'    => $savedJournal->id,
                 'request_id'       => $requestId,
                 'journal_id'       => $journalId,
                 'response_preview' => json_encode($result, JSON_UNESCAPED_SLASHES),
@@ -270,6 +299,40 @@ class ItemIssueController extends Controller
                 'error'   => $errorMessage,
             ], 500);
         }
+    }
+
+    public function showJournal(ItemIssueJournal $journal): JsonResponse
+    {
+        $journal->load('postedBy:id,name');
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'id' => $journal->id,
+                'request_id' => $journal->request_id,
+                'journal_id' => $journal->journal_id,
+                'company' => $journal->company,
+                'project_id' => $journal->project_id,
+                'description' => $journal->description,
+                'invent_site_id' => $journal->invent_site_id,
+                'invent_location_id' => $journal->invent_location_id,
+                'tax_group_id' => $journal->tax_group_id,
+                'tax_item_group_id' => $journal->tax_item_group_id,
+                'lines' => $journal->lines ?? [],
+                'posted_by_name' => $journal->postedBy?->name,
+                'created_at' => optional($journal->created_at)->toDateTimeString(),
+            ],
+        ]);
+    }
+
+    public function destroyJournal(ItemIssueJournal $journal): JsonResponse
+    {
+        $journal->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Journal deleted successfully.',
+        ]);
     }
  
     private function extractOnHandQty(array $result): float

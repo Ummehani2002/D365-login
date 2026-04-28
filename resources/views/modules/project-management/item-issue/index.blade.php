@@ -37,7 +37,9 @@
         .btn { border: 1px solid #8a8886; background: #fff; color: #323130; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
         .btn-primary { border-color: #106ebe; background: #106ebe; color: #fff; }
         .btn-light { background: #fff; color: #106ebe; border-color: #c7e0f4; }
+        .btn-danger { border-color: #a4262c; background: #a4262c; color: #fff; }
         .btn:disabled { border-color: #edebe9; background: #f3f2f1; color: #a19f9d; cursor: not-allowed; }
+        .btn-sm { font-size: 11px; padding: 4px 8px; }
         .card { background: #fff; border: 1px solid #edebe9; border-radius: 2px; overflow: hidden; }
         .card-head { padding: 12px 14px; border-bottom: 1px solid #edebe9; font-size: 20px; font-weight: 600; }
         table { width: 100%; border-collapse: collapse; }
@@ -72,18 +74,22 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
+    @php
+        $companyQuery = $currentCompanyCode ? ['company' => strtoupper((string) $currentCompanyCode)] : [];
+    @endphp
     <aside class="sidebar">
         <div class="logo">Logo</div>
         <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard') }}">Dashboard</a>
-        <a class="menu-link" href="{{ route('masters.company.index') }}">Masters</a>
+        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
+        <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
         <a class="menu-link active" href="#">Modules</a>
         <div class="sub">
             <a class="menu-link active" href="#">Project Management</a>
-            <a class="menu-link active" href="{{ route('modules.project-management.item-issue') }}">Item Issue</a>
+            <a class="menu-link active" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
             <a class="menu-link" href="#">Procurement &amp; Sourcing</a>
         </div>
-        <a class="menu-link" href="{{ route('settings.index') }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
             </svg>
@@ -120,6 +126,7 @@
                                     <th>Lines</th>
                                     <th>Posted By</th>
                                     <th>Posted At</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="journals-list-body">
@@ -132,9 +139,13 @@
                                     <td>{{ count($journal->lines ?? []) }}</td>
                                     <td>{{ $journal->postedBy?->name ?? 'System' }}</td>
                                     <td>{{ $journal->created_at->format('d M Y H:i') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm journal-view-btn" data-journal-id="{{ $journal->id }}">View</button>
+                                        <button type="button" class="btn btn-danger btn-sm journal-delete-btn" data-journal-id="{{ $journal->id }}">Delete</button>
+                                    </td>
                                 </tr>
                                 @empty
-                                <tr><td class="empty-note" colspan="7">No journal records yet.</td></tr>
+                                <tr><td class="empty-note" colspan="8">No journal records yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -165,7 +176,7 @@
                             <label>Company</label>
                             <select id="company-id">
                                 @foreach($companies as $company)
-                                    <option value="{{ $company->d365_id }}">{{ $company->d365_id }} – {{ $company->name }}</option>
+                                    <option value="{{ strtoupper((string) $company->d365_id) }}" @selected(strtoupper((string) $currentCompanyCode) === strtoupper((string) $company->d365_id))>{{ strtoupper((string) $company->d365_id) }} – {{ $company->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -248,11 +259,14 @@
             itemLookup: "{{ route('modules.project-management.item-issue.api.items.lookup') }}",
             units:      "{{ route('modules.project-management.item-issue.api.units') }}",
             post:       "{{ route('modules.project-management.item-issue.api.post') }}",
+            showJournalTemplate: "{{ route('modules.project-management.item-issue.api.journals.show', ['journal' => '__JOURNAL__']) }}",
+            deleteJournalTemplate: "{{ route('modules.project-management.item-issue.api.journals.destroy', ['journal' => '__JOURNAL__']) }}",
         };
  
         /* ── Item cache: Map<itemId → { id, name, onhandQty }> ─────────── */
         let itemsCache  = new Map();
         let itemsLoaded = false;
+        let currentFormMode = 'create';
  
         /* ── Helpers ──────────────────────────────────────────────────── */
         const showStatus = (msg, type = 'success') => {
@@ -268,6 +282,18 @@
         const toggleNewLineBtn = () => {
             newLineBtn.disabled = !projectSelect.value || !itemsLoaded;
         };
+        const setFormMode = (mode) => {
+            currentFormMode = mode;
+            const isViewMode = mode === 'view';
+            document.querySelector('.journal-title').textContent = isViewMode ? 'View Journal' : 'New Journal';
+            postBtn.classList.toggle('hidden', isViewMode);
+            newLineBtn.classList.toggle('hidden', isViewMode);
+            formView.querySelectorAll('input, select').forEach((el) => {
+                if (el.id === 'journal-id' || el.type === 'hidden') return;
+                el.disabled = isViewMode;
+            });
+        };
+        const buildJournalUrl = (template, journalId) => template.replace('__JOURNAL__', encodeURIComponent(journalId));
  
         /* ── JSON POST helper ─────────────────────────────────────────── */
         const callPost = async (url, body) => {
@@ -417,9 +443,27 @@
  
             return row;
         };
+        const renderReadOnlyLineRows = (lines) => {
+            if (!Array.isArray(lines) || !lines.length) {
+                linesBody.innerHTML = '<tr><td class="empty-note" colspan="6">No lines found.</td></tr>';
+                return;
+            }
+
+            linesBody.innerHTML = lines.map((line) => `
+                <tr>
+                    <td>${line.item_id ?? '—'}</td>
+                    <td>${line.item_name ?? line.description ?? '—'}</td>
+                    <td>${line.onhand_qty ?? '—'}</td>
+                    <td>${line.unit ?? '—'}</td>
+                    <td>${line.qty ?? '—'}</td>
+                    <td>—</td>
+                </tr>
+            `).join('');
+        };
  
         /* ── Reset form ───────────────────────────────────────────────── */
         const resetForm = () => {
+            setFormMode('create');
             document.getElementById('journal-id').value        = 'Not Yet Posted';
             document.getElementById('request-id').value        = '';
             document.getElementById('invent-site-id').value    = '';
@@ -433,9 +477,30 @@
             toggleNewLineBtn();
             clearStatus();
         };
+        const openJournalView = async (journalId) => {
+            const url = buildJournalUrl(endpoints.showJournalTemplate, journalId);
+            const res = await fetch(url, { headers: { Accept: 'application/json' } });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok || !payload?.data) {
+                throw new Error(payload?.message || payload?.error || 'Failed to load journal.');
+            }
+
+            const journal = payload.data;
+            setFormMode('view');
+            document.getElementById('journal-id').value = journal.journal_id || '—';
+            companySelect.value = journal.company || '';
+            projectSelect.value = journal.project_id || '';
+            document.getElementById('description').value = journal.description || '';
+            document.getElementById('request-id').value = journal.request_id || '';
+            document.getElementById('invent-site-id').value = journal.invent_site_id || '';
+            document.getElementById('invent-location-id').value = journal.invent_location_id || '';
+            document.getElementById('tax-group-id').value = journal.tax_group_id || '';
+            document.getElementById('tax-item-group-id').value = journal.tax_item_group_id || '';
+            renderReadOnlyLineRows(journal.lines || []);
+        };
  
         /* ── Add journal to grid ──────────────────────────────────────── */
-        const addJournalToGrid = ({ requestId, journalId, company, projectId, lineCount }) => {
+        const addJournalToGrid = ({ journalDbId, requestId, journalId, company, projectId, lineCount }) => {
             if (journalsListBody.querySelector('.empty-note')) journalsListBody.innerHTML = '';
             const row = document.createElement('tr');
             const now = new Date();
@@ -447,6 +512,10 @@
                 <td>${lineCount  || 0}</td>
                 <td>Me</td>
                 <td>${now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })} ${now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}</td>
+                <td>
+                    <button type="button" class="btn btn-sm journal-view-btn" data-journal-id="${journalDbId ?? ''}">View</button>
+                    <button type="button" class="btn btn-danger btn-sm journal-delete-btn" data-journal-id="${journalDbId ?? ''}">Delete</button>
+                </td>
             `;
             journalsListBody.prepend(row);
         };
@@ -463,17 +532,14 @@
             formView.classList.add('hidden');
             journalToolbar.classList.remove('hidden');
             listView.classList.remove('hidden');
+            resetForm();
         });
  
         /* ── Company change → clear cached items ──────────────────────── */
         companySelect.addEventListener('change', () => {
-            itemsCache.clear();
-            itemsLoaded = false;
-            toggleNewLineBtn();
-            linesBody.querySelectorAll('.line-item-select').forEach(sel => {
-                sel.innerHTML = '<option value="">— Select item —</option>';
-            });
-            if (projectSelect.value) loadItems();
+            const url = new URL(window.location.href);
+            url.searchParams.set('company', companySelect.value);
+            window.location.href = url.toString();
         });
  
         /* ── Project change → set site/location = project, load items ────── */
@@ -500,6 +566,7 @@
  
         /* ── Remove line ──────────────────────────────────────────────── */
         linesBody.addEventListener('click', (e) => {
+            if (currentFormMode === 'view') return;
             if (!e.target.classList.contains('line-remove-btn')) return;
             e.target.closest('tr')?.remove();
             if (!linesBody.querySelector('tr')) {
@@ -509,6 +576,7 @@
  
         /* ── Post journal ─────────────────────────────────────────────── */
         postBtn.addEventListener('click', async () => {
+            if (currentFormMode === 'view') return;
             clearStatus();
             try {
                 const requestIdDraft   = document.getElementById('request-id').value.trim();
@@ -571,7 +639,14 @@
                     : '✅ Posted successfully. No journal ID returned yet.');
  
                 const requestId = payload.request_id || requestIdDraft;
-                addJournalToGrid({ requestId, journalId, company, projectId, lineCount: lines.length });
+                addJournalToGrid({
+                    journalDbId: payload.journal_db_id,
+                    requestId,
+                    journalId,
+                    company,
+                    projectId,
+                    lineCount: lines.length
+                });
  
             } catch (err) {
                 showStatus(err.message, 'error');
@@ -583,6 +658,46 @@
  
         /* ── Init ─────────────────────────────────────────────────────── */
         document.getElementById('request-id').value = '';
+        journalsListBody.addEventListener('click', async (event) => {
+            const viewBtn = event.target.closest('.journal-view-btn');
+            if (viewBtn) {
+                try {
+                    await openJournalView(viewBtn.getAttribute('data-journal-id'));
+                    journalToolbar.classList.add('hidden');
+                    listView.classList.add('hidden');
+                    formView.classList.remove('hidden');
+                    clearStatus();
+                } catch (err) {
+                    showStatus(err.message, 'error');
+                }
+                return;
+            }
+
+            const deleteBtn = event.target.closest('.journal-delete-btn');
+            if (!deleteBtn) return;
+
+            const journalId = deleteBtn.getAttribute('data-journal-id');
+            if (!window.confirm('Delete this journal?')) return;
+
+            try {
+                const url = buildJournalUrl(endpoints.deleteJournalTemplate, journalId);
+                const res = await fetch(url, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(payload?.message || payload?.error || 'Failed to delete journal.');
+                }
+                deleteBtn.closest('tr')?.remove();
+                if (!journalsListBody.querySelector('tr')) {
+                    journalsListBody.innerHTML = '<tr><td class="empty-note" colspan="8">No journal records yet.</td></tr>';
+                }
+                showStatus('Journal deleted successfully.', 'success');
+            } catch (err) {
+                showStatus(err.message, 'error');
+            }
+        });
  
     </script>
  

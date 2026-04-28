@@ -186,6 +186,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
 <div class="page">
     <div class="card">
         <h2>Settings</h2>

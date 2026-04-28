@@ -108,6 +108,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
 
 <aside class="sidebar">
     <div class="sidebar-brand">TI Web App</div>

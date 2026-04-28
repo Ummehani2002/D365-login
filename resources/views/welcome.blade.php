@@ -55,6 +55,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
     <div class="login-container">
         <h1>D365 Form</h1>
         <p>Sign in with Microsoft account to continue.</p>

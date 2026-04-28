@@ -99,6 +99,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
     <div class="header">
         <h1>Project Master</h1>
         <button type="button" id="sync-d365-btn">Sync all from D365</button>

@@ -8,9 +8,28 @@
         body {
             font-family: "Segoe UI", Arial, sans-serif;
             margin: 0;
-            padding: 16px;
             background: #f3f2f1;
             color: #323130;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 260px;
+            background: #fff;
+            border-right: 1px solid #edebe9;
+            padding: 12px 0;
+            flex-shrink: 0;
+        }
+        .logo { padding: 10px 16px 18px; border-bottom: 1px solid #edebe9; margin-bottom: 8px; font-weight: 700; }
+        .label { padding: 10px 16px 4px; color: #8a8886; font-size: 11px; text-transform: uppercase; }
+        .menu-link { display: block; padding: 10px 16px; color: #323130; text-decoration: none; border-radius: 8px; margin: 2px 8px; font-size: 14px; }
+        .menu-link:hover { background: #f3f2f1; }
+        .menu-link.active { background: #deecf9; color: #005a9e; }
+        .sub { margin-left: 16px; padding-left: 8px; border-left: 2px solid #edebe9; }
+        .main {
+            flex: 1;
+            padding: 16px;
+            overflow: auto;
         }
         .header {
             background: #fff;
@@ -95,30 +114,54 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Company Master</h1>
-    </div>
+    @include('partials.global-company-selector')
+    @php
+        $companyCode = strtoupper((string) request()->query('company', ''));
+        $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
+    @endphp
+    <aside class="sidebar">
+        <div class="logo">Logo</div>
+        <div class="label">Menu</div>
+        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
+        <a class="menu-link active" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
+        <a class="menu-link" href="#">Modules</a>
+        <div class="sub">
+            <a class="menu-link" href="#">Project Management</a>
+            <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
+            <a class="menu-link" href="#">Procurement &amp; Sourcing</a>
+            <div class="sub">
+                <a class="menu-link" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
+                <a class="menu-link" href="{{ route('grns.index', $companyQuery) }}">GRN</a>
+            </div>
+        </div>
+        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}">Settings</a>
+    </aside>
+    <main class="main">
+        <div class="header">
+            <h1>Company Master</h1>
+        </div>
 
-    <div class="card">
-        <h2>Companies</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>D365 ID</th>
-                    <th>Name</th>
-                    <th>Created At</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="5" id="companies-loading">Loading companies...</td>
-                </tr>
-            </tbody>
-        </table>
-        <a class="back-link" href="{{ route('dashboard') }}">Back to Dashboard</a>
-    </div>
+        <div class="card">
+            <h2>Companies</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>D365 ID</th>
+                        <th>Name</th>
+                        <th>Created At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" id="companies-loading">Loading companies...</td>
+                    </tr>
+                </tbody>
+            </table>
+            <a class="back-link" href="{{ route('dashboard', $companyQuery) }}">Back to Dashboard</a>
+        </div>
+    </main>
     <script>
         const companiesTbody = document.querySelector('tbody');
         const companiesApiUrl = '/api/companies';

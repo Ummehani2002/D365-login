@@ -98,6 +98,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
     <aside class="sidebar">
         <div class="logo">Logo</div>
         <div class="label">Menu</div>

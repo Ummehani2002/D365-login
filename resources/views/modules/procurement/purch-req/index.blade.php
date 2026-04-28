@@ -50,10 +50,12 @@
         .section-title { font-size: 13px; font-weight: 600; color: #323130; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .lines-wrap { border: 1px solid #edebe9; border-radius: 2px; overflow: auto; margin-bottom: 14px; }
         .line-input { width: 90px; border: 1px solid #8a8886; border-radius: 2px; padding: 4px 6px; font-size: 12px; }
-        .line-input.wide { width: 130px; }
+        .line-input.wide { width: 320px; }
+        .line-input.item-id { width: 180px; min-width: 180px; }
+        .line-input.req-date { width: 140px; min-width: 140px; }
         .line-input.narrow { width: 60px; }
         .line-select { width: 140px; border: 1px solid #8a8886; border-radius: 2px; padding: 4px 6px; font-size: 12px; background: #fff; }
-        .unit-select { width: 95px; }
+        .unit-select { width: 150px; min-width: 150px; }
         .unit-note { font-size: 10px; color: #8a8886; margin-top: 2px; }
         .line-toggle-btn {
             border: 0;
@@ -115,6 +117,14 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
+    @php
+        $buyingLegalEntities = collect($companies)
+            ->filter(fn ($c) => in_array(strtoupper((string) $c->d365_id), ['TM', 'PS'], true))
+            ->map(fn ($c) => ['code' => strtoupper((string) $c->d365_id), 'name' => $c->name])
+            ->unique('code')
+            ->values();
+    @endphp
     <aside class="sidebar">
         <div class="logo">Logo</div>
         <div class="label">Menu</div>
@@ -151,6 +161,7 @@
                         </div>
                         <div class="form-header-right">
                             <button id="reset-btn" class="btn btn-sm" type="button">Reset</button>
+                            <button id="save-btn" class="btn btn-sm" type="button">Save Draft</button>
                             <button id="post-btn" class="btn btn-primary" type="button">Submit PR to D365</button>
                         </div>
                     </div>
@@ -163,7 +174,18 @@
                             <select id="company">
                                 <option value="">— select —</option>
                                 @foreach($companies as $c)
-                                    <option value="{{ $c->d365_id }}">{{ $c->d365_id }} – {{ $c->name }}</option>
+                                    <option value="{{ $c->d365_id }}" {{ strtoupper((string) ($currentCompanyCode ?? '')) === strtoupper((string) $c->d365_id) ? 'selected' : '' }}>{{ $c->d365_id }} – {{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Buying Legal Entity</label>
+                            <select id="buying-legal-entity">
+                                @if($buyingLegalEntities->isEmpty())
+                                    <option value="">— select company first —</option>
+                                @endif
+                                @foreach($buyingLegalEntities as $entity)
+                                    <option value="{{ $entity['code'] }}">{{ $entity['code'] }} - {{ $entity['name'] }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -269,8 +291,10 @@
                                 <th>Contact</th>
                                 <th>Lines</th>
                                 <th>Attachments</th>
+                                <th>Status</th>
                                 <th>Submitted By</th>
                                 <th>Submitted At</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="history-body">
@@ -316,11 +340,20 @@
                                         <span style="color:#8a8886;font-size:11px;">—</span>
                                     @endif
                                 </td>
+                                @php($isDraft = empty($j->request_id) && empty($j->pr_no))
+                                <td><span class="badge {{ $isDraft ? '' : '' }}" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
                                 <td>{{ $j->postedBy?->name ?? '—' }}</td>
                                 <td>{{ $j->created_at->format('d M Y H:i') }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm pr-view-btn" data-id="{{ $j->id }}">View</button>
+                                    @if($isDraft)
+                                        <button type="button" class="btn btn-sm pr-edit-btn" data-id="{{ $j->id }}">Edit</button>
+                                    @endif
+                                    <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="{{ $j->id }}">Delete</button>
+                                </td>
                             </tr>
                             @empty
-                            <tr><td colspan="9" class="empty-note">No requisitions submitted yet.</td></tr>
+                            <tr><td colspan="12" class="empty-note">No requisitions submitted yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -335,6 +368,7 @@
 
         const statusBox     = document.getElementById('status-box');
         const companyEl     = document.getElementById('company');
+        const buyingLegalEntityEl = document.getElementById('buying-legal-entity');
         const requestIdEl   = document.getElementById('request-id');
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
@@ -347,6 +381,7 @@
         const noLinesRow    = document.getElementById('no-lines-row');
         const historyBody   = document.getElementById('history-body');
         const postBtn       = document.getElementById('post-btn');
+        const saveBtn       = document.getElementById('save-btn');
         const fileInput     = document.getElementById('file-input');
         const attachList    = document.getElementById('attach-list');
         const createPrBtn   = document.getElementById('create-pr-btn');
@@ -355,6 +390,8 @@
         const historyShell  = document.getElementById('pr-history-shell');
 
         let attachments = [];
+        let currentDraftId = null;
+        let currentViewOnly = false;
 
         const showStatus = (msg, type) => {
             statusBox.textContent   = msg;
@@ -400,7 +437,7 @@
             noLinesRow.style.display = rows.length === 0 ? '' : 'none';
         }
 
-        document.getElementById('add-line-btn').addEventListener('click', () => {
+        function addLine(line = {}) {
             noLinesRow.style.display = 'none';
             lineCount++;
             const lineId = lineCount;
@@ -419,16 +456,16 @@
                 </td>
                 <td style="text-align:center;"><span class="line-serial"></span></td>
                 <td><select class="line-select lf-category"><option value="">—</option>${catOptions}</select></td>
-                <td><input class="line-input lf-item-id" type="text" placeholder="Item ID"></td>
-                <td><input class="line-input wide lf-desc" type="text" placeholder="Description"></td>
-                <td><input class="line-input lf-req-date" type="date" value="${todayStr()}"></td>
+                <td><input class="line-input item-id lf-item-id" type="text" maxlength="100" placeholder="Item ID" value="${line.item_id ?? ''}"></td>
+                <td><input class="line-input wide lf-desc" type="text" maxlength="255" placeholder="Description (up to 255 characters)" value="${line.item_description ?? ''}"></td>
+                <td><input class="line-input req-date lf-req-date" type="date" value="${line.required_date ?? todayStr()}"></td>
                 <td>
                     <select class="line-select unit-select lf-unit">
-                        <option value="">Select item first</option>
+                        <option value="${line.unit ?? ''}">${line.unit ? line.unit : 'Select item first'}</option>
                     </select>
                     <div class="unit-note lf-unit-note"></div>
                 </td>
-                <td><input class="line-input narrow lf-qty" type="number" min="0.001" step="any" value="1"></td>
+                <td><input class="line-input narrow lf-qty" type="number" min="0.001" step="any" value="${line.qty ?? 1}"></td>
                 <td>
                     <button class="icon-btn-danger remove-line" type="button" title="Delete line" aria-label="Delete line">
                         🗑
@@ -446,23 +483,23 @@
                         <div class="line-details-grid">
                             <div class="line-details-field">
                                 <label>Currency</label>
-                                <input class="lf-currency" type="text" value="AED" placeholder="Currency">
+                                <input class="lf-currency" type="text" value="${line.currency ?? 'AED'}" placeholder="Currency">
                             </div>
                             <div class="line-details-field">
                                 <label>Rate</label>
-                                <input class="lf-rate" type="number" min="0" step="any" value="0" placeholder="Rate">
+                                <input class="lf-rate" type="number" min="0" step="any" value="${line.rate ?? 0}" placeholder="Rate">
                             </div>
                             <div class="line-details-field">
                                 <label>Candy Budget</label>
-                                <input class="lf-budget" type="number" min="0" step="any" value="0" placeholder="Candy Budget">
+                                <input class="lf-budget" type="number" min="0" step="any" value="${line.candy_budget ?? 0}" placeholder="Candy Budget">
                             </div>
                             <div class="line-details-field">
                                 <label>Budget Resource</label>
-                                <input class="lf-budget-res" type="text" placeholder="Budget resource code">
+                                <input class="lf-budget-res" type="text" placeholder="Budget resource code" value="${line.budget_resource_id ?? ''}">
                             </div>
                             <div class="line-details-field">
                                 <label>Warranty</label>
-                                <input class="lf-warranty" type="text" value="N/A" placeholder="Warranty">
+                                <input class="lf-warranty" type="text" value="${line.warranty ?? 'N/A'}" placeholder="Warranty">
                             </div>
                         </div>
                     </div>
@@ -472,7 +509,9 @@
             linesBody.appendChild(row);
             linesBody.appendChild(details);
             renumberLines();
-        });
+        }
+
+        document.getElementById('add-line-btn').addEventListener('click', () => addLine());
 
         linesBody.addEventListener('click', (e) => {
             const toggleBtn = e.target.closest('.toggle-line');
@@ -489,6 +528,7 @@
 
             const removeBtn = e.target.closest('.remove-line');
             if (!removeBtn) return;
+            if (currentViewOnly) return;
             const mainRow = removeBtn.closest('tr[data-line]');
             if (!mainRow) return;
             const lineId = mainRow.dataset.line;
@@ -502,7 +542,7 @@
             const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
             const unitSelect = tr.querySelector('.lf-unit');
             const unitNote = tr.querySelector('.lf-unit-note');
-            const company = companyEl.value.trim();
+            const company = (buyingLegalEntityEl?.value || companyEl.value || '').trim();
 
             if (!unitSelect || !unitNote) return;
 
@@ -585,6 +625,26 @@
         }, true);
 
         companyEl.addEventListener('change', () => {
+            const companyCode = (companyEl.value || '').trim().toUpperCase();
+            if (buyingLegalEntityEl && ['TM', 'PS'].includes(companyCode)) {
+                buyingLegalEntityEl.value = companyCode;
+            }
+            linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
+                const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
+                const unitSelect = tr.querySelector('.lf-unit');
+                const unitNote = tr.querySelector('.lf-unit-note');
+                if (!unitSelect || !unitNote) return;
+
+                if (!itemId) {
+                    unitSelect.innerHTML = '<option value="">Enter item ID</option>';
+                    unitNote.textContent = '';
+                    return;
+                }
+
+                loadUnitsForRow(tr);
+            });
+        });
+        buyingLegalEntityEl.addEventListener('change', () => {
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -704,10 +764,34 @@
             return lines;
         }
 
+        const setFormViewMode = (viewOnly) => {
+            currentViewOnly = viewOnly;
+            const fields = formShell.querySelectorAll('input, select, textarea, button');
+            fields.forEach((el) => {
+                if (['back-to-list-btn'].includes(el.id)) return;
+                if (viewOnly) {
+                    if (el.id === 'save-btn' || el.id === 'post-btn' || el.id === 'reset-btn' || el.id === 'add-line-btn') {
+                        el.classList.add('hidden');
+                    }
+                    if (el.matches('input, select, textarea')) {
+                        el.disabled = true;
+                    }
+                } else {
+                    if (el.id === 'save-btn' || el.id === 'post-btn' || el.id === 'reset-btn' || el.id === 'add-line-btn') {
+                        el.classList.remove('hidden');
+                    }
+                    if (el.matches('input, select, textarea')) {
+                        el.disabled = false;
+                    }
+                }
+            });
+        };
+
         postBtn.addEventListener('click', async () => {
+            if (currentViewOnly) return;
             clearStatus();
 
-            const company = companyEl.value.trim();
+            const company = (buyingLegalEntityEl?.value || companyEl.value || '').trim();
             if (!company) { showStatus('Please select a company.', 'error'); return; }
             if (!prDateEl.value) { showStatus('PR Date is required.', 'error'); return; }
             if (!warehouseEl.value.trim()) { showStatus('Warehouse is required.', 'error'); return; }
@@ -733,6 +817,7 @@
             const payload = {
                 _token:       csrf,
                 company:      company,
+                buying_legal_entity: (buyingLegalEntityEl?.value || company),
                 pr_date:      prDateEl.value,
                 warehouse:    warehouseEl.value.trim(),
                 pool_id:      poolIdEl.value.trim(),
@@ -749,6 +834,9 @@
                     purch_id:     a.purchId,
                 })),
             };
+            if (currentDraftId) {
+                payload.draft_id = currentDraftId;
+            }
 
             try {
                 const res  = await fetch('{{ route("modules.procurement.purch-req.post") }}', {
@@ -775,6 +863,8 @@
                     showStatus(`✓ PR submitted. Request ID: ${data.request_id}  |  PR No: ${data.pr_no}`, 'success');
                     addToHistory(data, payload);
                     resetForm();
+                    currentDraftId = null;
+                    setFormViewMode(false);
                     formShell.classList.add('hidden');
                     historyShell.classList.remove('hidden');
                     formShell.style.display = 'none';
@@ -787,6 +877,59 @@
             } finally {
                 postBtn.disabled   = false;
                 postBtn.textContent = 'Submit PR to D365';
+            }
+        });
+
+        saveBtn.addEventListener('click', async () => {
+            if (currentViewOnly) return;
+            clearStatus();
+
+            const payload = {
+                _token: csrf,
+                company: companyEl.value.trim() || null,
+                buying_legal_entity: (buyingLegalEntityEl?.value || companyEl.value.trim() || null),
+                pr_date: prDateEl.value || null,
+                warehouse: warehouseEl.value.trim() || null,
+                pool_id: poolIdEl.value.trim() || null,
+                contact_name: contactEl.value.trim() || null,
+                remarks: remarksEl.value.trim() || null,
+                department: departmentEl.value.trim() || null,
+                lines: collectLines(),
+                attachments: attachments.map(a => ({
+                    file_name: a.fileName,
+                    file_type: a.fileType,
+                    mime_type: a.mimeType,
+                    size_bytes: a.sizeBytes,
+                    file_content: a.fileContent,
+                    purch_id: a.purchId,
+                })),
+            };
+
+            const isEdit = Boolean(currentDraftId);
+            const url = isEdit
+                ? `{{ route("modules.procurement.purch-req.drafts.update", ["journal" => "__ID__"]) }}`.replace('__ID__', currentDraftId)
+                : `{{ route("modules.procurement.purch-req.save") }}`;
+            const method = isEdit ? 'PUT' : 'POST';
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = isEdit ? 'Updating…' : 'Saving…';
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.status) {
+                    throw new Error(data.message || data.error || 'Save failed.');
+                }
+                currentDraftId = data.journal_id;
+                showStatus('✓ Draft saved successfully.', 'success');
+            } catch (err) {
+                showStatus('✗ ' + err.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Draft';
             }
         });
 
@@ -809,14 +952,21 @@
                 <td>${payload.attachments.length
                     ? payload.attachments.map(a => `<span class="att-link">${fileIcon(a.file_type)} ${a.file_name}</span>`).join(' ')
                     : '<span style="color:#8a8886;font-size:11px;">—</span>'}</td>
+                <td><span class="badge">Submitted</span></td>
                 <td>You</td>
                 <td>${fmt}</td>
+                <td>
+                    <button type="button" class="btn btn-sm pr-view-btn" data-id="${data.journal_id}">View</button>
+                    <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="${data.journal_id}">Delete</button>
+                </td>
             `;
             historyBody.prepend(tr);
         }
 
         function resetForm() {
             prNoEl.value        = '';
+            requestIdEl.value   = '';
+            if (buyingLegalEntityEl) buyingLegalEntityEl.value = '';
             prDateEl.value      = todayStr();
             warehouseEl.value   = '';
             poolIdEl.value      = '';
@@ -829,6 +979,7 @@
             attachments  = [];
             renderAttachments();
             renumberLines();
+            currentDraftId = null;
         }
 
         document.getElementById('reset-btn').addEventListener('click', () => {
@@ -837,6 +988,8 @@
         });
 
         createPrBtn.addEventListener('click', () => {
+            resetForm();
+            setFormViewMode(false);
             historyShell.classList.add('hidden');
             formShell.classList.remove('hidden');
             historyShell.style.display = 'none';
@@ -852,6 +1005,74 @@
             historyShell.style.display = '';
             clearStatus();
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        historyBody.addEventListener('click', async (e) => {
+            const viewBtn = e.target.closest('.pr-view-btn');
+            const editBtn = e.target.closest('.pr-edit-btn');
+            const deleteBtn = e.target.closest('.pr-delete-btn');
+
+            if (!viewBtn && !editBtn && !deleteBtn) return;
+
+            const rowId = (viewBtn || editBtn || deleteBtn).dataset.id;
+
+            if (deleteBtn) {
+                if (!confirm('Delete this PR record?')) return;
+                try {
+                    const url = `{{ route("modules.procurement.purch-req.journals.destroy", ["journal" => "__ID__"]) }}`.replace('__ID__', rowId);
+                    const res = await fetch(url, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
+                    const data = await res.json();
+                    if (!res.ok || !data.status) throw new Error(data.message || data.error || 'Delete failed.');
+                    (viewBtn || editBtn || deleteBtn).closest('tr')?.remove();
+                    showStatus('✓ PR deleted.', 'success');
+                } catch (err) {
+                    showStatus('✗ ' + err.message, 'error');
+                }
+                return;
+            }
+
+            try {
+                const url = `{{ route("modules.procurement.purch-req.journals.show", ["journal" => "__ID__"]) }}`.replace('__ID__', rowId);
+                const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                const payload = await res.json();
+                if (!res.ok || !payload.status) throw new Error(payload.message || payload.error || 'Failed to load PR.');
+
+                const j = payload.data;
+                resetForm();
+                companyEl.value = j.company || '';
+                buyingLegalEntityEl.value = j.buying_legal_entity || '';
+                requestIdEl.value = j.request_id || '';
+                prNoEl.value = j.pr_no || '';
+                prDateEl.value = j.pr_date || '';
+                warehouseEl.value = j.warehouse || '';
+                poolIdEl.value = j.pool_id || '';
+                contactEl.value = j.contact_name || '';
+                remarksEl.value = j.remarks || '';
+                departmentEl.value = j.department || '';
+
+                (Array.isArray(j.lines) ? j.lines : []).forEach((line) => addLine(line));
+
+                attachments = (Array.isArray(j.attachments) ? j.attachments : []).map((a) => ({
+                    fileName: a.file_name || '',
+                    fileType: a.file_type || '',
+                    mimeType: a.mime_type || '',
+                    sizeBytes: Number(a.size_bytes || 0),
+                    fileContent: a.file_content || '',
+                    purchId: '',
+                }));
+                renderAttachments();
+
+                currentDraftId = payload.is_draft ? j.id : null;
+                setFormViewMode(Boolean(viewBtn));
+
+                historyShell.classList.add('hidden');
+                formShell.classList.remove('hidden');
+                historyShell.style.display = 'none';
+                formShell.style.display = '';
+                clearStatus();
+            } catch (err) {
+                showStatus('✗ ' + err.message, 'error');
+            }
         });
 
         formShell.classList.add('hidden');

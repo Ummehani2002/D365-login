@@ -16,6 +16,7 @@
     </style>
 </head>
 <body>
+    @include('partials.global-company-selector')
     <div class="card">
         <h1 style="margin-top:0;color:#1e293b;">{{ $title }}</h1>
         <p>Master screen — coming soon.</p>

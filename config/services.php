@@ -70,6 +70,9 @@ return [
     'purch_req_post_path' => env('D365_PURCH_REQ_POST_PATH', '/api/services/TIWebServiceGroup/PurchReqService/Create'),
     'item_onhand_path' => env('D365_ITEM_ONHAND_PATH', '/item-onhand'),
     'unit_lookup_path' => env('D365_UNIT_LOOKUP_PATH', '/unit-lookup'),
+    'grn_headers_lookup_path' => env('D365_GRN_HEADERS_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchPackSlipHeaderLookupService/Create'),
+    'grn_lines_lookup_path' => env('D365_GRN_LINES_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchPackSlipLineLookupService/Create'),
+    'grn_post_path' => env('D365_GRN_POST_PATH', '/api/services/TIWebServiceGroup/PurchPackSlipService/Create'),
 ],
 
 'webapp' => [

@@ -12,7 +12,7 @@ use Throwable;
 
 class PurchReqController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $companies = Company::query()
             ->select(['id', 'd365_id', 'name'])
@@ -20,14 +20,33 @@ class PurchReqController extends Controller
             ->orderBy('name')
             ->get();
 
+        $defaultCompany = $companies->first(function (Company $company) {
+            return strtoupper((string) $company->d365_id) === 'PS';
+        }) ?? $companies->first();
+
+        $requestedCompanyCode = strtoupper(trim((string) $request->query('company', '')));
+        $selectedCompany = $companies->first(function (Company $company) use ($requestedCompanyCode) {
+            return strtoupper((string) $company->d365_id) === $requestedCompanyCode;
+        }) ?? $defaultCompany;
+
+        if ($selectedCompany && strtoupper((string) $selectedCompany->d365_id) !== $requestedCompanyCode) {
+            return redirect()->route('modules.procurement.purch-req', [
+                'company' => strtoupper((string) $selectedCompany->d365_id),
+            ]);
+        }
+
         $journals = PurchReqJournal::query()
             ->with('postedBy:id,name')
+            ->when($selectedCompany, function ($query) use ($selectedCompany) {
+                $query->where('company', $selectedCompany->d365_id);
+            })
             ->orderByDesc('created_at')
             ->get();
 
         return view('modules.procurement.purch-req.index', [
             'companies' => $companies,
             'journals'  => $journals,
+            'currentCompanyCode' => $selectedCompany?->d365_id,
         ]);
     }
 
@@ -37,7 +56,9 @@ class PurchReqController extends Controller
             set_time_limit(60);
 
             $validated = $request->validate([
+                'draft_id'                    => ['nullable', 'integer', 'exists:purch_req_journals,id'],
                 'company'                     => ['required', 'string', 'max:20'],
+                'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
                 'pr_date'                     => ['required', 'date'],
                 'warehouse'                   => ['required', 'string', 'max:100'],
                 'pool_id'                     => ['required', 'string', 'max:100'],
@@ -127,21 +148,52 @@ class PurchReqController extends Controller
                 'file_content' => $a['file_content'],
             ], $validated['attachments'] ?? []);
 
-            $journal = PurchReqJournal::create([
-                'request_id'    => $requestId,
-                'pr_no'         => $prNo,
-                'company'       => $validated['company'],
-                'pr_date'       => $validated['pr_date'],
-                'warehouse'     => $validated['warehouse'],
-                'pool_id'       => $validated['pool_id'],
-                'contact_name'  => $validated['contact_name'],
-                'remarks'       => $validated['remarks'] ?? null,
-                'department'    => $validated['department'],
-                'lines'         => $validated['lines'],
-                'attachments'   => $attachmentsForDb,
-                'd365_response' => $result,
-                'posted_by'     => auth()->id(),
-            ]);
+            $draftId = isset($validated['draft_id']) ? (int) $validated['draft_id'] : null;
+            $draft = null;
+            if ($draftId) {
+                $draft = PurchReqJournal::query()
+                    ->where('id', $draftId)
+                    ->whereNull('request_id')
+                    ->whereNull('pr_no')
+                    ->first();
+            }
+
+            if ($draft) {
+                $draft->update([
+                    'request_id'    => $requestId,
+                    'pr_no'         => $prNo,
+                    'company'       => $validated['company'],
+                    'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'],
+                    'pr_date'       => $validated['pr_date'],
+                    'warehouse'     => $validated['warehouse'],
+                    'pool_id'       => $validated['pool_id'],
+                    'contact_name'  => $validated['contact_name'],
+                    'remarks'       => $validated['remarks'] ?? null,
+                    'department'    => $validated['department'],
+                    'lines'         => $validated['lines'],
+                    'attachments'   => $attachmentsForDb,
+                    'd365_response' => $result,
+                    'posted_by'     => auth()->id(),
+                ]);
+                $journal = $draft->fresh();
+            } else {
+                $journal = PurchReqJournal::create([
+                    'request_id'    => $requestId,
+                    'pr_no'         => $prNo,
+                    'company'       => $validated['company'],
+                    'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'],
+                    'pr_date'       => $validated['pr_date'],
+                    'warehouse'     => $validated['warehouse'],
+                    'pool_id'       => $validated['pool_id'],
+                    'contact_name'  => $validated['contact_name'],
+                    'remarks'       => $validated['remarks'] ?? null,
+                    'department'    => $validated['department'],
+                    'lines'         => $validated['lines'],
+                    'attachments'   => $attachmentsForDb,
+                    'd365_response' => $result,
+                    'posted_by'     => auth()->id(),
+                ]);
+            }
 
             return response()->json([
                 'status'     => true,
@@ -161,6 +213,157 @@ class PurchReqController extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function saveDraft(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company'                     => ['nullable', 'string', 'max:20'],
+            'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
+            'pr_date'                     => ['nullable', 'date'],
+            'warehouse'                   => ['nullable', 'string', 'max:100'],
+            'pool_id'                     => ['nullable', 'string', 'max:100'],
+            'contact_name'                => ['nullable', 'string', 'max:255'],
+            'remarks'                     => ['nullable', 'string', 'max:500'],
+            'department'                  => ['nullable', 'string', 'max:255'],
+            'lines'                       => ['nullable', 'array'],
+            'lines.*.item_category'       => ['nullable', 'string', 'max:100'],
+            'lines.*.item_id'             => ['nullable', 'string', 'max:100'],
+            'lines.*.item_description'    => ['nullable', 'string', 'max:255'],
+            'lines.*.required_date'       => ['nullable', 'date'],
+            'lines.*.unit'                => ['nullable', 'string', 'max:30'],
+            'lines.*.qty'                 => ['nullable', 'numeric', 'gt:0'],
+            'lines.*.currency'            => ['nullable', 'string', 'max:10'],
+            'lines.*.rate'                => ['nullable', 'numeric', 'min:0'],
+            'lines.*.candy_budget'        => ['nullable', 'numeric', 'min:0'],
+            'lines.*.budget_resource_id'  => ['nullable', 'string', 'max:100'],
+            'lines.*.warranty'            => ['nullable', 'string', 'max:100'],
+            'attachments'                 => ['nullable', 'array'],
+            'attachments.*.file_name'     => ['required', 'string', 'max:255'],
+            'attachments.*.file_type'     => ['required', 'string', 'max:20'],
+            'attachments.*.mime_type'     => ['nullable', 'string', 'max:100'],
+            'attachments.*.size_bytes'    => ['nullable', 'numeric', 'min:0'],
+            'attachments.*.file_content'  => ['required', 'string'],
+            'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $attachmentsForDb = array_map(fn ($a) => [
+            'file_name'    => $a['file_name'],
+            'file_type'    => $a['file_type'],
+            'mime_type'    => $a['mime_type'] ?? null,
+            'size_bytes'   => $a['size_bytes'] ?? null,
+            'file_content' => $a['file_content'],
+        ], $validated['attachments'] ?? []);
+
+        $journal = PurchReqJournal::create([
+            'request_id'    => null,
+            'pr_no'         => null,
+            'company'       => $validated['company'] ?? null,
+            'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null),
+            'pr_date'       => $validated['pr_date'] ?? null,
+            'warehouse'     => $validated['warehouse'] ?? null,
+            'pool_id'       => $validated['pool_id'] ?? null,
+            'contact_name'  => $validated['contact_name'] ?? null,
+            'remarks'       => $validated['remarks'] ?? null,
+            'department'    => $validated['department'] ?? null,
+            'lines'         => $validated['lines'] ?? [],
+            'attachments'   => $attachmentsForDb,
+            'd365_response' => null,
+            'posted_by'     => auth()->id(),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'PR saved as draft.',
+            'journal_id' => $journal->id,
+        ]);
+    }
+
+    public function updateDraft(Request $request, PurchReqJournal $journal): JsonResponse
+    {
+        if ($journal->request_id || $journal->pr_no) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Submitted PR cannot be edited.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'company'                     => ['nullable', 'string', 'max:20'],
+            'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
+            'pr_date'                     => ['nullable', 'date'],
+            'warehouse'                   => ['nullable', 'string', 'max:100'],
+            'pool_id'                     => ['nullable', 'string', 'max:100'],
+            'contact_name'                => ['nullable', 'string', 'max:255'],
+            'remarks'                     => ['nullable', 'string', 'max:500'],
+            'department'                  => ['nullable', 'string', 'max:255'],
+            'lines'                       => ['nullable', 'array'],
+            'lines.*.item_category'       => ['nullable', 'string', 'max:100'],
+            'lines.*.item_id'             => ['nullable', 'string', 'max:100'],
+            'lines.*.item_description'    => ['nullable', 'string', 'max:255'],
+            'lines.*.required_date'       => ['nullable', 'date'],
+            'lines.*.unit'                => ['nullable', 'string', 'max:30'],
+            'lines.*.qty'                 => ['nullable', 'numeric', 'gt:0'],
+            'lines.*.currency'            => ['nullable', 'string', 'max:10'],
+            'lines.*.rate'                => ['nullable', 'numeric', 'min:0'],
+            'lines.*.candy_budget'        => ['nullable', 'numeric', 'min:0'],
+            'lines.*.budget_resource_id'  => ['nullable', 'string', 'max:100'],
+            'lines.*.warranty'            => ['nullable', 'string', 'max:100'],
+            'attachments'                 => ['nullable', 'array'],
+            'attachments.*.file_name'     => ['required', 'string', 'max:255'],
+            'attachments.*.file_type'     => ['required', 'string', 'max:20'],
+            'attachments.*.mime_type'     => ['nullable', 'string', 'max:100'],
+            'attachments.*.size_bytes'    => ['nullable', 'numeric', 'min:0'],
+            'attachments.*.file_content'  => ['required', 'string'],
+            'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $attachmentsForDb = array_map(fn ($a) => [
+            'file_name'    => $a['file_name'],
+            'file_type'    => $a['file_type'],
+            'mime_type'    => $a['mime_type'] ?? null,
+            'size_bytes'   => $a['size_bytes'] ?? null,
+            'file_content' => $a['file_content'],
+        ], $validated['attachments'] ?? []);
+
+        $journal->update([
+            'company'       => $validated['company'] ?? null,
+            'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null),
+            'pr_date'       => $validated['pr_date'] ?? null,
+            'warehouse'     => $validated['warehouse'] ?? null,
+            'pool_id'       => $validated['pool_id'] ?? null,
+            'contact_name'  => $validated['contact_name'] ?? null,
+            'remarks'       => $validated['remarks'] ?? null,
+            'department'    => $validated['department'] ?? null,
+            'lines'         => $validated['lines'] ?? [],
+            'attachments'   => $attachmentsForDb,
+            'posted_by'     => auth()->id(),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Draft updated successfully.',
+            'journal_id' => $journal->id,
+        ]);
+    }
+
+    public function showJournal(PurchReqJournal $journal): JsonResponse
+    {
+        return response()->json([
+            'status' => true,
+            'data' => $journal,
+            'is_draft' => !$journal->request_id && !$journal->pr_no,
+        ]);
+    }
+
+    public function destroyJournal(PurchReqJournal $journal): JsonResponse
+    {
+        $journal->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'PR deleted successfully.',
+        ]);
     }
 
     public function lookupUnits(Request $request, D365PurchReqService $service): JsonResponse
