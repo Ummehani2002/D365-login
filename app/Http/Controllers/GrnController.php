@@ -214,7 +214,7 @@ class GrnController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => 'GRN post failed.',
+                'message' => $e->getMessage() !== '' ? $e->getMessage() : 'GRN post failed.',
                 'error' => $e->getMessage(),
             ], 500);
         }

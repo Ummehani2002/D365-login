@@ -264,7 +264,7 @@
         .then(async (resp) => {
             const data = await resp.json();
             if (!resp.ok || data.status === false) {
-                throw new Error(data.message || data.error || 'Posting failed.');
+                throw new Error(data.error || data.message || 'Posting failed.');
             }
             setStatus('success', `${data.message} Request ID: ${data.request_id}`);
         })
