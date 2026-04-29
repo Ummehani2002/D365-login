@@ -76,7 +76,7 @@
                     <h1 class="title" id="po-title">{{ $purchaseId }}</h1>
                     <div class="vendor-sub">Vendor: <span id="vendor-sub">{{ $vendorName ?: '-' }}</span></div>
                 </div>
-                <button id="post-btn" class="btn btn-primary" type="button">Post</button>
+                <button id="post-btn" class="btn btn-primary {{ !empty($viewOnly) ? 'hidden' : '' }}" type="button">Post</button>
             </div>
 
             <div id="status-box" class="status-box"></div>
@@ -85,8 +85,8 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id"></div>
-                <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date"></div>
+                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id" {{ !empty($viewOnly) ? 'readonly' : '' }}></div>
+                <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($viewOnly) ? 'readonly' : '' }}></div>
             </div>
 
             <div class="card">
@@ -103,11 +103,13 @@
                             <th>Name</th>
                             <th>Ordered Qty</th>
                             <th>Remaining Qty</th>
-                            <th>ReceiveNow</th>
+                            @if(empty($viewOnly))
+                                <th>ReceiveNow</th>
+                            @endif
                         </tr>
                         </thead>
                         <tbody id="lines-body">
-                        <tr><td colspan="6" class="empty-note">Loading line items...</td></tr>
+                        <tr><td colspan="{{ empty($viewOnly) ? 6 : 5 }}" class="empty-note">Loading line items...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -121,6 +123,7 @@
     const purchaseId = @json($purchaseId);
     const vendorName = @json($vendorName);
     const projectId = @json($projectId);
+    const isViewOnly = @json(!empty($viewOnly));
 
     const els = {
         backBtn: document.getElementById('back-btn'),
@@ -143,7 +146,7 @@
     function renderLineRows(lines) {
         if (!Array.isArray(lines) || lines.length === 0) {
             els.lineCount.textContent = '0 line';
-            els.linesBody.innerHTML = '<tr><td colspan="6" class="empty-note">No line items found.</td></tr>';
+            els.linesBody.innerHTML = `<tr><td colspan="${isViewOnly ? 5 : 6}" class="empty-note">No line items found.</td></tr>`;
             return;
         }
 
@@ -155,7 +158,7 @@
                 <td>${line.name || '-'}</td>
                 <td>${line.ordered_qty || '0.00'}</td>
                 <td>${line.remaining_qty || '0.00'}</td>
-                <td><input class="qty-input" type="number" step="0.01" min="0" value="${line.receive_qty || ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>
+                ${isViewOnly ? '' : `<td><input class="qty-input" type="number" step="0.01" min="0" value="${line.receive_qty || ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>`}
             </tr>
         `).join('');
     }
@@ -193,13 +196,14 @@
             setStatus('success', `Loaded ${Array.isArray(data.lines) ? data.lines.length : 0} line(s).`);
         } catch (e) {
             setStatus('error', e.message || 'Line item lookup failed.');
-            els.linesBody.innerHTML = '<tr><td colspan="6" class="empty-note">Unable to load line items.</td></tr>';
+            els.linesBody.innerHTML = `<tr><td colspan="${isViewOnly ? 5 : 6}" class="empty-note">Unable to load line items.</td></tr>`;
         }
     }
 
     els.backBtn.addEventListener('click', () => {
         window.location.href = "{{ route('modules.procurement.grn', $companyQuery) }}";
     });
+    if (!isViewOnly) {
     els.postBtn.addEventListener('click', () => {
         const packingSlipId = (els.packingSlipId.value || '').trim();
         const documentDate = (els.documentDate.value || '').trim();
@@ -276,6 +280,7 @@
             els.postBtn.textContent = 'Post';
         });
     });
+    }
 
     loadLines();
 </script>

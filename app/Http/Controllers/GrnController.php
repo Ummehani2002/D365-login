@@ -97,6 +97,7 @@ class GrnController extends Controller
             'purchase_id' => ['required', 'string', 'max:100'],
             'vendor_name' => ['nullable', 'string', 'max:255'],
             'project_id' => ['nullable', 'string', 'max:100'],
+            'view_only' => ['nullable', 'boolean'],
         ]);
 
         return view('modules.procurement.grn.view', [
@@ -104,6 +105,7 @@ class GrnController extends Controller
             'purchaseId' => trim($validated['purchase_id']),
             'vendorName' => trim((string) ($validated['vendor_name'] ?? '')),
             'projectId' => trim((string) ($validated['project_id'] ?? '')),
+            'viewOnly' => (bool) ($validated['view_only'] ?? false),
         ]);
     }
 

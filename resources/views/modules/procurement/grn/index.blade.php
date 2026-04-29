@@ -331,6 +331,7 @@
                     purchase_id: btn.getAttribute('data-purchase-id') || '',
                     vendor_name: btn.getAttribute('data-vendor-name') || '',
                     project_id: btn.getAttribute('data-project-id') || '',
+                    view_only: '1',
                 });
                 window.location.href = `{{ route('modules.procurement.grn.view') }}?${params.toString()}`;
             });
