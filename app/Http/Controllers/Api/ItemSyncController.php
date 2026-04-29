@@ -10,6 +10,33 @@ use Illuminate\Http\Request;
 
 class ItemSyncController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Item::query()->with('company:id,d365_id,name');
+
+        $company = $this->resolveCompany($request);
+        if ($company) {
+            $query->where('company_id', $company->id);
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('d365_id', 'like', "%{$search}%")
+                    ->orWhere('d365_item_id', 'like', "%{$search}%")
+                    ->orWhere('item_name', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->latest()->limit(200)->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $items->count(),
+            'data' => $items,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $company = $this->resolveCompany($request);
