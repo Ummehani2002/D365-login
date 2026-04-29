@@ -61,34 +61,38 @@ class D365ItemIssueService
  
     protected function postToConfiguredPath(string $pathConfigKey, array $payload): array
     {
-        $token = $this->getAccessToken();
-
-        $baseUrl = rtrim((string) AppSetting::get('d365_base_url'), '/');
         $path    = (string) config("services.d365.{$pathConfigKey}");
- 
-        if ($baseUrl === '') {
-            throw new RuntimeException('D365 base URL is not configured. Go to Settings > D365 Credentials and save your credentials first.');
-        }
  
         if ($path === '') {
             throw new RuntimeException("D365 endpoint path is missing: {$pathConfigKey}");
         }
  
+        return $this->postToPath($path, $payload);
+    }
+
+    protected function postToPath(string $path, array $payload): array
+    {
+        $token = $this->getAccessToken();
+        $baseUrl = rtrim((string) AppSetting::get('d365_base_url'), '/');
+
+        if ($baseUrl === '') {
+            throw new RuntimeException('D365 base URL is not configured. Go to Settings > D365 Credentials and save your credentials first.');
+        }
+
         $response = Http::withToken($token)
             ->acceptJson()
             ->asJson()
             ->connectTimeout(10)
             ->timeout(25)
             ->post($baseUrl . '/' . ltrim($path, '/'), $payload);
- 
+
         if ($response->failed()) {
             throw new RuntimeException(
                 'D365 API failed with status ' . $response->status() . ': ' . $response->body()
             );
         }
- 
+
         $json = $response->json();
- 
         return is_array($json) ? $json : ['raw' => $response->body()];
     }
  

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use RuntimeException;
+use Throwable;
 
 class D365GrnService extends D365ItemIssueService
 {
@@ -42,18 +43,44 @@ class D365GrnService extends D365ItemIssueService
 
     public function postPackingSlip(string $dataAreaId, array $header, array $lines): array
     {
-        $payload = [
+        $wrappedPayload = [
             '_request' => [
                 'DataAreaId' => $dataAreaId,
                 'PurchPackHeader' => $header,
                 'PurchPackLines' => $lines,
             ],
         ];
+        $plainPayload = $wrappedPayload['_request'];
 
-        try {
-            return $this->postToConfiguredPath('grn_post_path', $payload);
-        } catch (RuntimeException $e) {
-            return $this->postToConfiguredPath('grn_post_path', $payload['_request']);
+        $paths = array_values(array_unique(array_filter([
+            (string) config('services.d365.grn_post_path'),
+            '/api/services/TIWebServiceGroup/PurchPackingSlipService/Create',
+            '/api/services/TIWebServiceGroup/PurchPackSlipService/Create',
+            '/api/services/TIWebServiceGroup/PurchPackingSlipPostingService/Create',
+        ])));
+
+        $payloads = [$wrappedPayload, $plainPayload];
+        $lastError = null;
+
+        foreach ($paths as $path) {
+            foreach ($payloads as $payload) {
+                try {
+                    return $this->postToPath($path, $payload);
+                } catch (Throwable $e) {
+                    $lastError = $e;
+                    $msg = $e->getMessage();
+                    // Only try next path/payload when endpoint shape/path is wrong.
+                    if (!str_contains($msg, 'status 404') && !str_contains($msg, 'status 405')) {
+                        throw $e;
+                    }
+                }
+            }
         }
+
+        if ($lastError instanceof Throwable) {
+            throw $lastError;
+        }
+
+        throw new RuntimeException('Unable to post GRN packing slip: no endpoint attempts succeeded.');
     }
 }
