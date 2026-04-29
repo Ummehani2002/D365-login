@@ -54,6 +54,7 @@ class D365GrnService extends D365ItemIssueService
 
         $paths = array_values(array_unique(array_filter([
             (string) config('services.d365.grn_post_path'),
+            '/api/services/TIWebServiceGroup/PurchPackService/Create',
             '/api/services/TIWebServiceGroup/PurchPackingSlipService/Create',
             '/api/services/TIWebServiceGroup/PurchPackSlipService/Create',
             '/api/services/TIWebServiceGroup/PurchPackingSlipPostingService/Create',

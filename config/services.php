@@ -72,7 +72,7 @@ return [
     'unit_lookup_path' => env('D365_UNIT_LOOKUP_PATH', '/unit-lookup'),
     'grn_lookup_path' => env('D365_GRN_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchIdLookpService/Read'),
     'grn_line_lookup_path' => env('D365_GRN_LINE_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchLineService/Read'),
-    'grn_post_path' => env('D365_GRN_POST_PATH', '/api/services/TIWebServiceGroup/PurchPackSlipService/Create'),
+    'grn_post_path' => env('D365_GRN_POST_PATH', '/api/services/TIWebServiceGroup/PurchPackService/Create'),
 ],
 
 'webapp' => [
