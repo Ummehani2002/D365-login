@@ -61,6 +61,7 @@ class D365GrnService extends D365ItemIssueService
 
         $payloads = [$wrappedPayload, $plainPayload];
         $lastError = null;
+        $attempted = [];
 
         foreach ($paths as $path) {
             foreach ($payloads as $payload) {
@@ -69,6 +70,7 @@ class D365GrnService extends D365ItemIssueService
                 } catch (Throwable $e) {
                     $lastError = $e;
                     $msg = $e->getMessage();
+                    $attempted[] = $path . ' => ' . $msg;
                     // Only try next path/payload when endpoint shape/path is wrong.
                     if (!str_contains($msg, 'status 404') && !str_contains($msg, 'status 405')) {
                         throw $e;
@@ -78,7 +80,11 @@ class D365GrnService extends D365ItemIssueService
         }
 
         if ($lastError instanceof Throwable) {
-            throw $lastError;
+            throw new RuntimeException(
+                $lastError->getMessage() . ' | Tried paths: ' . implode(' || ', array_unique($attempted)),
+                0,
+                $lastError
+            );
         }
 
         throw new RuntimeException('Unable to post GRN packing slip: no endpoint attempts succeeded.');
