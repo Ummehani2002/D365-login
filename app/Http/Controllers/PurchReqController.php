@@ -403,23 +403,11 @@ class PurchReqController extends Controller
     public function lookupCatalog(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'company' => ['required', 'string', 'max:20'],
+            'company' => ['nullable', 'string', 'max:20'],
         ]);
 
-        $companyCode = strtoupper(trim((string) $validated['company']));
-        $company = Company::resolveFromMixed($companyCode);
-
-        if (!$company) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Company not found.',
-                'categories' => [],
-                'items' => [],
-            ], 404);
-        }
-
         $categories = ItemCategory::query()
-            ->where('company_id', (int) $company->id)
+            ->select(['d365_id', 'name'])
             ->orderBy('name')
             ->get()
             ->map(function (ItemCategory $category) {
@@ -432,6 +420,7 @@ class PurchReqController extends Controller
                 ];
             })
             ->filter(fn (array $category) => $category['id'] !== '')
+            ->unique(fn (array $category) => strtolower($category['id']))
             ->values();
 
         $categoryLookup = [];
@@ -446,11 +435,35 @@ class PurchReqController extends Controller
             }
         }
 
-        $items = Item::query()
-            ->where('company_id', (int) $company->id)
+        $itemsQuery = Item::query()
+            ->select(['company_id', 'd365_id', 'd365_item_id', 'item_name', 'item_category_id']);
+
+        if ($categories->isEmpty()) {
+            $categories = (clone $itemsQuery)
+                ->whereNotNull('item_category_id')
+                ->where('item_category_id', '!=', '')
+                ->select('item_category_id')
+                ->distinct()
+                ->orderBy('item_category_id')
+                ->pluck('item_category_id')
+                ->map(function ($category) {
+                    $value = trim((string) $category);
+                    return ['id' => $value, 'name' => $value];
+                })
+                ->values();
+
+            foreach ($categories as $category) {
+                $idKey = strtolower(trim((string) ($category['id'] ?? '')));
+                if ($idKey !== '') {
+                    $categoryLookup[$idKey] = $category['id'];
+                }
+            }
+        }
+
+        $items = $itemsQuery
             ->orderBy('item_name')
             ->get()
-            ->map(function (Item $item) {
+            ->map(function (Item $item) use ($categoryLookup) {
                 $itemId = trim((string) ($item->item_id ?? ''));
                 $itemName = trim((string) ($item->item_name ?? ''));
                 $rawCategory = trim((string) ($item->item_category_id ?? ''));
