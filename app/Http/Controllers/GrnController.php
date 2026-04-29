@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\GrnJournal;
 use App\Services\D365GrnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,8 +19,15 @@ class GrnController extends Controller
             ->orderBy('name')
             ->get();
 
+        $journals = GrnJournal::query()
+            ->with('postedBy:id,name')
+            ->latest()
+            ->limit(50)
+            ->get();
+
         return view('modules.procurement.grn.index', [
             'companies' => $companies,
+            'journals' => $journals,
         ]);
     }
 
@@ -202,11 +210,25 @@ class GrnController extends Controller
                 ], 422);
             }
 
+            $journal = GrnJournal::query()->create([
+                'request_id' => $requestId,
+                'company' => trim($validated['company']),
+                'purch_id' => $purchaseId,
+                'project_id' => null,
+                'vendor_name' => null,
+                'packing_slip_id' => $packingSlipId,
+                'document_date' => $validated['document_date'],
+                'lines' => $lines,
+                'd365_response' => $raw,
+                'posted_by' => auth()->id(),
+            ]);
+
             return response()->json([
                 'status' => true,
                 'message' => $infoMessage ?: 'Packing slip posted successfully.',
                 'request_id' => $requestId,
                 'packing_slip_id' => $packingSlipId,
+                'journal_id' => $journal->id,
                 'data' => $raw,
             ]);
         } catch (Throwable $e) {

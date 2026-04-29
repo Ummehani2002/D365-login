@@ -36,6 +36,7 @@
         th, td { border-bottom: 1px solid #edebe9; padding: 8px 10px; text-align: left; font-size: 13px; }
         th { color: #605e5c; font-weight: 600; background: #faf9f8; white-space: nowrap; }
         .empty-note { text-align: center; color: #8a8886; padding: 22px 10px; font-size: 13px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #deecf9; color: #005a9e; }
     </style>
 </head>
 <body>
@@ -70,52 +71,107 @@
             <div style="padding:12px;">
                 <div class="toolbar-row">
                     <h1 class="title">Goods Receive Note</h1>
-                    <button id="search-btn" type="button" class="btn btn-primary">Search from D365</button>
+                    <div style="display:flex;gap:8px;">
+                        <button id="create-grn-btn" type="button" class="btn btn-primary">+ Create New GRN</button>
+                        <button id="back-to-list-btn" type="button" class="btn hidden">Back to List</button>
+                        <button id="search-btn" type="button" class="btn btn-primary hidden">Search from D365</button>
+                    </div>
                 </div>
 
                 <div id="status-box" class="status-box"></div>
 
-                <div class="filter-grid">
-                    <div class="field">
-                        <label>Company <span style="color:#a4262c">*</span></label>
-                        <select id="company">
-                            <option value="">— select —</option>
-                            @foreach($companies as $c)
-                                <option value="{{ $c->d365_id }}">{{ $c->d365_id }} - {{ $c->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label>Purchase ID</label>
-                        <input id="purch-id" type="text" placeholder="e.g. PO12345">
-                    </div>
-                    <div class="field">
-                        <label>Vendor Name</label>
-                        <input id="vend-name" type="text" placeholder="e.g. Gulf Supplies">
-                    </div>
-                    <div class="field">
-                        <label>Project ID</label>
-                        <input id="proj-id" type="text" placeholder="e.g. PRJ-001">
+                <div id="grn-history-shell">
+                    <div class="card">
+                        <div class="card-head">Recently Added GRN</div>
+                        <div style="overflow:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Request ID</th>
+                                        <th>Purchase ID</th>
+                                        <th>Company</th>
+                                        <th>Packing Slip ID</th>
+                                        <th>Lines</th>
+                                        <th>Created By</th>
+                                        <th>Created At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($journals as $j)
+                                        <tr>
+                                            <td>{{ $j->request_id ?: '—' }}</td>
+                                            <td>{{ $j->purch_id ?: '—' }}</td>
+                                            <td>{{ $j->company ?: '—' }}</td>
+                                            <td>{{ $j->packing_slip_id ?: '—' }}</td>
+                                            <td><span class="badge">{{ is_array($j->lines) ? count($j->lines) : 0 }}</span></td>
+                                            <td>{{ $j->postedBy?->name ?: '—' }}</td>
+                                            <td>{{ $j->created_at?->format('d M Y H:i') ?: '—' }}</td>
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-view open-grn-btn"
+                                                    data-company="{{ $j->company }}"
+                                                    data-purchase-id="{{ $j->purch_id }}"
+                                                    data-vendor-name="{{ $j->vendor_name }}"
+                                                    data-project-id="{{ $j->project_id }}"
+                                                >
+                                                    Open
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="8" class="empty-note">No GRN records yet.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div id="results-card" class="card hidden">
-                    <div class="card-head">GRN Results</div>
-                    <div style="overflow:auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Purchase Order</th>
-                                    <th>Project ID</th>
-                                    <th>Vendor Name</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="results-body">
-                                <tr><td colspan="5" class="empty-note">Search to load records from D365.</td></tr>
-                            </tbody>
-                        </table>
+                <div id="grn-search-shell" class="hidden">
+                    <div class="filter-grid">
+                        <div class="field">
+                            <label>Company <span style="color:#a4262c">*</span></label>
+                            <select id="company">
+                                <option value="">— select —</option>
+                                @foreach($companies as $c)
+                                    <option value="{{ $c->d365_id }}">{{ $c->d365_id }} - {{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Purchase ID</label>
+                            <input id="purch-id" type="text" placeholder="e.g. PO12345">
+                        </div>
+                        <div class="field">
+                            <label>Vendor Name</label>
+                            <input id="vend-name" type="text" placeholder="e.g. Gulf Supplies">
+                        </div>
+                        <div class="field">
+                            <label>Project ID</label>
+                            <input id="proj-id" type="text" placeholder="e.g. PRJ-001">
+                        </div>
+                    </div>
+
+                    <div id="results-card" class="card hidden">
+                        <div class="card-head">GRN Results</div>
+                        <div style="overflow:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Purchase Order</th>
+                                        <th>Project ID</th>
+                                        <th>Vendor Name</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body">
+                                    <tr><td colspan="5" class="empty-note">Search to load records from D365.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -130,10 +186,32 @@
             vendName: document.getElementById('vend-name'),
             projId: document.getElementById('proj-id'),
             searchBtn: document.getElementById('search-btn'),
+            createGrnBtn: document.getElementById('create-grn-btn'),
+            backToListBtn: document.getElementById('back-to-list-btn'),
             statusBox: document.getElementById('status-box'),
             resultsBody: document.getElementById('results-body'),
             resultsCard: document.getElementById('results-card'),
+            historyShell: document.getElementById('grn-history-shell'),
+            searchShell: document.getElementById('grn-search-shell'),
         };
+
+        function showHistory() {
+            els.historyShell.classList.remove('hidden');
+            els.searchShell.classList.add('hidden');
+            els.createGrnBtn.classList.remove('hidden');
+            els.searchBtn.classList.add('hidden');
+            els.backToListBtn.classList.add('hidden');
+            setStatus('', '');
+        }
+
+        function showSearch() {
+            els.historyShell.classList.add('hidden');
+            els.searchShell.classList.remove('hidden');
+            els.createGrnBtn.classList.add('hidden');
+            els.searchBtn.classList.remove('hidden');
+            els.backToListBtn.classList.remove('hidden');
+            setStatus('', '');
+        }
 
         function setStatus(type, text) {
             els.statusBox.className = 'status-box ' + (type || '');
@@ -235,12 +313,26 @@
         }
 
         els.searchBtn.addEventListener('click', searchGrn);
+        els.createGrnBtn.addEventListener('click', showSearch);
+        els.backToListBtn.addEventListener('click', showHistory);
         [els.purchId, els.vendName, els.projId].forEach((input) => {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     searchGrn();
                 }
+            });
+        });
+
+        document.querySelectorAll('.open-grn-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const params = new URLSearchParams({
+                    company: btn.getAttribute('data-company') || '',
+                    purchase_id: btn.getAttribute('data-purchase-id') || '',
+                    vendor_name: btn.getAttribute('data-vendor-name') || '',
+                    project_id: btn.getAttribute('data-project-id') || '',
+                });
+                window.location.href = `{{ route('modules.procurement.grn.view') }}?${params.toString()}`;
             });
         });
     </script>
