@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Item;
+use App\Models\ItemCategory;
 use App\Models\PurchReqJournal;
 use App\Services\D365PurchReqService;
 use Illuminate\Http\JsonResponse;
@@ -396,6 +398,80 @@ class PurchReqController extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function lookupCatalog(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['required', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) $validated['company']));
+        $company = Company::resolveFromMixed($companyCode);
+
+        if (!$company) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Company not found.',
+                'categories' => [],
+                'items' => [],
+            ], 404);
+        }
+
+        $categories = ItemCategory::query()
+            ->where('company_id', (int) $company->id)
+            ->orderBy('name')
+            ->get()
+            ->map(function (ItemCategory $category) {
+                $code = trim((string) ($category->item_category_id ?? ''));
+                $name = trim((string) ($category->name ?? ''));
+
+                return [
+                    'id' => $code !== '' ? $code : $name,
+                    'name' => $name !== '' ? $name : $code,
+                ];
+            })
+            ->filter(fn (array $category) => $category['id'] !== '')
+            ->values();
+
+        $categoryLookup = [];
+        foreach ($categories as $category) {
+            $idKey = strtolower(trim((string) ($category['id'] ?? '')));
+            $nameKey = strtolower(trim((string) ($category['name'] ?? '')));
+            if ($idKey !== '') {
+                $categoryLookup[$idKey] = $category['id'];
+            }
+            if ($nameKey !== '') {
+                $categoryLookup[$nameKey] = $category['id'];
+            }
+        }
+
+        $items = Item::query()
+            ->where('company_id', (int) $company->id)
+            ->orderBy('item_name')
+            ->get()
+            ->map(function (Item $item) {
+                $itemId = trim((string) ($item->item_id ?? ''));
+                $itemName = trim((string) ($item->item_name ?? ''));
+                $rawCategory = trim((string) ($item->item_category_id ?? ''));
+
+                $normalizedCategory = $categoryLookup[strtolower($rawCategory)] ?? $rawCategory;
+
+                return [
+                    'id' => $itemId,
+                    'name' => $itemName,
+                    'category' => $normalizedCategory,
+                ];
+            })
+            ->filter(fn (array $item) => $item['id'] !== '')
+            ->values();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Catalog fetched.',
+            'categories' => $categories,
+            'items' => $items,
+        ]);
     }
 
     public function downloadAttachment(PurchReqJournal $journal, int $index): Response

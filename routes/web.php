@@ -157,6 +157,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('modules.procurement.purch-req.journals.destroy');
     Route::post('/modules/procurement/purch-req/api/units', [PurchReqController::class, 'lookupUnits'])
         ->name('modules.procurement.purch-req.api.units');
+    Route::post('/modules/procurement/purch-req/api/catalog', [PurchReqController::class, 'lookupCatalog'])
+        ->name('modules.procurement.purch-req.api.catalog');
     Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}', [PurchReqController::class, 'downloadAttachment'])
         ->name('modules.procurement.purch-req.attachment')
         ->where('index', '[0-9]+');

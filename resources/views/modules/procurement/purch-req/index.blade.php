@@ -408,14 +408,66 @@
 
         let lineCount = 0;
 
-        const ITEM_CATEGORIES = [
-            'Inventory Items',
-            'Service Items',
-            'Non-stock Items',
-        ];
+        let itemCatalog = {
+            categories: [],
+            items: [],
+        };
 
         function getLineDetailsRow(lineId) {
             return linesBody.querySelector(`tr[data-line-detail="${lineId}"]`);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getItemsByCategory(categoryId) {
+            const key = String(categoryId ?? '').trim().toLowerCase();
+            if (!key) return [];
+
+            return itemCatalog.items.filter((item) => {
+                const itemCategory = String(item.category ?? '').trim().toLowerCase();
+                return itemCategory === key;
+            });
+        }
+
+        function renderCategoryOptions(selected = '') {
+            const selectedKey = String(selected ?? '').trim().toLowerCase();
+            const options = itemCatalog.categories.map((category) => {
+                const id = String(category.id ?? '').trim();
+                const name = String(category.name ?? id).trim();
+                const selectedAttr = id.toLowerCase() === selectedKey ? ' selected' : '';
+                return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(name)}</option>`;
+            }).join('');
+
+            return `<option value="">—</option>${options}`;
+        }
+
+        function renderItemOptions(categoryId, selectedItemId = '') {
+            const selectedKey = String(selectedItemId ?? '').trim().toLowerCase();
+            const options = getItemsByCategory(categoryId).map((item) => {
+                const id = String(item.id ?? '').trim();
+                const name = String(item.name ?? '').trim();
+                const selectedAttr = id.toLowerCase() === selectedKey ? ' selected' : '';
+                const label = name ? `${id} - ${name}` : id;
+                return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+
+            return `<option value="">${categoryId ? '— select item —' : 'Select category first'}</option>${options}`;
+        }
+
+        function updateItemSelectForRow(tr, preferredItemId = '') {
+            const category = tr.querySelector('.lf-category')?.value ?? '';
+            const itemSelect = tr.querySelector('.lf-item-id');
+            if (!itemSelect) return;
+
+            itemSelect.innerHTML = renderItemOptions(category, preferredItemId);
+            itemSelect.disabled = !category;
         }
 
         function renumberLines() {
@@ -445,9 +497,8 @@
             lineCount++;
             const lineId = lineCount;
 
-            const catOptions = ITEM_CATEGORIES.map(c =>
-                `<option value="${c}">${c}</option>`
-            ).join('');
+            const catOptions = renderCategoryOptions(line.item_category ?? '');
+            const initialCategory = line.item_category ?? '';
 
             const row = document.createElement('tr');
             row.dataset.line = lineId;
@@ -458,8 +509,8 @@
                     </button>
                 </td>
                 <td style="text-align:center;"><span class="line-serial"></span></td>
-                <td><select class="line-select lf-category"><option value="">—</option>${catOptions}</select></td>
-                <td><input class="line-input item-id lf-item-id" type="text" maxlength="100" placeholder="Item ID" value="${line.item_id ?? ''}"></td>
+                <td><select class="line-select lf-category">${catOptions}</select></td>
+                <td><select class="line-select lf-item-id item-id"></select></td>
                 <td><input class="line-input wide lf-desc" type="text" maxlength="255" placeholder="Description (up to 255 characters)" value="${line.item_description ?? ''}"></td>
                 <td><input class="line-input req-date lf-req-date" type="date" value="${line.required_date ?? todayStr()}"></td>
                 <td>
@@ -511,6 +562,7 @@
 
             linesBody.appendChild(row);
             linesBody.appendChild(details);
+            updateItemSelectForRow(row, line.item_id ?? '');
             renumberLines();
         }
 
@@ -614,6 +666,21 @@
         }
 
         linesBody.addEventListener('change', (e) => {
+            if (e.target.classList.contains('lf-category')) {
+                const tr = e.target.closest('tr');
+                if (tr) {
+                    updateItemSelectForRow(tr);
+                    const unitSelect = tr.querySelector('.lf-unit');
+                    const unitNote = tr.querySelector('.lf-unit-note');
+                    if (unitSelect) {
+                        unitSelect.innerHTML = '<option value="">Select item first</option>';
+                    }
+                    if (unitNote) {
+                        unitNote.textContent = '';
+                    }
+                }
+                return;
+            }
             if (e.target.classList.contains('lf-item-id')) {
                 const tr = e.target.closest('tr');
                 if (tr) loadUnitsForRow(tr);
@@ -627,11 +694,64 @@
             }
         }, true);
 
+        async function loadCatalogForCompany(companyCode) {
+            const company = String(companyCode ?? '').trim();
+            itemCatalog = { categories: [], items: [] };
+
+            if (!company) {
+                linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
+                    const categorySelect = tr.querySelector('.lf-category');
+                    if (categorySelect) {
+                        categorySelect.innerHTML = '<option value="">—</option>';
+                    }
+                    updateItemSelectForRow(tr);
+                });
+                return;
+            }
+
+            try {
+                const res = await fetch('{{ route("modules.procurement.purch-req.api.catalog") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        _token: csrf,
+                        company,
+                    }),
+                });
+                const payload = await res.json();
+                if (!res.ok || !payload.status) {
+                    throw new Error(payload.error || payload.message || 'Catalog load failed.');
+                }
+
+                itemCatalog = {
+                    categories: Array.isArray(payload.categories) ? payload.categories : [],
+                    items: Array.isArray(payload.items) ? payload.items : [],
+                };
+
+                linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
+                    const existingCategory = tr.querySelector('.lf-category')?.value ?? '';
+                    const existingItem = tr.querySelector('.lf-item-id')?.value ?? '';
+                    const categorySelect = tr.querySelector('.lf-category');
+                    if (categorySelect) {
+                        categorySelect.innerHTML = renderCategoryOptions(existingCategory);
+                    }
+                    updateItemSelectForRow(tr, existingItem);
+                });
+            } catch (err) {
+                showStatus('✗ ' + (err.message || 'Unable to load item catalog.'), 'error');
+            }
+        }
+
         companyEl.addEventListener('change', () => {
             const companyCode = (companyEl.value || '').trim().toUpperCase();
             if (buyingLegalEntityEl && ['TM', 'PS'].includes(companyCode)) {
                 buyingLegalEntityEl.value = companyCode;
             }
+            loadCatalogForCompany(companyCode);
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -1044,6 +1164,7 @@
                 resetForm();
                 companyEl.value = j.company || '';
                 buyingLegalEntityEl.value = j.buying_legal_entity || '';
+                await loadCatalogForCompany(j.company || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
                 prDateEl.value = j.pr_date || '';
@@ -1082,6 +1203,7 @@
         historyShell.classList.remove('hidden');
         formShell.style.display = 'none';
         historyShell.style.display = '';
+        loadCatalogForCompany(companyEl.value || '');
     })();
     </script>
 </body>
