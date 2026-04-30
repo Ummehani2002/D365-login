@@ -171,7 +171,7 @@
 
                     <div id="status-box" class="status-box"></div>
 
-                    <input id="company" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? '')) }}">
+                    <input id="company" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? $globalSelectedCompany ?? request()->query('company', ''))) }}">
                     <div class="fields">
                         <div class="field">
                             <label>Buying Legal Entity</label>

@@ -130,7 +130,7 @@
                 </div>
 
                 <div id="grn-search-shell" class="hidden">
-                    <input id="company" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? '')) }}">
+                    <input id="company" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? $companyCode ?? $globalSelectedCompany ?? request()->query('company', ''))) }}">
                     <div class="filter-grid">
                         <div class="field">
                             <label>Purchase ID</label>
