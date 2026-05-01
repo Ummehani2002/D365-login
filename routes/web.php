@@ -12,6 +12,7 @@ use App\Http\Controllers\PurchReqController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\PoolMasterController;
+use App\Http\Controllers\CurrencyMasterController;
 use App\Http\Controllers\SizeMasterController;
 use App\Http\Controllers\SiteMasterController;
 use App\Http\Controllers\SettingsController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\WarehouseMasterController;
 use App\Http\Controllers\Api\SizeController;
 use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\PoolController as ApiPoolController;
+use App\Http\Controllers\Api\CurrencyController as ApiCurrencyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +81,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.project.sync');
     Route::get('/masters/pools', [PoolMasterController::class, 'index'])
         ->name('masters.pools.index');
+    Route::get('/masters/currencies', [CurrencyMasterController::class, 'index'])
+        ->name('masters.currencies.index');
     Route::get('/masters/site', [SiteMasterController::class, 'index'])
         ->name('masters.site.index');
     Route::get('/masters/sizes', [SizeMasterController::class, 'index'])
@@ -96,7 +100,6 @@ Route::middleware(['auth'])->group(function () {
         'colors' => 'Colors',
         'styles' => 'Styles',
         'locations' => 'Locations',
-        'currencies' => 'Currencies',
         'units' => 'Units',
         'batches' => 'Batches',
         'sales-tax-groups' => 'Sales Tax Groups',
@@ -125,6 +128,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pools', [ApiPoolController::class, 'index'])->name('pools.index');
         Route::post('/pools', [ApiPoolController::class, 'store'])->name('pools.store');
         Route::delete('/pools/{pool}', [ApiPoolController::class, 'destroy'])->name('pools.destroy');
+        Route::get('/currencies', [ApiCurrencyController::class, 'index'])->name('currencies.index');
+        Route::post('/currencies', [ApiCurrencyController::class, 'store'])->name('currencies.store');
+        Route::delete('/currencies/{currency}', [ApiCurrencyController::class, 'destroy'])->name('currencies.destroy');
     });
 
     Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])
