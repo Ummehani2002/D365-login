@@ -16,8 +16,8 @@ use App\Http\Controllers\SizeMasterController;
 use App\Http\Controllers\SiteMasterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WarehouseMasterController;
-use App\Http\Controllers\Api\SizeController as ApiSizeController;
-use App\Http\Controllers\Api\SiteController as ApiSiteController;
+use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\Api\SiteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -115,12 +115,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.warehouses.destroy');
     // Web-authenticated JSON endpoints for master screens (no browser bearer token needed)
     Route::prefix('/masters/api')->name('masters.api.')->group(function () {
-        Route::get('/sizes', [ApiSizeController::class, 'index'])->name('sizes.index');
-        Route::post('/sizes', [ApiSizeController::class, 'store'])->name('sizes.store');
-        Route::delete('/sizes/{size}', [ApiSizeController::class, 'destroy'])->name('sizes.destroy');
-        Route::get('/sites', [ApiSiteController::class, 'index'])->name('sites.index');
-        Route::post('/sites', [ApiSiteController::class, 'store'])->name('sites.store');
-        Route::delete('/sites/{site}', [ApiSiteController::class, 'destroy'])->name('sites.destroy');
+        Route::get('/sizes', [SizeController::class, 'index'])->name('sizes.index');
+        Route::post('/sizes', [SizeController::class, 'store'])->name('sizes.store');
+        Route::delete('/sizes/{size}', [SizeController::class, 'destroy'])->name('sizes.destroy');
+        Route::get('/sites', [SiteController::class, 'index'])->name('sites.index');
+        Route::post('/sites', [SiteController::class, 'store'])->name('sites.store');
+        Route::delete('/sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
     });
 
     Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])
