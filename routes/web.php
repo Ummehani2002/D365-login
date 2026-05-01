@@ -12,8 +12,12 @@ use App\Http\Controllers\PurchReqController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\PoolMasterController;
+use App\Http\Controllers\SizeMasterController;
+use App\Http\Controllers\SiteMasterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WarehouseMasterController;
+use App\Http\Controllers\Api\SizeController as ApiSizeController;
+use App\Http\Controllers\Api\SiteController as ApiSiteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -74,6 +78,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.project.sync');
     Route::get('/masters/pools', [PoolMasterController::class, 'index'])
         ->name('masters.pools.index');
+    Route::get('/masters/site', [SiteMasterController::class, 'index'])
+        ->name('masters.site.index');
+    Route::get('/masters/sizes', [SizeMasterController::class, 'index'])
+        ->name('masters.sizes.index');
     Route::get('/masters/categories', [ItemCategoryMasterController::class, 'index'])
         ->name('masters.categories.index');
     Route::post('/masters/categories', [ItemCategoryMasterController::class, 'store'])
@@ -84,11 +92,9 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.items.store');
 
     $masterStubs = [
-        'sizes' => 'Sizes',
         'colors' => 'Colors',
         'styles' => 'Styles',
         'locations' => 'Locations',
-        'sites' => 'Sites',
         'currencies' => 'Currencies',
         'units' => 'Units',
         'batches' => 'Batches',
@@ -107,6 +113,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.warehouses.store');
     Route::delete('/masters/warehouses/{warehouse}', [WarehouseMasterController::class, 'destroy'])
         ->name('masters.warehouses.destroy');
+    // Web-authenticated JSON endpoints for master screens (no browser bearer token needed)
+    Route::prefix('/masters/api')->name('masters.api.')->group(function () {
+        Route::get('/sizes', [ApiSizeController::class, 'index'])->name('sizes.index');
+        Route::post('/sizes', [ApiSizeController::class, 'store'])->name('sizes.store');
+        Route::delete('/sizes/{size}', [ApiSizeController::class, 'destroy'])->name('sizes.destroy');
+        Route::get('/sites', [ApiSiteController::class, 'index'])->name('sites.index');
+        Route::post('/sites', [ApiSiteController::class, 'store'])->name('sites.store');
+        Route::delete('/sites/{site}', [ApiSiteController::class, 'destroy'])->name('sites.destroy');
+    });
 
     Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])
         ->name('modules.project-management.item-issue');

@@ -178,7 +178,7 @@
                     <a class="nav-link {{ request()->routeIs('masters.colors.index') ? 'active' : '' }}" href="{{ route('masters.colors.index', $companyQuery) }}">Colors</a>
                     <a class="nav-link {{ request()->routeIs('masters.styles.index') ? 'active' : '' }}" href="{{ route('masters.styles.index', $companyQuery) }}">Styles</a>
                     <a class="nav-link {{ request()->routeIs('masters.locations.index') ? 'active' : '' }}" href="{{ route('masters.locations.index', $companyQuery) }}">Locations</a>
-                    <a class="nav-link {{ request()->routeIs('masters.sites.index') ? 'active' : '' }}" href="{{ route('masters.sites.index', $companyQuery) }}">Sites</a>
+                    <a class="nav-link {{ request()->routeIs('masters.site.index') ? 'active' : '' }}" href="{{ route('masters.site.index', $companyQuery) }}">Sites</a>
                     <a class="nav-link {{ request()->routeIs('masters.warehouses.index') ? 'active' : '' }}" href="{{ route('masters.warehouses.index', $companyQuery) }}">Warehouses</a>
                     <a class="nav-link {{ request()->routeIs('masters.currencies.index') ? 'active' : '' }}" href="{{ route('masters.currencies.index', $companyQuery) }}">Currencies</a>
                     <a class="nav-link {{ request()->routeIs('masters.units.index') ? 'active' : '' }}" href="{{ route('masters.units.index', $companyQuery) }}">Units</a>
