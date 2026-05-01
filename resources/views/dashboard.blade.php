@@ -242,6 +242,7 @@
                 </button>
                 <div class="nav-group-body" id="nav-settings">
                     <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery) }}">API Configuration</a>
+                    <a class="nav-link {{ request()->routeIs('settings.roles-permissions') ? 'active' : '' }}" href="{{ route('settings.roles-permissions', $companyQuery) }}">Roles & Permissions</a>
                 </div>
             </div>
         </nav>

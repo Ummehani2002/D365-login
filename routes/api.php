@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ItemCategorySyncController;
 use App\Http\Controllers\Api\ItemSyncController;
+use App\Http\Controllers\Api\PoolController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\ItemIssueController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,9 @@ Route::middleware('api.bearer')->group(function () {
     Route::post('/customers', [CustomerController::class, 'store']);
     Route::apiResource('/companies', CompanyController::class);
     Route::apiResource('/projects', ProjectController::class);
+    Route::apiResource('/pools', PoolController::class);
+    Route::post('/pools/sync-d365', [PoolController::class, 'syncFromD365'])
+        ->name('api.pools.sync');
     Route::get('/item-categories', [ItemCategorySyncController::class, 'index']);
     Route::post('/item-categories', [ItemCategorySyncController::class, 'store']);
     Route::get('/items', [ItemSyncController::class, 'index']);

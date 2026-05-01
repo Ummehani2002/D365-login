@@ -11,7 +11,9 @@ use App\Http\Controllers\GrnController;
 use App\Http\Controllers\PurchReqController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\ProjectMasterController;
+use App\Http\Controllers\PoolMasterController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\WarehouseMasterController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +72,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('masters.project.quick-add');
     Route::post('/masters/project/sync-d365', [ProjectMasterController::class, 'syncFromD365'])
         ->name('masters.project.sync');
+    Route::get('/masters/pools', [PoolMasterController::class, 'index'])
+        ->name('masters.pools.index');
     Route::get('/masters/categories', [ItemCategoryMasterController::class, 'index'])
         ->name('masters.categories.index');
     Route::post('/masters/categories', [ItemCategoryMasterController::class, 'store'])
@@ -85,10 +89,8 @@ Route::middleware(['auth'])->group(function () {
         'styles' => 'Styles',
         'locations' => 'Locations',
         'sites' => 'Sites',
-        'warehouses' => 'Warehouses',
         'currencies' => 'Currencies',
         'units' => 'Units',
-        'pools' => 'Pools',
         'batches' => 'Batches',
         'sales-tax-groups' => 'Sales Tax Groups',
         'item-sales-tax-groups' => 'Item Sales Tax Groups',
@@ -99,6 +101,12 @@ Route::middleware(['auth'])->group(function () {
             return view('masters.placeholder', ['title' => $title]);
         })->name("masters.{$slug}.index");
     }
+    Route::get('/masters/warehouses', [WarehouseMasterController::class, 'index'])
+        ->name('masters.warehouses.index');
+    Route::post('/masters/warehouses', [WarehouseMasterController::class, 'store'])
+        ->name('masters.warehouses.store');
+    Route::delete('/masters/warehouses/{warehouse}', [WarehouseMasterController::class, 'destroy'])
+        ->name('masters.warehouses.destroy');
 
     Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])
         ->name('modules.project-management.item-issue');
@@ -123,6 +131,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->name('settings.token.generate');
     Route::get('/settings/credentials', [SettingsController::class, 'credsIndex'])->name('settings.credentials');
     Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->name('settings.credentials.save');
+    Route::get('/settings/roles-permissions', [SettingsController::class, 'rolesPermissionsIndex'])->name('settings.roles-permissions');
 
     // Laravel expects /home after login, so redirect it to dashboard
     Route::get('/home', function () {

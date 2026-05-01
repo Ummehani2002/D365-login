@@ -23,6 +23,11 @@ class SettingsController extends Controller
         return view('settings.credentials', compact('creds'));
     }
 
+    public function rolesPermissionsIndex(): \Illuminate\View\View
+    {
+        return view('settings.roles-permissions');
+    }
+
     public function saveCredentials(Request $request): JsonResponse
     {
         $validated = $request->validate([
