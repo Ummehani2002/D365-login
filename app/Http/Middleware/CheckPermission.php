@@ -34,6 +34,18 @@ class CheckPermission
             $companyValue = $request->route('company');
         }
         if ($companyValue === null) {
+            $companyValue = $request->input('company');
+        }
+        if ($companyValue === null) {
+            $companyValue = $request->input('company_id');
+        }
+        if ($companyValue === null) {
+            $companyValue = $request->json('company');
+        }
+        if ($companyValue === null) {
+            $companyValue = $request->json('company_id');
+        }
+        if ($companyValue === null) {
             $companyValue = $user->accessibleCompanyD365Codes()->first();
         }
 
