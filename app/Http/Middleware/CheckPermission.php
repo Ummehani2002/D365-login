@@ -47,6 +47,17 @@ class CheckPermission
         }
         if ($companyValue === null) {
             $companyValue = $user->accessibleCompanyD365Codes()->first();
+
+            if (
+                is_string($companyValue)
+                && trim($companyValue) !== ''
+                && $request->isMethod('GET')
+                && $request->expectsHtml()
+            ) {
+                return redirect()->to($request->fullUrlWithQuery([
+                    'company' => strtoupper(trim($companyValue)),
+                ]));
+            }
         }
 
         $company = Company::resolveFromMixed($companyValue);
