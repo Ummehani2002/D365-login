@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Rbac\StoreRoleRequest;
 use App\Http\Requests\Rbac\UpdateRoleRequest;
+use App\Models\Company;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Services\Rbac\PermissionService;
 use App\Services\Rbac\RoleService;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -26,15 +29,17 @@ class RbacRoleController extends Controller
         return view('settings.rbac.roles');
     }
 
-    public function listRoles(): JsonResponse
+    public function listRoles(Request $request): JsonResponse
     {
         if (! DB::getSchemaBuilder()->hasTable('roles')) {
             return response()->json(['roles' => []]);
         }
 
+        $companyId = $this->resolveCompanyId($request);
+
         return response()->json([
             'roles' => $this->roleService
-                ->listRolesWithPermissions()
+                ->listRolesWithPermissions($companyId)
                 ->map(fn (Role $role) => $this->rolePayload($role))
                 ->values()
                 ->all(),
@@ -54,7 +59,17 @@ class RbacRoleController extends Controller
 
     public function store(StoreRoleRequest $request): JsonResponse
     {
-        $role = $this->roleService->createRole($request->validated());
+        try {
+            $role = $this->roleService->createRole(
+                $request->validated(),
+                $this->resolveCompanyId($request)
+            );
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => $this->firstValidationError($exception) ?? 'Could not save role.',
+                'errors' => $exception->errors(),
+            ], 422);
+        }
 
         return response()->json([
             'role' => $this->rolePayload($role),
@@ -63,7 +78,18 @@ class RbacRoleController extends Controller
 
     public function update(UpdateRoleRequest $request, Role $role): JsonResponse
     {
-        $role = $this->roleService->updateRole($role, $request->validated());
+        try {
+            $role = $this->roleService->updateRole(
+                $role,
+                $request->validated(),
+                $this->resolveCompanyId($request)
+            );
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => $this->firstValidationError($exception) ?? 'Could not update role.',
+                'errors' => $exception->errors(),
+            ], 422);
+        }
 
         return response()->json([
             'role' => $this->rolePayload($role),
@@ -112,6 +138,26 @@ class RbacRoleController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveCompanyId(Request $request): ?int
+    {
+        if (! Schema::hasColumn('roles', 'company_id')) {
+            return null;
+        }
+
+        $raw = (string) $request->query('company', '');
+        if ($raw === '') {
+            return null;
+        }
+
+        if (ctype_digit($raw)) {
+            return Company::query()->whereKey((int) $raw)->value('id');
+        }
+
+        return Company::query()
+            ->whereRaw('UPPER(COALESCE(d365_id, "")) = ?', [strtoupper($raw)])
+            ->value('id');
     }
 
 }
