@@ -202,12 +202,66 @@ class User extends Authenticatable
 
     public function hasPermissionForCompany(Company $company, string $permissionSlug): bool
     {
-        $membership = $this->membershipForCompany($company);
-        if (! $membership) {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! Schema::hasTable('company_memberships')) {
             return false;
         }
 
-        return $membership->hasPermission($permissionSlug);
+        try {
+            $hasRoleTables = Schema::hasTable('company_membership_roles')
+                && Schema::hasTable('permission_role')
+                && Schema::hasTable('permissions');
+
+            if (! $hasRoleTables) {
+                $membership = $this->membershipForCompany($company);
+                return $membership ? $membership->hasPermission($permissionSlug) : false;
+            }
+
+            $hasRoleScopeTables = Schema::hasTable('company_membership_role_scopes')
+                && Schema::hasTable('company_membership_role_scope_companies');
+
+            $memberships = $this->companyMemberships()
+                ->with(['roles.permissions'])
+                ->when($hasRoleScopeTables, fn ($q) => $q->with('roleScopes.companies:id,d365_id,name'))
+                ->get();
+
+            foreach ($memberships as $membership) {
+                foreach ($membership->roles as $role) {
+                    if (! $role->hasPermission($permissionSlug)) {
+                        continue;
+                    }
+
+                    if ($hasRoleScopeTables) {
+                        $scope = $membership->roleScopes->firstWhere('role_id', $role->id);
+                        if ($scope) {
+                            if ((bool) $scope->all_organizations) {
+                                return true;
+                            }
+
+                            $allowedCompanyIds = $scope->companies->pluck('id')->map(fn (mixed $id) => (int) $id);
+                            if ($allowedCompanyIds->contains((int) $company->id)) {
+                                return true;
+                            }
+
+                            // Scope exists for this role but target company isn't in it.
+                            continue;
+                        }
+                    }
+
+                    // Backward-compatible behavior if no scope exists for the role.
+                    if ((int) $membership->company_id === (int) $company->id) {
+                        return true;
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return false;
     }
 
     public function canManageCompanyUsers(Company $company): bool
