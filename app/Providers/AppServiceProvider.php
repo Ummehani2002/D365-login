@@ -43,16 +43,20 @@ class AppServiceProvider extends ServiceProvider
 
             $user = Auth::user();
             if ($user && ! $user->isSuperAdmin()) {
-                $allowedCodes = $user->accessibleCompanyD365Codes()
-                    ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
-                    ->filter()
-                    ->unique()
-                    ->values();
+                try {
+                    $allowedCodes = $user->accessibleCompanyD365Codes()
+                        ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+                        ->filter()
+                        ->unique()
+                        ->values();
 
-                $companies = $companies->filter(function ($company) use ($allowedCodes) {
-                    $code = strtoupper(trim((string) ($company->d365_id ?? '')));
-                    return $code !== '' && $allowedCodes->contains($code);
-                })->values();
+                    $companies = $companies->filter(function ($company) use ($allowedCodes) {
+                        $code = strtoupper(trim((string) ($company->d365_id ?? '')));
+                        return $code !== '' && $allowedCodes->contains($code);
+                    })->values();
+                } catch (Throwable) {
+                    $companies = collect();
+                }
             }
 
             $selectedCompany = strtoupper(trim((string) request()->query('company', '')));
