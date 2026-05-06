@@ -223,19 +223,19 @@
                             <span class="chevron-sm" aria-hidden="true">▲</span>
                         </button>
                         <div class="nav-subgroup-body" id="nav-procurement">
-                            @if(($authIsSuperAdmin ?? false) || ($canModulesGeneral ?? false))
+                            @if($authIsSuperAdmin ?? false)
                             <a class="nav-link nested {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index', $companyQuery) }}">Quotation</a>
                             @endif
                             @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
                             <a class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
                             @endif
-                            @if(($authIsSuperAdmin ?? false) || ($canModulesGeneral ?? false))
+                            @if($authIsSuperAdmin ?? false)
                             <a class="nav-link nested {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index', $companyQuery) }}">Purchase Order</a>
                             @endif
                             @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
                             <a class="nav-link nested {{ request()->routeIs('modules.procurement.grn*') ? 'active' : '' }}" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
                             @endif
-                            @if(($authIsSuperAdmin ?? false) || ($canModulesGeneral ?? false))
+                            @if($authIsSuperAdmin ?? false)
                             <a class="nav-link nested {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index', $companyQuery) }}">Inventory</a>
                             <a class="nav-link nested {{ request()->routeIs('vendors.*') ? 'active' : '' }}" href="{{ route('vendors.index', $companyQuery) }}">Vendors</a>
                             <a class="nav-link nested {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index', $companyQuery) }}">Customers</a>

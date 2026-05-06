@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Console\Commands\ServeCommand;
 use App\Models\Company;
+use App\Services\Rbac\MenuAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
@@ -43,17 +44,35 @@ class AppServiceProvider extends ServiceProvider
             $user = Auth::user();
             $selectedCompany = strtoupper(trim((string) request()->query('company', '')));
             if ($selectedCompany === '' && $companies->isNotEmpty()) {
-                $selectedCompany = strtoupper((string) ($companies->first()->company_id ?? ''));
+                $selectedCompany = strtoupper((string) ($companies->first()->d365_id ?? ''));
             }
 
             $view->with('globalCompanyOptions', $companies);
             $view->with('globalSelectedCompany', $selectedCompany);
-            $view->with('authIsSuperAdmin', $user?->isSuperAdmin() ?? false);
-            $view->with('authShowMastersSettingsNav', $user?->isSuperAdmin() ?? false);
-            $view->with('canItemIssue', $user !== null);
-            $view->with('canPr', $user !== null);
-            $view->with('canGrn', $user !== null);
-            $view->with('canModulesGeneral', $user !== null);
+            $isSuperAdmin = $user?->isSuperAdmin() ?? false;
+            $view->with('authIsSuperAdmin', $isSuperAdmin);
+            $view->with('authShowMastersSettingsNav', $user !== null);
+
+            if ($user) {
+                /** @var MenuAccessService $menuAccessService */
+                $menuAccessService = app(MenuAccessService::class);
+                $selectedCompanyModel = $menuAccessService->resolveCompanyFromCode($selectedCompany);
+                $visibility = $menuAccessService->menuVisibilityForUser($user, $selectedCompanyModel);
+
+                $canItemIssue = (bool) ($visibility['modules.project-management.item-issue'] ?? false);
+                $canPr = (bool) ($visibility['modules.procurement.purch-req'] ?? false);
+                $canGrn = (bool) ($visibility['modules.procurement.grn'] ?? false);
+
+                $view->with('canItemIssue', $canItemIssue);
+                $view->with('canPr', $canPr);
+                $view->with('canGrn', $canGrn);
+                $view->with('canModulesGeneral', false);
+            } else {
+                $view->with('canItemIssue', false);
+                $view->with('canPr', false);
+                $view->with('canGrn', false);
+                $view->with('canModulesGeneral', false);
+            }
         });
     }
 }
