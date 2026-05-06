@@ -46,4 +46,23 @@ class CompanyMembership extends Model
 
         return $this->roles->contains(fn (Role $role) => $role->hasPermission($slug));
     }
+
+    public function roleHasAccessToCompany(Role $role, Company $company): bool
+    {
+        $scope = $this->roleScopes()
+            ->where('role_id', $role->id)
+            ->first();
+
+        if (! $scope) {
+            return false;
+        }
+
+        if ($scope->all_organizations) {
+            return true;
+        }
+
+        return $scope->companies()
+            ->where('companies.id', $company->id)
+            ->exists();
+    }
 }

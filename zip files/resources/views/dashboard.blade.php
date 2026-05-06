@@ -258,12 +258,10 @@
                     <span class="chevron" aria-hidden="true">▲</span>
                 </button>
                 <div class="nav-group-body" id="nav-settings">
-                    <a class="nav-link {{ request()->routeIs('settings.index') || request()->routeIs('settings.token') || request()->routeIs('settings.credentials') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery) }}">API Configuration</a>
-                    <a class="nav-link {{ request()->routeIs('settings.roles-permissions') || request()->routeIs('settings.users.*') || request()->routeIs('settings.roles.*') || request()->routeIs('settings.permissions.*') || request()->routeIs('settings.menu-match.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery) }}">Roles & Permissions</a>
+                    <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery) }}">API Configuration</a>
                     <a class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery) }}">Users</a>
                     <a class="nav-link {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}" href="{{ route('settings.roles.index', $companyQuery) }}">Roles</a>
                     <a class="nav-link {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}" href="{{ route('settings.permissions.index', $companyQuery) }}">Permissions</a>
-                    <a class="nav-link {{ request()->routeIs('settings.menu-match.*') ? 'active' : '' }}" href="{{ route('settings.menu-match.index', $companyQuery) }}">Menu Match</a>
                 </div>
             </div>
             @endif
@@ -321,4 +319,3 @@
     </script>
 </body>
 </html>
-
