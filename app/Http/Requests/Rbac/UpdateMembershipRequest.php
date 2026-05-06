@@ -2,6 +2,7 @@
 namespace App\Http\Requests\Rbac;
 use App\Models\CompanyMembership;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 class UpdateMembershipRequest extends FormRequest
 {
@@ -13,6 +14,10 @@ class UpdateMembershipRequest extends FormRequest
     public function rules(): array
     {
         $membership = $this->route('membership');
-        return ['email' => ['required','email','max:255'],'name' => ['required','string','max:255'],'user_code' => ['nullable','string','max:191',Rule::unique('users', 'user_code')->ignore($membership?->user_id)],'provider' => ['nullable','string','max:512'],'role_ids' => ['nullable','array'],'role_ids.*' => ['integer','exists:roles,id']];
+        $userCodeRules = ['nullable', 'string', 'max:191'];
+        if (Schema::hasColumn('users', 'user_code')) {
+            $userCodeRules[] = Rule::unique('users', 'user_code')->ignore($membership?->user_id);
+        }
+        return ['email' => ['required','email','max:255'],'name' => ['required','string','max:255'],'user_code' => $userCodeRules,'provider' => ['nullable','string','max:512'],'role_ids' => ['nullable','array'],'role_ids.*' => ['integer','exists:roles,id']];
     }
 }

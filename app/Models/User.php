@@ -25,6 +25,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'user_code',
+        'provider',
         'microsoft_id',
         'is_super_admin',
     ];
