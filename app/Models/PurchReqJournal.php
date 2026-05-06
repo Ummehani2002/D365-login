@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -34,5 +35,25 @@ class PurchReqJournal extends Model
     public function postedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'posted_by');
+    }
+
+    /**
+     * Whether the user may edit or delete this journal (others may view only).
+     */
+    public function canBeManagedBy(?Authenticatable $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        if ($user instanceof \App\Models\User && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($this->posted_by === null) {
+            return false;
+        }
+
+        return (int) $this->posted_by === (int) $user->getAuthIdentifier();
     }
 }

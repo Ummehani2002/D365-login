@@ -162,6 +162,13 @@ class PurchReqController extends Controller
             }
 
             if ($draft) {
+                if (! $draft->canBeManagedBy(auth()->user())) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'You do not have access to submit or modify this purchase requisition.',
+                    ], 403);
+                }
+
                 $draft->update([
                     'request_id'    => $requestId,
                     'pr_no'         => $prNo,
@@ -291,6 +298,13 @@ class PurchReqController extends Controller
             ], 422);
         }
 
+        if (! $journal->canBeManagedBy(auth()->user())) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You do not have access to edit this purchase requisition. You can view it only.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'company'                     => ['nullable', 'string', 'max:20'],
             'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
@@ -340,7 +354,6 @@ class PurchReqController extends Controller
             'department'    => $validated['department'] ?? null,
             'lines'         => $validated['lines'] ?? [],
             'attachments'   => $attachmentsForDb,
-            'posted_by'     => auth()->id(),
         ]);
 
         return response()->json([
@@ -356,11 +369,19 @@ class PurchReqController extends Controller
             'status' => true,
             'data' => $journal,
             'is_draft' => !$journal->request_id && !$journal->pr_no,
+            'can_manage' => $journal->canBeManagedBy(auth()->user()),
         ]);
     }
 
     public function destroyJournal(PurchReqJournal $journal): JsonResponse
     {
+        if (! $journal->canBeManagedBy(auth()->user())) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You do not have access to delete this purchase requisition. You can view it only.',
+            ], 403);
+        }
+
         $journal->delete();
 
         return response()->json([

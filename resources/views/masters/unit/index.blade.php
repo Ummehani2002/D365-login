@@ -94,10 +94,6 @@
                     <label for="unit_name">Unit name</label>
                     <input id="unit_name" name="unit_name" type="text" maxlength="255" required placeholder="e.g. Each">
                 </div>
-                <div>
-                    <label for="definition">Definition</label>
-                    <input id="definition" name="definition" type="text" maxlength="5000" placeholder="Optional">
-                </div>
                 <button type="submit">Save</button>
             </div>
         </form>
@@ -190,7 +186,6 @@
             const item_id = parseInt(document.getElementById('item_id').value, 10);
             const unit_id = document.getElementById('unit_id').value.trim();
             const unit_name = document.getElementById('unit_name').value.trim();
-            const definition = document.getElementById('definition').value.trim();
 
             try {
                 const response = await fetch(apiUrl, {
@@ -200,8 +195,7 @@
                         company_id: companyCode,
                         item_id,
                         unit_id,
-                        unit_name,
-                        definition: definition || null
+                        unit_name
                     }),
                 });
                 const payload = await response.json().catch(() => ({}));
@@ -212,7 +206,6 @@
                 }
                 document.getElementById('unit_id').value = '';
                 document.getElementById('unit_name').value = '';
-                document.getElementById('definition').value = '';
                 setFormMessage(statusEl, payload.message || 'Saved.', true);
                 await loadRows();
             } catch {

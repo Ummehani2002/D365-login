@@ -338,15 +338,18 @@
                                     @endif
                                 </td>
                                 @php($isDraft = empty($j->request_id) && empty($j->pr_no))
+                                @php($canManagePr = auth()->user()?->isSuperAdmin() || ($j->posted_by !== null && (int) $j->posted_by === (int) auth()->id()))
                                 <td><span class="badge {{ $isDraft ? '' : '' }}" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
                                 <td>{{ $j->postedBy?->name ?? '—' }}</td>
                                 <td>{{ $j->created_at->format('d M Y H:i') }}</td>
                                 <td>
                                     <button type="button" class="btn btn-sm pr-view-btn" data-id="{{ $j->id }}">View</button>
-                                    @if($isDraft)
-                                        <button type="button" class="btn btn-sm pr-edit-btn" data-id="{{ $j->id }}">Edit</button>
+                                    @if($isDraft && $canManagePr)
+                                        <button type="button" class="btn btn-sm pr-edit-btn" data-id="{{ $j->id }}" data-can-manage="1">Edit</button>
                                     @endif
-                                    <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="{{ $j->id }}">Delete</button>
+                                    @if($canManagePr)
+                                        <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="{{ $j->id }}" data-can-manage="1">Delete</button>
+                                    @endif
                                 </td>
                             </tr>
                             @empty
@@ -363,6 +366,8 @@
     (() => {
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const DEFAULT_POOL_ID = 'P_LPO';
+        const authUserId = {{ (int) auth()->id() }};
+        const authIsSuperAdmin = @json(auth()->user()?->isSuperAdmin() ?? false);
 
         const statusBox     = document.getElementById('status-box');
         const companyEl     = document.getElementById('company');
@@ -1111,6 +1116,11 @@
             const fmt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                       + ' ' + now.toTimeString().slice(0, 5);
 
+            const canManage = authIsSuperAdmin || authUserId > 0;
+            const deleteBtnHtml = canManage
+                ? `<button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="${data.journal_id}" data-can-manage="1">Delete</button>`
+                : '';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${data.request_id ?? '—'}</strong></td>
@@ -1127,7 +1137,7 @@
                 <td>${fmt}</td>
                 <td>
                     <button type="button" class="btn btn-sm pr-view-btn" data-id="${data.journal_id}">View</button>
-                    <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="${data.journal_id}">Delete</button>
+                    ${deleteBtnHtml}
                 </td>
             `;
             historyBody.prepend(tr);
@@ -1188,6 +1198,11 @@
 
             const rowId = (viewBtn || editBtn || deleteBtn).dataset.id;
 
+            if ((editBtn || deleteBtn) && (editBtn || deleteBtn).dataset.canManage !== '1') {
+                showStatus('You do not have access to modify this purchase requisition. You can view it only.', 'error');
+                return;
+            }
+
             if (deleteBtn) {
                 if (!confirm('Delete this PR record?')) return;
                 try {
@@ -1233,6 +1248,11 @@
                     purchId: '',
                 }));
                 renderAttachments();
+
+                if (editBtn && payload.can_manage === false) {
+                    showStatus('You do not have access to edit this purchase requisition. You can view it only.', 'error');
+                    return;
+                }
 
                 currentDraftId = payload.is_draft ? j.id : null;
                 setFormViewMode(Boolean(viewBtn));
