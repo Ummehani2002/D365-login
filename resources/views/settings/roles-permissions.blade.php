@@ -16,20 +16,11 @@
         th, td { text-align:left; padding:10px 8px; border-bottom:1px solid #edebe9; }
         .ok { background:#dff6dd; border:1px solid #9fd89f; color:#107c10; padding:10px 12px; border-radius:2px; margin-bottom:12px; }
         .hint { color:#605e5c; font-size:13px; }
-        .top-nav { margin-bottom: 12px; }
-        .top-nav a { text-decoration: none; margin-right: 12px; color: #005a9e; font-weight: 600; }
     </style>
 </head>
 <body>
 @include('partials.global-company-selector')
 <div class="wrap">
-    <div class="top-nav">
-        <a href="{{ route('settings.token', ['company' => request('company')]) }}">Token</a>
-        <a href="{{ route('settings.credentials', ['company' => request('company')]) }}">Credentials</a>
-        <a href="{{ route('settings.roles-permissions', ['company' => request('company')]) }}">Users</a>
-        <a href="{{ route('settings.roles.index', ['company' => request('company')]) }}">Roles</a>
-    </div>
-
     <div class="card">
         <h2>Roles & Permissions</h2>
         <p class="hint">Set role while creating user. <strong>Admin</strong> gets Dashboard + Modules + Masters + Settings. <strong>User</strong> gets Dashboard + Modules only.</p>

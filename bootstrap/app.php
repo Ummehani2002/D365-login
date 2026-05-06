@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\ApiBearerTokenMiddleware;
-use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,8 +17,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'api.bearer' => ApiBearerTokenMiddleware::class,
             'super.admin' => EnsureSuperAdmin::class,
-            'super_admin' => EnsureSuperAdmin::class,
-            'permission' => CheckPermission::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
