@@ -21,6 +21,10 @@ use App\Http\Controllers\PoolMasterController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\PurchReqController;
+use App\Http\Controllers\RbacMenuMatchController;
+use App\Http\Controllers\RbacPermissionController;
+use App\Http\Controllers\RbacRoleController;
+use App\Http\Controllers\RbacUserController;
 use App\Http\Controllers\SalesTaxGroupMasterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SiteMasterController;
@@ -99,6 +103,43 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->name('settings.credentials.save');
         Route::get('/settings/roles-permissions', [SettingsController::class, 'rolesPermissionsIndex'])->name('settings.roles-permissions');
         Route::post('/settings/roles-permissions/users', [SettingsController::class, 'storeUserAccount'])->name('settings.roles-permissions.user-account.store');
+
+        Route::get('/settings/users', [RbacUserController::class, 'index'])->name('settings.users.index');
+        Route::prefix('/settings/users/api')->name('settings.users.api.')->group(function () {
+            Route::get('/memberships', [RbacUserController::class, 'listMemberships'])->name('memberships.index');
+            Route::post('/memberships', [RbacUserController::class, 'storeMembership'])->name('memberships.store');
+            Route::match(['put', 'patch'], '/memberships/{membership}', [RbacUserController::class, 'updateMembership'])->name('memberships.update');
+            Route::delete('/memberships/{membership}', [RbacUserController::class, 'destroyMembership'])->name('memberships.destroy');
+            Route::get('/companies', [RbacUserController::class, 'listCompanies'])->name('companies.index');
+            Route::get('/roles', [RbacUserController::class, 'rolesForCompany'])->name('roles.index');
+            Route::get('/memberships/{membership}/role-scopes', [RbacUserController::class, 'roleScopes'])->name('memberships.role-scopes.index');
+            Route::match(['post', 'put'], '/memberships/{membership}/role-scopes', [RbacUserController::class, 'upsertRoleScope'])->name('memberships.role-scopes.upsert');
+        });
+
+        Route::get('/settings/roles', [RbacRoleController::class, 'index'])->name('settings.roles.index');
+        Route::prefix('/settings/roles/api')->name('settings.roles.api.')->group(function () {
+            Route::get('/roles', [RbacRoleController::class, 'listRoles'])->name('roles.index');
+            Route::post('/roles', [RbacRoleController::class, 'store'])->name('roles.store');
+            Route::match(['put', 'patch'], '/roles/{role}', [RbacRoleController::class, 'update'])->name('roles.update');
+            Route::delete('/roles/{role}', [RbacRoleController::class, 'destroy'])->name('roles.destroy');
+            Route::get('/permissions', [RbacRoleController::class, 'listPermissions'])->name('permissions.index');
+        });
+
+        Route::get('/settings/permissions', [RbacPermissionController::class, 'index'])->name('settings.permissions.index');
+        Route::prefix('/settings/permissions/api')->name('settings.permissions.api.')->group(function () {
+            Route::get('/permissions', [RbacPermissionController::class, 'listPermissions'])->name('permissions.index');
+            Route::post('/permissions', [RbacPermissionController::class, 'store'])->name('permissions.store');
+            Route::match(['put', 'patch'], '/permissions/{permission}', [RbacPermissionController::class, 'update'])->name('permissions.update');
+            Route::delete('/permissions/{permission}', [RbacPermissionController::class, 'destroy'])->name('permissions.destroy');
+        });
+
+        Route::get('/settings/menu-match', [RbacMenuMatchController::class, 'index'])->name('settings.menu-match.index');
+        Route::prefix('/settings/menu-match/api')->name('settings.menu-match.api.')->group(function () {
+            Route::get('/mappings', [RbacMenuMatchController::class, 'listMappings'])->name('mappings.index');
+            Route::put('/mappings', [RbacMenuMatchController::class, 'updateMappings'])->name('mappings.update');
+            Route::get('/available-menus', [RbacMenuMatchController::class, 'listAvailableMenus'])->name('available-menus.index');
+            Route::post('/assign', [RbacMenuMatchController::class, 'assignMapping'])->name('assign.store');
+        });
     });
 
     Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])->name('modules.project-management.item-issue');

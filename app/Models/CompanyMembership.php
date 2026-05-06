@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CompanyMembership extends Model
 {
@@ -27,6 +28,11 @@ class CompanyMembership extends Model
     {
         return $this->belongsToMany(Role::class, 'company_membership_roles')
             ->withTimestamps();
+    }
+
+    public function roleScopes(): HasMany
+    {
+        return $this->hasMany(CompanyMembershipRoleScope::class, 'company_membership_id');
     }
 
     public function hasPermission(string $slug): bool
