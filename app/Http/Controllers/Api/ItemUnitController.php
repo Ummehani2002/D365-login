@@ -14,7 +14,10 @@ class ItemUnitController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $company = Company::resolveFromMixed($request->query('company', $request->query('company_id')));
+        $company = $this->resolveScopedCompany(
+            $request->user(),
+            (string) $request->query('company', $request->query('company_id', ''))
+        );
 
         return response()->json([
             'status' => true,
@@ -29,13 +32,14 @@ class ItemUnitController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $company = Company::resolveFromMixed(
-            $request->input('company_id', $request->query('company', $request->query('company_id')))
+        $company = $this->resolveScopedCompany(
+            $request->user(),
+            (string) $request->input('company_id', $request->query('company', $request->query('company_id', '')))
         );
         if (! $company) {
             return response()->json([
                 'status' => false,
-                'message' => 'company_id is required and must exist.',
+                'message' => 'company_id is required, must exist, and must be accessible.',
             ], 422);
         }
 
@@ -114,6 +118,8 @@ class ItemUnitController extends Controller
 
     public function destroy(ItemUnit $item_unit): JsonResponse
     {
+        $companyCode = (string) Company::query()->whereKey($item_unit->company_id)->value('d365_id');
+        $this->assertCompanyAccess($companyCode);
         $item_unit->delete();
 
         return response()->json([

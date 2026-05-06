@@ -11,16 +11,19 @@ use Throwable;
 
 class GrnController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $companies = Company::query()
-            ->select(['id', 'd365_id', 'name'])
-            ->whereNotNull('d365_id')
+        $companies = $this->scopedCompaniesQuery($request->user())
             ->orderBy('name')
             ->get();
 
+        if ($companies->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
+
         $journals = GrnJournal::query()
             ->with('postedBy:id,name')
+            ->whereIn('company', $companies->pluck('d365_id')->all())
             ->latest()
             ->limit(50)
             ->get();
@@ -42,6 +45,7 @@ class GrnController extends Controller
             'vend_name' => ['nullable', 'string', 'max:255'],
             'proj_id'   => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
 
         try {
             $company = trim($validated['company']);
@@ -99,6 +103,7 @@ class GrnController extends Controller
             'project_id' => ['nullable', 'string', 'max:100'],
             'view_only' => ['nullable', 'boolean'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
 
         return view('modules.procurement.grn.view', [
             'company' => trim($validated['company']),
@@ -119,6 +124,7 @@ class GrnController extends Controller
             'vendor_name'  => ['nullable', 'string', 'max:255'],
             'project_id'   => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
 
         try {
             $raw = $service->lookupLines(
@@ -166,6 +172,7 @@ class GrnController extends Controller
             'lines.*.line_rec_id' => ['required'],
             'lines.*.receive_qty' => ['required', 'numeric', 'gte:0'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
 
         try {
             $purchaseId = trim($validated['purchase_id']);

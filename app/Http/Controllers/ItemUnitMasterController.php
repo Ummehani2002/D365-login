@@ -10,10 +10,13 @@ class ItemUnitMasterController extends Controller
 {
     public function index(Request $request)
     {
-        $companies = Company::query()->orderBy('name')->get();
+        $companies = $this->scopedCompaniesQuery($request->user())->orderBy('name')->get();
+        if ($companies->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
         $currentCompanyCode = strtoupper(trim((string) $request->query('company', '')));
         $selectedCompany = $companies->first(function ($c) use ($currentCompanyCode) {
-            return strtoupper((string) $c->company_id) === $currentCompanyCode;
+            return strtoupper((string) $c->d365_id) === $currentCompanyCode;
         }) ?? $companies->first();
 
         $items = Item::query()
@@ -24,7 +27,7 @@ class ItemUnitMasterController extends Controller
         return view('masters.unit.index', [
             'companies' => $companies,
             'items' => $items,
-            'currentCompanyCode' => strtoupper((string) ($selectedCompany->company_id ?? $currentCompanyCode)),
+            'currentCompanyCode' => strtoupper((string) ($selectedCompany->d365_id ?? $currentCompanyCode)),
             'selectedCompanyId' => $selectedCompany?->id,
         ]);
     }

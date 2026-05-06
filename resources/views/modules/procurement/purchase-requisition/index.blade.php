@@ -107,7 +107,7 @@
         <div class="logo">Logo</div>
         <div class="label">Menu</div>
         <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authIsSuperAdmin ?? false)
+        @if($authCanAccessMasters ?? false)
         <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
         @endif
         <a class="menu-link active" href="#">Modules</a>

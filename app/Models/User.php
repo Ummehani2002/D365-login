@@ -69,7 +69,26 @@ class User extends Authenticatable
 
     public function canAccessAdminScreens(): bool
     {
-        return $this->isSuperAdmin();
+        return $this->canAccessMasters();
+    }
+
+    public function canAccessMasters(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! Schema::hasTable('company_memberships') || ! Schema::hasTable('company_membership_roles')) {
+            return false;
+        }
+
+        return CompanyMembership::query()
+            ->where('user_id', $this->id)
+            ->whereHas('roles', function ($query) {
+                $query->whereRaw('LOWER(slug) = ?', ['admin'])
+                    ->orWhereRaw('LOWER(name) = ?', ['admin']);
+            })
+            ->exists();
     }
 
     /**
@@ -95,9 +114,46 @@ class User extends Authenticatable
         /** @var EloquentCollection<int, CompanyMembership> $rows */
         $rows = $this->companyMemberships()
             ->whereHas('company', fn ($q) => $q->whereNotNull('d365_id'))
-            ->with('company')
+            ->with(['company', 'roleScopes.companies'])
             ->get();
 
+        $hasRoleScopeTables = Schema::hasTable('company_membership_role_scopes')
+            && Schema::hasTable('company_membership_role_scope_companies');
+
+        if (! $hasRoleScopeTables) {
+            return $rows
+                ->pluck('company.d365_id')
+                ->filter()
+                ->map(fn (mixed $id) => strtoupper((string) $id))
+                ->unique()
+                ->values();
+        }
+
+        $scopeRows = $rows->flatMap(function (CompanyMembership $membership) {
+            return $membership->roleScopes;
+        });
+
+        if ($scopeRows->contains(fn (CompanyMembershipRoleScope $scope) => (bool) $scope->all_organizations)) {
+            return Company::query()
+                ->whereNotNull('d365_id')
+                ->pluck('d365_id')
+                ->map(fn (mixed $id) => strtoupper((string) $id))
+                ->unique()
+                ->values();
+        }
+
+        $scopedCodes = $scopeRows
+            ->flatMap(fn (CompanyMembershipRoleScope $scope) => $scope->companies->pluck('d365_id'))
+            ->filter()
+            ->map(fn (mixed $id) => strtoupper((string) $id))
+            ->unique()
+            ->values();
+
+        if ($scopedCodes->isNotEmpty()) {
+            return $scopedCodes;
+        }
+
+        // Backward-compatible fallback when role scopes are not populated yet.
         return $rows
             ->pluck('company.d365_id')
             ->filter()

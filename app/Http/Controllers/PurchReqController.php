@@ -16,11 +16,20 @@ class PurchReqController extends Controller
 {
     public function index(Request $request)
     {
+        $allowedCompanyCodes = $this->allowedCompanyCodes(auth()->user());
+
         $companies = Company::query()
             ->select(['id', 'd365_id', 'name'])
             ->whereNotNull('d365_id')
+            ->when($allowedCompanyCodes !== null, function ($query) use ($allowedCompanyCodes) {
+                $query->whereIn(\DB::raw('UPPER(d365_id)'), $allowedCompanyCodes->all());
+            })
             ->orderBy('name')
             ->get();
+
+        if ($companies->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
 
         $defaultCompany = $companies->first(function (Company $company) {
             return strtoupper((string) $company->d365_id) === 'PS';
@@ -87,6 +96,7 @@ class PurchReqController extends Controller
                 'attachments.*.file_content'  => ['required', 'string'],
                 'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
             ]);
+            $this->assertCompanyAccess((string) $validated['company']);
             $validated['lines'] = $this->normalizeSubmittedLines($validated['lines']);
 
             $requestId = $this->generatePRRequestId();
@@ -256,6 +266,9 @@ class PurchReqController extends Controller
             'attachments.*.file_content'  => ['required', 'string'],
             'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
         ]);
+        if (!empty($validated['company'])) {
+            $this->assertCompanyAccess((string) $validated['company']);
+        }
 
         $attachmentsForDb = array_map(fn ($a) => [
             'file_name'    => $a['file_name'],
@@ -334,6 +347,9 @@ class PurchReqController extends Controller
             'attachments.*.file_content'  => ['required', 'string'],
             'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
         ]);
+        if (!empty($validated['company'])) {
+            $this->assertCompanyAccess((string) $validated['company']);
+        }
 
         $attachmentsForDb = array_map(fn ($a) => [
             'file_name'    => $a['file_name'],
@@ -365,6 +381,8 @@ class PurchReqController extends Controller
 
     public function showJournal(PurchReqJournal $journal): JsonResponse
     {
+        $this->assertCompanyAccess((string) $journal->company);
+
         return response()->json([
             'status' => true,
             'data' => $journal,
@@ -375,6 +393,8 @@ class PurchReqController extends Controller
 
     public function destroyJournal(PurchReqJournal $journal): JsonResponse
     {
+        $this->assertCompanyAccess((string) $journal->company);
+
         if (! $journal->canBeManagedBy(auth()->user())) {
             return response()->json([
                 'status' => false,
@@ -398,6 +418,7 @@ class PurchReqController extends Controller
             'company' => ['required', 'string', 'max:20'],
             'item_id' => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
 
         try {
             $data = $service->lookupUnits(
@@ -429,6 +450,9 @@ class PurchReqController extends Controller
         ]);
 
         $companyCode = trim((string) ($validated['company'] ?? ''));
+        if ($companyCode !== '') {
+            $this->assertCompanyAccess($companyCode);
+        }
         $company = $companyCode !== '' ? Company::resolveFromMixed($companyCode) : null;
 
         if ($companyCode !== '' && ! $company) {
@@ -532,6 +556,8 @@ class PurchReqController extends Controller
 
     public function downloadAttachment(PurchReqJournal $journal, int $index): Response
     {
+        $this->assertCompanyAccess((string) $journal->company);
+
         $att = $this->resolveAttachment($journal, $index);
 
         $content  = base64_decode($att['file_content'] ?? '');
@@ -547,6 +573,8 @@ class PurchReqController extends Controller
 
     public function viewBase64(PurchReqJournal $journal, int $index): Response
     {
+        $this->assertCompanyAccess((string) $journal->company);
+
         $att      = $this->resolveAttachment($journal, $index);
         $b64      = $att['file_content'] ?? '';
         $fileName = $att['file_name'] ?? 'attachment';

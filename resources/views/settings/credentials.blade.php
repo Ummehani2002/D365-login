@@ -115,7 +115,9 @@
     <nav>
         <div class="nav-section-label">Menu</div>
         <a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a>
+        @if($authCanAccessMasters ?? false)
         <a class="nav-link" href="{{ route('masters.company.index') }}">Masters</a>
+        @endif
         <a class="nav-link" href="{{ route('modules.project-management.item-issue') }}">Modules</a>
 
         <div class="nav-section-label" style="margin-top:8px;">Settings</div>

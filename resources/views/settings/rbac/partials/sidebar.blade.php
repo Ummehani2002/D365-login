@@ -3,7 +3,9 @@
     <nav>
         <div class="nav-section-label">Menu</div>
         <a class="nav-link" href="{{ route('dashboard', $companyQuery ?? []) }}">Dashboard</a>
+        @if($authCanAccessMasters ?? false)
         <a class="nav-link" href="{{ route('masters.company.index', $companyQuery ?? []) }}">Masters</a>
+        @endif
         <a class="nav-link" href="{{ route('modules.project-management.item-issue', $companyQuery ?? []) }}">Modules</a>
 
         <div class="nav-section-label" style="margin-top:8px;">Settings</div>

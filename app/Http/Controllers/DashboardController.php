@@ -11,8 +11,13 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $companies = Company::orderBy('name')
-            ->get(['id', 'name', 'd365_id']);
+        $companies = $this->scopedCompaniesQuery($user)
+            ->orderBy('name')
+            ->get();
+
+        if ($companies->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
 
         $defaultCompany = $companies->first(function (Company $company) {
             return strtoupper((string) $company->company_id) === 'PS'
@@ -22,18 +27,18 @@ class DashboardController extends Controller
         $fallbackCompany = $defaultCompany ?? $companies->first();
         $requestedCompanyCode = strtoupper(trim((string) $request->query('company', '')));
         $selectedCompany = $companies->first(function (Company $company) use ($requestedCompanyCode) {
-            return strtoupper((string) $company->company_id) === $requestedCompanyCode;
+            return strtoupper((string) $company->d365_id) === $requestedCompanyCode;
         }) ?? $fallbackCompany;
 
-        if ($selectedCompany && strtoupper((string) $selectedCompany->company_id) !== $requestedCompanyCode) {
+        if ($selectedCompany && strtoupper((string) $selectedCompany->d365_id) !== $requestedCompanyCode) {
             return redirect()->route('dashboard', [
-                'company' => strtoupper((string) $selectedCompany->company_id),
+                'company' => strtoupper((string) $selectedCompany->d365_id),
             ]);
         }
 
         return view('dashboard', [
             'companies' => $companies,
-            'currentCompanyCode' => $selectedCompany?->company_id,
+            'currentCompanyCode' => $selectedCompany?->d365_id,
         ]);
     }
 }

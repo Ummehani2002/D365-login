@@ -14,11 +14,12 @@ class ItemIssueController extends Controller
 {
     public function index(Request $request)
     {
-        $companies = Company::query()
-            ->select(['id', 'd365_id', 'name'])
-            ->whereNotNull('d365_id')
+        $companies = $this->scopedCompaniesQuery($request->user())
             ->orderBy('name')
             ->get();
+        if ($companies->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
 
         $defaultCompany = $companies->first(function (Company $company) {
             return strtoupper((string) $company->d365_id) === 'PS'
@@ -71,6 +72,7 @@ class ItemIssueController extends Controller
             'company'    => ['required', 'string', 'max:20'],
             'project_id' => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
  
         try {
             $data = $service->lookupItems($this->resolveCompanyDataAreaId($validated['company']), $validated['project_id'] ?? null);
@@ -99,6 +101,7 @@ class ItemIssueController extends Controller
             'company' => ['required', 'string', 'max:20'],
             'ProjectId' => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
  
         try {
             $data = $service->lookupProjects($this->resolveCompanyDataAreaId($validated['company']), $validated['ProjectId'] ?? null);
@@ -143,6 +146,7 @@ class ItemIssueController extends Controller
             'lines.*.line_num' => ['required', 'integer', 'min:1'],
             'lines.*.wms_location' => ['required', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
  
         $requestId = $this->generateRequestId();
         $dataAreaId = $this->resolveCompanyDataAreaId($validated['company']);
@@ -239,6 +243,7 @@ class ItemIssueController extends Controller
             'company' => ['required', 'string', 'max:20'],
             'item_id' => ['required', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
  
         try {
             $data = $service->lookupOnHand(
@@ -273,6 +278,7 @@ class ItemIssueController extends Controller
             'company' => ['required', 'string', 'max:20'],
             'item_id' => ['nullable', 'string', 'max:100'],
         ]);
+        $this->assertCompanyAccess((string) $validated['company']);
  
         try {
             $data = $service->lookupUnits(
@@ -303,6 +309,7 @@ class ItemIssueController extends Controller
 
     public function showJournal(ItemIssueJournal $journal): JsonResponse
     {
+        $this->assertCompanyAccess((string) $journal->company);
         $journal->load('postedBy:id,name');
 
         return response()->json([
@@ -327,6 +334,7 @@ class ItemIssueController extends Controller
 
     public function destroyJournal(ItemIssueJournal $journal): JsonResponse
     {
+        $this->assertCompanyAccess((string) $journal->company);
         $journal->delete();
 
         return response()->json([

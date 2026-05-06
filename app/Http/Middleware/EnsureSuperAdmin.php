@@ -12,10 +12,10 @@ class EnsureSuperAdmin
     {
         $user = $request->user();
 
-        if ($user && $user->isSuperAdmin()) {
+        if ($user && $user->canAccessMasters()) {
             return $next($request);
         }
 
-        abort(403, 'This area is only available to super administrators.');
+        abort(403, 'This area is only available to administrators.');
     }
 }

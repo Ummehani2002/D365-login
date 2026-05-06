@@ -42,16 +42,31 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $user = Auth::user();
+            if ($user && ! $user->isSuperAdmin()) {
+                $allowedCodes = $user->accessibleCompanyD365Codes()
+                    ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                $companies = $companies->filter(function ($company) use ($allowedCodes) {
+                    $code = strtoupper(trim((string) ($company->d365_id ?? '')));
+                    return $code !== '' && $allowedCodes->contains($code);
+                })->values();
+            }
+
             $selectedCompany = strtoupper(trim((string) request()->query('company', '')));
-            if ($selectedCompany === '' && $companies->isNotEmpty()) {
+            if (($selectedCompany === '' || ! $companies->contains(fn ($company) => strtoupper((string) $company->d365_id) === $selectedCompany)) && $companies->isNotEmpty()) {
                 $selectedCompany = strtoupper((string) ($companies->first()->d365_id ?? ''));
             }
 
             $view->with('globalCompanyOptions', $companies);
             $view->with('globalSelectedCompany', $selectedCompany);
             $isSuperAdmin = $user?->isSuperAdmin() ?? false;
+            $canAccessMasters = $user?->canAccessMasters() ?? false;
             $view->with('authIsSuperAdmin', $isSuperAdmin);
-            $view->with('authShowMastersSettingsNav', $user !== null);
+            $view->with('authCanAccessMasters', $canAccessMasters);
+            $view->with('authShowMastersSettingsNav', $canAccessMasters);
 
             if ($user) {
                 /** @var MenuAccessService $menuAccessService */
