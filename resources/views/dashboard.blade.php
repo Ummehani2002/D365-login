@@ -151,7 +151,8 @@
 <body>
     @include('partials.global-company-selector')
     @php
-        $companyQuery = $currentCompanyCode ? ['company' => strtoupper((string) $currentCompanyCode)] : [];
+        $companyCode = strtoupper((string) ($currentCompanyCode ?? $globalSelectedCompany ?? request()->query('company', '')));
+        $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
     <aside class="sidebar" aria-label="Main navigation">
         <div class="sidebar-brand">
