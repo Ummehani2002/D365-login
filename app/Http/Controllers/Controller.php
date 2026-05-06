@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Throwable;
 
 abstract class Controller
 {
@@ -15,15 +16,20 @@ abstract class Controller
             return collect();
         }
 
-        if ($user->isSuperAdmin()) {
-            return null;
-        }
+        try {
+            if ($user->isSuperAdmin()) {
+                return null;
+            }
 
-        return $user->accessibleCompanyD365Codes()
-            ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
-            ->filter()
-            ->unique()
-            ->values();
+            return $user->accessibleCompanyD365Codes()
+                ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+                ->filter()
+                ->unique()
+                ->values();
+        } catch (Throwable) {
+            // Never crash page render on access resolution.
+            return collect();
+        }
     }
 
     protected function scopedCompaniesQuery(?User $user): Builder
