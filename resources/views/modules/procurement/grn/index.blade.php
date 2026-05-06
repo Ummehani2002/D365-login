@@ -54,9 +54,11 @@
         @endif
         <a class="menu-link" href="#">Modules</a>
         <div class="sub">
+            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
             <a class="menu-link" href="#">Project Management</a>
             @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
             <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
+            @endif
             @endif
             <a class="menu-link active" href="#">Procurement &amp; Sourcing</a>
             <div class="sub">

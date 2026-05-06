@@ -206,6 +206,11 @@
                     <span class="chevron" aria-hidden="true">▲</span>
                 </button>
                 <div class="nav-group-body" id="nav-modules">
+                    @php
+                        $showProjectManagement = ($authIsSuperAdmin ?? false) || ($canItemIssue ?? false);
+                        $showProcurement = ($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false);
+                    @endphp
+                    @if($showProjectManagement)
                     <div class="nav-subgroup">
                         <button type="button" class="nav-subgroup-header" data-nav-target="nav-pm" aria-expanded="true">
                             Project Management
@@ -217,6 +222,8 @@
                             @endif
                         </div>
                     </div>
+                    @endif
+                    @if($showProcurement)
                     <div class="nav-subgroup">
                         <button type="button" class="nav-subgroup-header" data-nav-target="nav-procurement" aria-expanded="true">
                             Procurement
@@ -243,6 +250,7 @@
                             @endif
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
 

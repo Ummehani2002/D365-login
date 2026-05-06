@@ -88,9 +88,21 @@
         @endif
         <a class="menu-link active" href="#">Modules</a>
         <div class="sub">
+            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
             <a class="menu-link active" href="#">Project Management</a>
             <a class="menu-link active" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
+            @endif
+            @if(($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false))
             <a class="menu-link" href="#">Procurement &amp; Sourcing</a>
+            <div class="sub">
+                @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
+                <a class="menu-link" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
+                @endif
+                @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
+                <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
+                @endif
+            </div>
+            @endif
         </div>
         @if($authIsSuperAdmin ?? false)
         <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">

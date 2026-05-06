@@ -139,11 +139,18 @@
         @endif
         <a class="menu-link" href="#">Modules</a>
         <div class="sub">
+            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
             <a class="menu-link" href="#">Project Management</a>
+            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
             <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
+            @endif
+            @endif
             <a class="menu-link active" href="#">Procurement &amp; Sourcing</a>
             <div class="sub">
                 <a class="menu-link active" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
+                @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
+                <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
+                @endif
             </div>
         </div>
         @if($authIsSuperAdmin ?? false)
