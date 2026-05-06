@@ -46,10 +46,6 @@ class PurchReqJournal extends Model
             return false;
         }
 
-        if ($user instanceof \App\Models\User && $user->isSuperAdmin()) {
-            return true;
-        }
-
         if ($this->posted_by === null) {
             return false;
         }

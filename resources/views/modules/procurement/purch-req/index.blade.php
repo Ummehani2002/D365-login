@@ -338,7 +338,7 @@
                                     @endif
                                 </td>
                                 @php($isDraft = empty($j->request_id) && empty($j->pr_no))
-                                @php($canManagePr = auth()->user()?->isSuperAdmin() || ($j->posted_by !== null && (int) $j->posted_by === (int) auth()->id()))
+                                @php($canManagePr = $j->canBeManagedBy(auth()->user()))
                                 <td><span class="badge {{ $isDraft ? '' : '' }}" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
                                 <td>{{ $j->postedBy?->name ?? '—' }}</td>
                                 <td>{{ $j->created_at->format('d M Y H:i') }}</td>
@@ -367,7 +367,6 @@
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const DEFAULT_POOL_ID = 'P_LPO';
         const authUserId = {{ (int) auth()->id() }};
-        const authIsSuperAdmin = @json(auth()->user()?->isSuperAdmin() ?? false);
 
         const statusBox     = document.getElementById('status-box');
         const companyEl     = document.getElementById('company');
@@ -1116,7 +1115,7 @@
             const fmt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                       + ' ' + now.toTimeString().slice(0, 5);
 
-            const canManage = authIsSuperAdmin || authUserId > 0;
+            const canManage = authUserId > 0;
             const deleteBtnHtml = canManage
                 ? `<button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="${data.journal_id}" data-can-manage="1">Delete</button>`
                 : '';
