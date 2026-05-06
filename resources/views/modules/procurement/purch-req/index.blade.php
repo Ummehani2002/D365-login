@@ -147,7 +147,9 @@
             @endif
             <a class="menu-link active" href="#">Procurement &amp; Sourcing</a>
             <div class="sub">
+                @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
                 <a class="menu-link active" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
+                @endif
                 @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
                 <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
                 @endif
