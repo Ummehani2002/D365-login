@@ -65,26 +65,42 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('globalCompanyOptions', $companies);
             $view->with('globalSelectedCompany', $selectedCompany);
-            $isSuperAdmin = $user?->isSuperAdmin() ?? false;
-            $canAccessMasters = $user?->canAccessMasters() ?? false;
+            $isSuperAdmin = false;
+            $canAccessMasters = false;
+            if ($user) {
+                try {
+                    $isSuperAdmin = $user->isSuperAdmin();
+                    $canAccessMasters = $user->canAccessMasters();
+                } catch (Throwable) {
+                    $isSuperAdmin = false;
+                    $canAccessMasters = false;
+                }
+            }
             $view->with('authIsSuperAdmin', $isSuperAdmin);
             $view->with('authCanAccessMasters', $canAccessMasters);
             $view->with('authShowMastersSettingsNav', $canAccessMasters);
 
             if ($user) {
-                /** @var MenuAccessService $menuAccessService */
-                $menuAccessService = app(MenuAccessService::class);
-                $selectedCompanyModel = $menuAccessService->resolveCompanyFromCode($selectedCompany);
-                $visibility = $menuAccessService->menuVisibilityForUser($user, $selectedCompanyModel);
+                try {
+                    /** @var MenuAccessService $menuAccessService */
+                    $menuAccessService = app(MenuAccessService::class);
+                    $selectedCompanyModel = $menuAccessService->resolveCompanyFromCode($selectedCompany);
+                    $visibility = $menuAccessService->menuVisibilityForUser($user, $selectedCompanyModel);
 
-                $canItemIssue = (bool) ($visibility['modules.project-management.item-issue'] ?? false);
-                $canPr = (bool) ($visibility['modules.procurement.purch-req'] ?? false);
-                $canGrn = (bool) ($visibility['modules.procurement.grn'] ?? false);
+                    $canItemIssue = (bool) ($visibility['modules.project-management.item-issue'] ?? false);
+                    $canPr = (bool) ($visibility['modules.procurement.purch-req'] ?? false);
+                    $canGrn = (bool) ($visibility['modules.procurement.grn'] ?? false);
 
-                $view->with('canItemIssue', $canItemIssue);
-                $view->with('canPr', $canPr);
-                $view->with('canGrn', $canGrn);
-                $view->with('canModulesGeneral', false);
+                    $view->with('canItemIssue', $canItemIssue);
+                    $view->with('canPr', $canPr);
+                    $view->with('canGrn', $canGrn);
+                    $view->with('canModulesGeneral', false);
+                } catch (Throwable) {
+                    $view->with('canItemIssue', false);
+                    $view->with('canPr', false);
+                    $view->with('canGrn', false);
+                    $view->with('canModulesGeneral', false);
+                }
             } else {
                 $view->with('canItemIssue', false);
                 $view->with('canPr', false);

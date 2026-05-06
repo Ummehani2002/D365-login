@@ -86,13 +86,30 @@ class User extends Authenticatable
             return false;
         }
 
-        return CompanyMembership::query()
-            ->where('user_id', $this->id)
-            ->whereHas('roles', function ($query) {
-                $query->whereRaw('LOWER(slug) = ?', ['admin'])
-                    ->orWhereRaw('LOWER(name) = ?', ['admin']);
-            })
-            ->exists();
+        try {
+            $hasRoleSlugColumn = Schema::hasColumn('roles', 'slug');
+            $hasRoleNameColumn = Schema::hasColumn('roles', 'name');
+
+            if (! $hasRoleSlugColumn && ! $hasRoleNameColumn) {
+                return false;
+            }
+
+            return CompanyMembership::query()
+                ->where('user_id', $this->id)
+                ->whereHas('roles', function ($query) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
+                    $query->where(function ($inner) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
+                        if ($hasRoleSlugColumn) {
+                            $inner->orWhereRaw('LOWER(slug) = ?', ['admin']);
+                        }
+                        if ($hasRoleNameColumn) {
+                            $inner->orWhereRaw('LOWER(name) = ?', ['admin']);
+                        }
+                    });
+                })
+                ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
