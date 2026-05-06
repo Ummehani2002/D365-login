@@ -43,7 +43,7 @@
 <body>
 @include('partials.global-company-selector')
 @php
-    $companyCode = strtoupper((string) request()->query('company', ''));
+    $companyCode = strtoupper((string) ($company ?? $globalSelectedCompany ?? request()->query('company', '')));
     $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
 @endphp
 <aside class="sidebar">
