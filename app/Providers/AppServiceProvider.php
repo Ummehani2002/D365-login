@@ -57,7 +57,10 @@ class AppServiceProvider extends ServiceProvider
 
             $selectedCompany = strtoupper(trim((string) request()->query('company', '')));
             if (($selectedCompany === '' || ! $companies->contains(fn ($company) => strtoupper((string) $company->d365_id) === $selectedCompany)) && $companies->isNotEmpty()) {
-                $selectedCompany = strtoupper((string) ($companies->first()->d365_id ?? ''));
+                $preferred = $companies->first(fn ($company) => strtoupper((string) ($company->d365_id ?? '')) === 'ML')
+                    ?? $companies->first(fn ($company) => strtoupper((string) ($company->d365_id ?? '')) === 'PS')
+                    ?? $companies->first();
+                $selectedCompany = strtoupper((string) ($preferred->d365_id ?? ''));
             }
 
             $view->with('globalCompanyOptions', $companies);

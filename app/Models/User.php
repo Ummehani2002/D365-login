@@ -78,7 +78,11 @@ class User extends Authenticatable
             return true;
         }
 
-        if (! Schema::hasTable('company_memberships') || ! Schema::hasTable('company_membership_roles')) {
+        if (
+            ! Schema::hasTable('company_memberships')
+            || ! Schema::hasTable('company_membership_roles')
+            || ! Schema::hasTable('roles')
+        ) {
             return false;
         }
 
@@ -111,14 +115,19 @@ class User extends Authenticatable
                 ->values();
         }
 
-        /** @var EloquentCollection<int, CompanyMembership> $rows */
-        $rows = $this->companyMemberships()
-            ->whereHas('company', fn ($q) => $q->whereNotNull('d365_id'))
-            ->with(['company', 'roleScopes.companies'])
-            ->get();
-
         $hasRoleScopeTables = Schema::hasTable('company_membership_role_scopes')
             && Schema::hasTable('company_membership_role_scope_companies');
+
+        $membershipQuery = $this->companyMemberships()
+            ->whereHas('company', fn ($q) => $q->whereNotNull('d365_id'))
+            ->with('company');
+
+        if ($hasRoleScopeTables) {
+            $membershipQuery->with('roleScopes.companies');
+        }
+
+        /** @var EloquentCollection<int, CompanyMembership> $rows */
+        $rows = $membershipQuery->get();
 
         if (! $hasRoleScopeTables) {
             return $rows
