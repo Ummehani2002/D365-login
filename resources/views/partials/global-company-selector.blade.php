@@ -141,6 +141,17 @@
     const selector = document.getElementById('global-company-select');
     if (!selector) return;
 
+    const url = new URL(window.location.href);
+    const selected = (selector.value || '').trim().toUpperCase();
+    const current = (url.searchParams.get('company') || '').trim().toUpperCase();
+
+    // Keep URL company context aligned with currently selected allowed company.
+    if (selected && selected !== current) {
+        url.searchParams.set('company', selected);
+        window.location.replace(url.toString());
+        return;
+    }
+
     selector.addEventListener('change', () => {
         const company = (selector.value || '').trim();
         const url = new URL(window.location.href);
