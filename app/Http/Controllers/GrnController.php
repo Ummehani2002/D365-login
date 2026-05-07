@@ -7,6 +7,7 @@ use App\Models\GrnJournal;
 use App\Services\D365GrnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class GrnController extends Controller
@@ -21,12 +22,15 @@ class GrnController extends Controller
             abort(403, 'You do not have access to any organization.');
         }
 
-        $journals = GrnJournal::query()
-            ->with('postedBy:id,name')
-            ->whereIn('company', $companies->pluck('d365_id')->all())
-            ->latest()
-            ->limit(50)
-            ->get();
+        $journals = collect();
+        if (Schema::hasTable('grn_journals')) {
+            $journals = GrnJournal::query()
+                ->with('postedBy:id,name')
+                ->whereIn('company', $companies->pluck('d365_id')->all())
+                ->latest()
+                ->limit(50)
+                ->get();
+        }
 
         return view('modules.procurement.grn.index', [
             'companies' => $companies,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\ItemCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class ItemCategoryMasterController extends Controller
@@ -22,19 +23,23 @@ class ItemCategoryMasterController extends Controller
 
         $categories = collect();
         if ($selectedCompany) {
-            $categories = ItemCategory::query()
-                ->where('company_id', $selectedCompany->id)
-                ->orderBy('name')
-                ->get();
+            $categoriesQuery = ItemCategory::query()->orderBy('name');
+            if (Schema::hasColumn('item_categories', 'company_id')) {
+                $categoriesQuery->where('company_id', $selectedCompany->id);
+            }
+            $categories = $categoriesQuery->get();
         }
 
         // Fallback: if selected company has none yet, show shared templates from any company.
         if ($selectedCompany && $categories->isEmpty()) {
-            $templateCompanyId = ItemCategory::query()
-                ->whereNotNull('company_id')
-                ->whereNotNull('d365_id')
-                ->where('d365_id', '!=', '')
-                ->value('company_id');
+            $templateCompanyId = null;
+            if (Schema::hasColumn('item_categories', 'company_id')) {
+                $templateCompanyId = ItemCategory::query()
+                    ->whereNotNull('company_id')
+                    ->whereNotNull('d365_id')
+                    ->where('d365_id', '!=', '')
+                    ->value('company_id');
+            }
 
             if ($templateCompanyId) {
                 $categories = ItemCategory::query()

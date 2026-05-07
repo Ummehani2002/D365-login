@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class ItemMasterController extends Controller
@@ -21,18 +22,17 @@ class ItemMasterController extends Controller
             return strtoupper((string) $c->d365_id) === $currentCompanyCode;
         }) ?? $companies->first();
 
-        $items = Item::query()
-            ->when($selectedCompany, function ($query) use ($selectedCompany) {
-                $query->where('company_id', $selectedCompany->id);
-            })
-            ->orderByDesc('created_at')
-            ->get();
-        $categories = ItemCategory::query()
-            ->when($selectedCompany, function ($query) use ($selectedCompany) {
-                $query->where('company_id', $selectedCompany->id);
-            })
-            ->orderBy('name')
-            ->get();
+        $itemsQuery = Item::query()->orderByDesc('created_at');
+        if ($selectedCompany && Schema::hasColumn('items', 'company_id')) {
+            $itemsQuery->where('company_id', $selectedCompany->id);
+        }
+        $items = $itemsQuery->get();
+
+        $categoriesQuery = ItemCategory::query()->orderBy('name');
+        if ($selectedCompany && Schema::hasColumn('item_categories', 'company_id')) {
+            $categoriesQuery->where('company_id', $selectedCompany->id);
+        }
+        $categories = $categoriesQuery->get();
 
         return view('masters.items.index', [
             'companies' => $companies,

@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Services\D365ItemIssueService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
  
 class ItemIssueController extends Controller
@@ -38,25 +39,29 @@ class ItemIssueController extends Controller
             ]);
         }
  
-        $projects = Project::query()
-            ->select(['id', 'd365_id', 'name'])
-            ->whereHas('company', function ($query) use ($selectedCompany) {
-                if (!$selectedCompany) {
-                    return;
-                }
+        $projects = collect();
+        if (Schema::hasTable('projects')) {
+            $projectsQuery = Project::query()
+                ->select(['id', 'd365_id', 'name'])
+                ->orderBy('name');
 
-                $query->where('id', $selectedCompany->id);
-            })
-            ->orderBy('name')
-            ->get();
- 
-        $journals = ItemIssueJournal::query()
-            ->with('postedBy:id,name')
-            ->when($selectedCompany, function ($query) use ($selectedCompany) {
-                $query->where('company', $selectedCompany->d365_id);
-            })
-            ->orderByDesc('created_at')
-            ->get();
+            if ($selectedCompany && Schema::hasColumn('projects', 'company_id')) {
+                $projectsQuery->where('company_id', $selectedCompany->id);
+            }
+
+            $projects = $projectsQuery->get();
+        }
+
+        $journals = collect();
+        if (Schema::hasTable('item_issue_journals')) {
+            $journals = ItemIssueJournal::query()
+                ->with('postedBy:id,name')
+                ->when($selectedCompany, function ($query) use ($selectedCompany) {
+                    $query->where('company', $selectedCompany->d365_id);
+                })
+                ->orderByDesc('created_at')
+                ->get();
+        }
  
         return view('modules.project-management.item-issue.index', [
             'companies' => $companies,
