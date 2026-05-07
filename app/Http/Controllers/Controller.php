@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 use Throwable;
 
@@ -23,9 +24,13 @@ abstract class Controller
     protected function scopedCompaniesQuery(?User $user): Builder
     {
         $allowedCompanyCodes = $this->allowedCompanyCodes($user);
+        $selectColumns = ['id', 'd365_id', 'name'];
+        if (Schema::hasColumn('companies', 'company_id')) {
+            $selectColumns[] = 'company_id';
+        }
 
         return Company::query()
-            ->select(['id', 'company_id', 'd365_id', 'name'])
+            ->select($selectColumns)
             ->whereNotNull('d365_id')
             ->when($allowedCompanyCodes !== null, function (Builder $query) use ($allowedCompanyCodes) {
                 $query->whereIn(\DB::raw('UPPER(d365_id)'), $allowedCompanyCodes->all());

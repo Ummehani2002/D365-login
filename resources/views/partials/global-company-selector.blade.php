@@ -128,7 +128,7 @@
     <p class="global-company-label">SELECT COMPANY</p>
     <select id="global-company-select" class="global-company-select">
         @foreach($globalCompanyOptions as $company)
-            @php($code = strtoupper((string) $company->company_id))
+            @php($code = strtoupper((string) ($company->d365_id ?? $company->company_id ?? '')))
             <option value="{{ $code }}" {{ $globalSelectedCompany === $code ? 'selected' : '' }}>
                 {{ $code }} - {{ $company->name }}
             </option>
