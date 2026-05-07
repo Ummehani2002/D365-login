@@ -42,8 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/home', fn () => redirect()->route('dashboard'));
 
-    Route::middleware(['super.admin'])->group(function () {
-        Route::get('/masters/company', [CompanyMasterController::class, 'index'])->name('masters.company.index');
+    Route::get('/masters/company', [CompanyMasterController::class, 'index'])->name('masters.company.index');
         Route::post('/masters/company', [CompanyMasterController::class, 'store'])->name('masters.company.store');
         Route::post('/masters/company/quick-add', [CompanyMasterController::class, 'quickStore'])->name('masters.company.quick-add');
         Route::post('/masters/company/sync-d365', [CompanyMasterController::class, 'syncFromD365'])->name('masters.company.sync');
@@ -130,16 +129,14 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/permissions/{permission}', [RbacPermissionController::class, 'destroy'])->name('permissions.destroy');
         });
         Route::get('/settings/menu-match', [RbacMenuMatchController::class, 'index'])->name('settings.menu-match.index');
-        Route::prefix('/settings/menu-match/api')->name('settings.menu-match.api.')->group(function () {
+    Route::prefix('/settings/menu-match/api')->name('settings.menu-match.api.')->group(function () {
             Route::get('/mappings', [RbacMenuMatchController::class, 'listMappings'])->name('mappings.index');
             Route::put('/mappings', [RbacMenuMatchController::class, 'updateMappings'])->name('mappings.update');
             Route::get('/available-menus', [RbacMenuMatchController::class, 'listAvailableMenus'])->name('available-menus.index');
             Route::post('/assign', [RbacMenuMatchController::class, 'assignMapping'])->name('assign.store');
         });
-    });
 
-    Route::middleware('permission:menu:modules.project-management.item-issue')->group(function () {
-        Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])->name('modules.project-management.item-issue');
+    Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])->name('modules.project-management.item-issue');
         Route::post('/modules/project-management/item-issue/api/items/lookup', [ItemIssueController::class, 'lookupItems'])->name('modules.project-management.item-issue.api.items.lookup');
         Route::post('/modules/project-management/item-issue/api/projects/lookup', [ItemIssueController::class, 'lookupProjects'])->name('modules.project-management.item-issue.api.projects.lookup');
         Route::post('/modules/project-management/item-issue/api/post', [ItemIssueController::class, 'post'])->name('modules.project-management.item-issue.api.post');
@@ -147,12 +144,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/modules/project-management/item-issue/api/units', [ItemIssueController::class, 'lookupUnits'])->name('modules.project-management.item-issue.api.units');
         Route::get('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'showJournal'])->name('modules.project-management.item-issue.api.journals.show');
         Route::delete('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'destroyJournal'])->name('modules.project-management.item-issue.api.journals.destroy');
-    });
 
     Route::get('/purchase-requisitions', [PurchaseRequisitionController::class, 'index'])->name('purchase-requisitions.index');
     Route::post('/purchase-requisitions/api/post', [PurchaseRequisitionController::class, 'post'])->name('purchase-requisitions.api.post');
-    Route::middleware('permission:menu:modules.procurement.purch-req')->group(function () {
-        Route::get('/modules/procurement/purch-req', [PurchReqController::class, 'index'])->name('modules.procurement.purch-req');
+    Route::get('/modules/procurement/purch-req', [PurchReqController::class, 'index'])->name('modules.procurement.purch-req');
         Route::post('/modules/procurement/purch-req/api/post', [PurchReqController::class, 'post'])->name('modules.procurement.purch-req.post');
         Route::post('/modules/procurement/purch-req/api/save', [PurchReqController::class, 'saveDraft'])->name('modules.procurement.purch-req.save');
         Route::put('/modules/procurement/purch-req/api/drafts/{journal}', [PurchReqController::class, 'updateDraft'])->name('modules.procurement.purch-req.drafts.update');
@@ -162,15 +157,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/modules/procurement/purch-req/api/catalog', [PurchReqController::class, 'lookupCatalog'])->name('modules.procurement.purch-req.api.catalog');
         Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}', [PurchReqController::class, 'downloadAttachment'])->name('modules.procurement.purch-req.attachment')->where('index', '[0-9]+');
         Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}/base64', [PurchReqController::class, 'viewBase64'])->name('modules.procurement.purch-req.attachment.base64')->where('index', '[0-9]+');
-    });
 
-    Route::middleware('permission:menu:modules.procurement.grn')->group(function () {
-        Route::get('/modules/procurement/grn', [GrnController::class, 'index'])->name('modules.procurement.grn');
+    Route::get('/modules/procurement/grn', [GrnController::class, 'index'])->name('modules.procurement.grn');
         Route::get('/modules/procurement/grn/view', [GrnController::class, 'view'])->name('modules.procurement.grn.view');
         Route::post('/modules/procurement/grn/api/search', [GrnController::class, 'search'])->name('modules.procurement.grn.api.search');
         Route::post('/modules/procurement/grn/api/lines', [GrnController::class, 'lineDetails'])->name('modules.procurement.grn.api.lines');
         Route::post('/modules/procurement/grn/api/post', [GrnController::class, 'postPackingSlip'])->name('modules.procurement.grn.api.post');
-    });
 
     Route::get('/quotations', fn () => 'Quotation Module - Coming Soon')->name('quotations.index');
     Route::get('/purchase-orders', fn () => 'Purchase Order Module - Coming Soon')->name('purchase-orders.index');
