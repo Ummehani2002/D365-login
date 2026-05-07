@@ -73,6 +73,9 @@ return [
     'grn_lookup_path' => env('D365_GRN_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchIdLookpService/Read'),
     'grn_line_lookup_path' => env('D365_GRN_LINE_LOOKUP_PATH', '/api/services/TIWebServiceGroup/PurchLineService/Read'),
     'grn_post_path' => env('D365_GRN_POST_PATH', '/api/services/TIWebServiceGroup/PurchPackService/Create'),
+    'connect_timeout' => (int) env('D365_CONNECT_TIMEOUT', 10),
+    'request_timeout' => (int) env('D365_REQUEST_TIMEOUT', 25),
+    'grn_post_timeout' => (int) env('D365_GRN_POST_TIMEOUT', 90),
 ],
 
 'webapp' => [

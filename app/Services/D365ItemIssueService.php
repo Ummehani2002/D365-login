@@ -79,11 +79,19 @@ class D365ItemIssueService
             throw new RuntimeException('D365 base URL is not configured. Go to Settings > D365 Credentials and save your credentials first.');
         }
 
+        $connectTimeout = max(5, (int) config('services.d365.connect_timeout', 10));
+        $requestTimeout = max(25, (int) config('services.d365.request_timeout', 25));
+
+        // GRN posting can take longer in D365 due to heavy server-side validations.
+        if (str_contains(strtolower($path), 'purchpack')) {
+            $requestTimeout = max($requestTimeout, (int) config('services.d365.grn_post_timeout', 90));
+        }
+
         $response = Http::withToken($token)
             ->acceptJson()
             ->asJson()
-            ->connectTimeout(10)
-            ->timeout(25)
+            ->connectTimeout($connectTimeout)
+            ->timeout($requestTimeout)
             ->post($baseUrl . '/' . ltrim($path, '/'), $payload);
 
         if ($response->failed()) {
