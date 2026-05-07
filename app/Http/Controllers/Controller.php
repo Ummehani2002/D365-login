@@ -16,20 +16,8 @@ abstract class Controller
             return collect();
         }
 
-        try {
-            if ($user->isSuperAdmin()) {
-                return null;
-            }
-
-            return $user->accessibleCompanyD365Codes()
-                ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
-                ->filter()
-                ->unique()
-                ->values();
-        } catch (Throwable) {
-            // Never crash page render on access resolution.
-            return collect();
-        }
+        // Temporary bypass: allow all authenticated users to access all organizations.
+        return null;
     }
 
     protected function scopedCompaniesQuery(?User $user): Builder
