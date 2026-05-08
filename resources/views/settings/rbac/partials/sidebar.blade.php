@@ -51,7 +51,7 @@
         <button type="button" class="rail-toggle {{ $activeSection === 'modules' ? 'active' : '' }}" data-target="modules" title="Modules" aria-label="Modules">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </button>
-        @if($authIsSuperAdmin ?? false)
+        @if($authCanAccessMasters ?? false)
         <button type="button" class="rail-toggle {{ $activeSection === 'settings' ? 'active' : '' }}" data-target="settings" title="Settings" aria-label="Settings">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.54 1z"/></svg>
         </button>
@@ -139,18 +139,22 @@
                     @endif
                 </section>
 
-                @if($authIsSuperAdmin ?? false)
+                @if($authCanAccessMasters ?? false)
                 <section class="sidebar-section {{ $activeSection === 'settings' ? 'active' : '' }}" data-section="settings">
                     <div class="nav-section-label">Settings</div>
+                    @if($authIsSuperAdmin ?? false)
                     <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery ?? []) }}">API Configuration</a>
                     <div class="nav-sub">
                         <a class="nav-link {{ request()->routeIs('settings.token') ? 'active' : '' }}" href="{{ route('settings.token', $companyQuery ?? []) }}">API Token Timer</a>
                         <a class="nav-link {{ request()->routeIs('settings.credentials') ? 'active' : '' }}" href="{{ route('settings.credentials', $companyQuery ?? []) }}">D365 Credentials</a>
+                    @endif
                         <a class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery ?? []) }}">Users</a>
                         <a class="nav-link {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}" href="{{ route('settings.roles.index', $companyQuery ?? []) }}">Roles</a>
                         <a class="nav-link {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}" href="{{ route('settings.permissions.index', $companyQuery ?? []) }}">Permissions</a>
                         <a class="nav-link {{ request()->routeIs('settings.menu-match.*') ? 'active' : '' }}" href="{{ route('settings.menu-match.index', $companyQuery ?? []) }}">Menu match</a>
+                    @if($authIsSuperAdmin ?? false)
                     </div>
+                    @endif
                 </section>
                 @endif
             </nav>
