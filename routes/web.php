@@ -97,12 +97,17 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-        Route::get('/settings', fn () => redirect()->route('settings.token'))->middleware('super_admin')->name('settings.index');
-        Route::get('/settings/token', [SettingsController::class, 'tokenIndex'])->middleware('super_admin')->name('settings.token');
-        Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->middleware('super_admin')->name('settings.token.generate');
-        Route::get('/settings/credentials', [SettingsController::class, 'credsIndex'])->middleware('super_admin')->name('settings.credentials');
-        Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->middleware('super_admin')->name('settings.credentials.save');
-        Route::get('/settings/roles-permissions', fn () => redirect()->route('settings.token'))->middleware('super_admin')->name('settings.roles-permissions');
+        Route::get('/settings', function () {
+            $user = request()->user();
+            return $user && $user->isSuperAdmin()
+                ? redirect()->route('settings.token')
+                : redirect()->route('settings.users.index');
+        })->middleware('super_admin')->name('settings.index');
+        Route::get('/settings/token', [SettingsController::class, 'tokenIndex'])->middleware('global_super_admin')->name('settings.token');
+        Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->middleware('global_super_admin')->name('settings.token.generate');
+        Route::get('/settings/credentials', [SettingsController::class, 'credsIndex'])->middleware('global_super_admin')->name('settings.credentials');
+        Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->middleware('global_super_admin')->name('settings.credentials.save');
+        Route::get('/settings/roles-permissions', fn () => redirect()->route('settings.token'))->middleware('global_super_admin')->name('settings.roles-permissions');
         Route::prefix('/settings/rbac')->middleware('super_admin')->group(function () {
             Route::get('/users', [RbacUserController::class, 'index'])->name('settings.users.index');
             Route::get('/roles', [RbacRoleController::class, 'index'])->name('settings.roles.index');

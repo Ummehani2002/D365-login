@@ -96,6 +96,7 @@
         .hidden { display: none; }
         .att-status { font-size: 11px; color: #605e5c; display: inline-block; padding-top: 6px; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -103,35 +104,7 @@
         $companyCodeNav = strtoupper((string) request()->query('company', ''));
         $companyQuery = $companyCodeNav !== '' ? ['company' => $companyCodeNav] : [];
     @endphp
-    <aside class="sidebar">
-        <div class="logo">Logo</div>
-        <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authCanAccessMasters ?? false)
-        <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        @endif
-        <a class="menu-link active" href="#">Modules</a>
-        <div class="sub">
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="#">Project Management</a>
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
-            @endif
-            @endif
-            @if(($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false))
-            <a class="menu-link active" href="#">Procurement</a>
-            @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
-            <a class="menu-link active" href="{{ route('purchase-requisitions.index', $companyQuery) }}">Purchase Requisition</a>
-            @endif
-            @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
-            <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
-            @endif
-            @endif
-        </div>
-        @if($authIsSuperAdmin ?? false)
-        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}">Settings</a>
-        @endif
-    </aside>
+    @include('settings.rbac.partials.sidebar')
 
     <main class="main">
         <div class="page-shell">

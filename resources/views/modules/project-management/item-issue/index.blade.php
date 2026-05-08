@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Item Issue</title>
+    @include('settings.rbac.partials.styles')
     <style>
         * { box-sizing: border-box; }
         body {
@@ -73,6 +74,7 @@
         .loading-overlay { font-size: 12px; color: #8a8886; padding: 6px 10px; }
  
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -80,40 +82,7 @@
         $companyCode = strtoupper((string) ($currentCompanyCode ?? $globalSelectedCompany ?? request()->query('company', '')));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
-    <aside class="sidebar">
-        <div class="logo">Logo</div>
-        <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authCanAccessMasters ?? false)
-        <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        @endif
-        <a class="menu-link active" href="#">Modules</a>
-        <div class="sub">
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link active" href="#">Project Management</a>
-            <a class="menu-link active" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
-            @endif
-            @if(($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false))
-            <a class="menu-link" href="#">Procurement &amp; Sourcing</a>
-            <div class="sub">
-                @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
-                <a class="menu-link" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
-                @endif
-                @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
-                <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
-                @endif
-            </div>
-            @endif
-        </div>
-        @if($authIsSuperAdmin ?? false)
-        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-            </svg>
-            Settings
-        </a>
-        @endif
-    </aside>
+    @include('settings.rbac.partials.sidebar')
  
     <main class="main">
         <div class="page-shell">

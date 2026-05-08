@@ -118,6 +118,7 @@
         .att-link { display: inline-flex; align-items: center; gap: 3px; color: #106ebe; text-decoration: none; font-size: 11px; padding: 2px 6px; border-radius: 10px; background: #deecf9; margin: 1px; white-space: nowrap; }
         .att-link:hover { background: #c7e0f4; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -130,40 +131,7 @@
             ->unique('code')
             ->values();
     @endphp
-    <aside class="sidebar">
-        <div class="logo">Logo</div>
-        <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authCanAccessMasters ?? false)
-        <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        @endif
-        <a class="menu-link" href="#">Modules</a>
-        <div class="sub">
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="#">Project Management</a>
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
-            @endif
-            @endif
-            <a class="menu-link active" href="#">Procurement &amp; Sourcing</a>
-            <div class="sub">
-                @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
-                <a class="menu-link active" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
-                @endif
-                @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
-                <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
-                @endif
-            </div>
-        </div>
-        @if($authIsSuperAdmin ?? false)
-        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-            </svg>
-            Settings
-        </a>
-        @endif
-    </aside>
+    @include('settings.rbac.partials.sidebar')
 
     <main class="main pr-layout">
         <div id="pr-form-shell" class="page-shell hidden" style="order:2;display:none;">

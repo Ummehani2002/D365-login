@@ -123,7 +123,7 @@ class User extends Authenticatable
             return collect();
         }
 
-        if ($this->isSuperAdmin()) {
+        if ($this->isSuperAdmin() || $this->isCompanyAdmin()) {
             return Company::query()
                 ->whereNotNull('d365_id')
                 ->pluck('d365_id')
@@ -211,6 +211,11 @@ class User extends Authenticatable
         }
 
         try {
+            // A company admin has full permissions across all companies (except token/credentials which is route-level).
+            if ($this->isCompanyAdmin()) {
+                return true;
+            }
+
             $hasRoleTables = Schema::hasTable('company_membership_roles')
                 && Schema::hasTable('permission_role')
                 && Schema::hasTable('permissions');
@@ -262,6 +267,47 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    /**
+     * True if the user holds the 'admin' role in ANY company.
+     * Admins get the same access as super admins across all companies,
+     * except token/credentials which is enforced at the route level.
+     */
+    public function isCompanyAdmin(): bool
+    {
+        if (
+            ! Schema::hasTable('company_memberships')
+            || ! Schema::hasTable('company_membership_roles')
+            || ! Schema::hasTable('roles')
+        ) {
+            return false;
+        }
+
+        try {
+            $hasRoleSlugColumn = Schema::hasColumn('roles', 'slug');
+            $hasRoleNameColumn = Schema::hasColumn('roles', 'name');
+
+            if (! $hasRoleSlugColumn && ! $hasRoleNameColumn) {
+                return false;
+            }
+
+            return CompanyMembership::query()
+                ->where('user_id', $this->id)
+                ->whereHas('roles', function ($query) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
+                    $query->where(function ($inner) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
+                        if ($hasRoleSlugColumn) {
+                            $inner->orWhereRaw('LOWER(slug) = ?', ['admin']);
+                        }
+                        if ($hasRoleNameColumn) {
+                            $inner->orWhereRaw('LOWER(name) = ?', ['admin']);
+                        }
+                    });
+                })
+                ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function canManageCompanyUsers(Company $company): bool

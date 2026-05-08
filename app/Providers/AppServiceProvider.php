@@ -44,11 +44,16 @@ class AppServiceProvider extends ServiceProvider
 
             $companies = collect();
             $isSuperAdmin = $user->isSuperAdmin();
-            $accessibleCodes = $user->accessibleCompanyD365Codes()
-                ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
-                ->filter(fn (string $code) => $code !== '')
-                ->unique()
-                ->values();
+            $isAdmin = $user->isCompanyAdmin();
+            $hasFullAccess = $isSuperAdmin || $isAdmin;
+
+            $accessibleCodes = $hasFullAccess
+                ? collect()
+                : $user->accessibleCompanyD365Codes()
+                    ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+                    ->filter(fn (string $code) => $code !== '')
+                    ->unique()
+                    ->values();
 
             try {
                 if (Schema::hasTable('companies')) {
@@ -57,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
                         ->whereNotNull('d365_id')
                         ->orderBy('name');
 
-                    if (! $isSuperAdmin) {
+                    if (! $hasFullAccess) {
                         if ($accessibleCodes->isEmpty()) {
                             $query->whereRaw('1 = 0');
                         } else {
@@ -87,18 +92,17 @@ class AppServiceProvider extends ServiceProvider
             $menuAccessService = app(MenuAccessService::class);
             $menuVisibility = $menuAccessService->menuVisibilityForUser($user, $selectedCompanyModel);
 
-            $canAccessMasters = $isSuperAdmin;
+            $canAccessMasters = $user->canAccessMasters();
             $canItemIssue = (bool) ($menuVisibility['modules.project-management.item-issue'] ?? false);
             $canPr = (bool) ($menuVisibility['modules.procurement.purch-req'] ?? false);
             $canGrn = (bool) ($menuVisibility['modules.procurement.grn'] ?? false);
-            $canSettings = $isSuperAdmin;
             $canModulesGeneral = $canItemIssue || $canPr || $canGrn;
 
             $view->with('globalCompanyOptions', $companies);
             $view->with('globalSelectedCompany', $selectedCompany);
             $view->with('authIsSuperAdmin', $isSuperAdmin);
             $view->with('authCanAccessMasters', $canAccessMasters);
-            $view->with('authShowMastersSettingsNav', $isSuperAdmin);
+            $view->with('authShowMastersSettingsNav', $canAccessMasters);
             $view->with('canItemIssue', $canItemIssue);
             $view->with('canPr', $canPr);
             $view->with('canGrn', $canGrn);

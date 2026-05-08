@@ -73,6 +73,7 @@
         .btn-sm:hover { background: #f3f2f1; }
         .btn-sm.copied { background: #dff6dd; color: #107c10; border-color: #9fd89f; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -81,33 +82,7 @@
     $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
 @endphp
 
-<aside class="sidebar">
-    <div class="sidebar-brand">TI Web App</div>
-    <nav>
-        <div class="nav-section-label">Menu</div>
-        <a class="nav-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authCanAccessMasters ?? false)
-        <a class="nav-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        @endif
-        <a class="nav-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Modules</a>
-
-        <div class="nav-section-label" style="margin-top:8px;">Settings</div>
-        <div class="nav-sub">
-            <a class="nav-link active" href="{{ route('settings.token', $companyQuery) }}">API Token Timer</a>
-            <a class="nav-link" href="{{ route('settings.credentials', $companyQuery) }}">D365 Credentials</a>
-            <a class="nav-link" href="{{ route('settings.users.index', $companyQuery) }}">Users</a>
-            <a class="nav-link" href="{{ route('settings.roles.index', $companyQuery) }}">Roles</a>
-            <a class="nav-link" href="{{ route('settings.permissions.index', $companyQuery) }}">Permissions</a>
-            <a class="nav-link" href="{{ route('settings.menu-match.index', $companyQuery) }}">Menu match</a>
-        </div>
-    </nav>
-    <div class="sidebar-footer">
-        <form method="post" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="btn-logout">Log out</button>
-        </form>
-    </div>
-</aside>
+@include('settings.rbac.partials.sidebar')
 
 <main class="main">
     <h1 class="page-title">API Token Timer</h1>

@@ -102,6 +102,7 @@
             font-size: 12px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -109,23 +110,7 @@
         $companyCode = strtoupper((string) request()->query('company', ''));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
-    <aside class="sidebar">
-        <div class="logo">Logo</div>
-        <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        <a class="menu-link active" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        <a class="menu-link" href="#">Modules</a>
-        <div class="sub">
-            <a class="menu-link" href="#">Project Management</a>
-            <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
-            <a class="menu-link" href="#">Procurement &amp; Sourcing</a>
-            <div class="sub">
-                <a class="menu-link" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
-                <a class="menu-link" href="{{ route('modules.procurement.grn', $companyQuery) }}">GRN</a>
-            </div>
-        </div>
-        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}">Settings</a>
-    </aside>
+    @include('settings.rbac.partials.sidebar')
     <main class="main">
         <div class="page-shell">
             <div class="command-bar">

@@ -38,6 +38,7 @@
         .empty-note { text-align: center; color: #8a8886; padding: 22px 10px; font-size: 13px; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #deecf9; color: #005a9e; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -45,35 +46,7 @@
         $companyCode = strtoupper((string) ($currentCompanyCode ?? $globalSelectedCompany ?? request()->query('company', '')));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
-    <aside class="sidebar">
-        <div class="logo">Logo</div>
-        <div class="label">Menu</div>
-        <a class="menu-link" href="{{ route('dashboard', $companyQuery) }}">Dashboard</a>
-        @if($authCanAccessMasters ?? false)
-        <a class="menu-link" href="{{ route('masters.company.index', $companyQuery) }}">Masters</a>
-        @endif
-        <a class="menu-link" href="#">Modules</a>
-        <div class="sub">
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="#">Project Management</a>
-            @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
-            <a class="menu-link" href="{{ route('modules.project-management.item-issue', $companyQuery) }}">Item Issue</a>
-            @endif
-            @endif
-            <a class="menu-link active" href="#">Procurement &amp; Sourcing</a>
-            <div class="sub">
-                @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
-                <a class="menu-link" href="{{ route('modules.procurement.purch-req', $companyQuery) }}">Purchase Requisition</a>
-                @endif
-                @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
-                <a class="menu-link active" href="{{ route('modules.procurement.grn', $companyQuery) }}">Goods Receive Note</a>
-                @endif
-            </div>
-        </div>
-        @if($authIsSuperAdmin ?? false)
-        <a class="menu-link" href="{{ route('settings.index', $companyQuery) }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;">Settings</a>
-        @endif
-    </aside>
+    @include('settings.rbac.partials.sidebar')
 
     <main class="main">
         <div class="page-shell">

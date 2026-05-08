@@ -25,11 +25,11 @@ class DashboardController extends Controller
             }
 
             $defaultCompany = $companies->first(function (Company $company) {
-                return strtoupper((string) $company->d365_id) === 'ML';
+                return strtoupper((string) $company->d365_id) === 'PS';
             });
 
             $fallbackCompany = $defaultCompany
-                ?? $companies->first(fn (Company $company) => strtoupper((string) $company->d365_id) === 'PS')
+                ?? $companies->first(fn (Company $company) => strtoupper((string) $company->d365_id) === 'ML')
                 ?? $companies->first();
             $requestedCompanyCode = strtoupper(trim((string) $request->query('company', '')));
             $selectedCompany = $companies->first(function (Company $company) use ($requestedCompanyCode) {
