@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Console\Commands\ServeCommand;
 use App\Models\Company;
+use App\Services\Rbac\MenuAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
@@ -42,14 +43,29 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $companies = collect();
+            $isSuperAdmin = $user->isSuperAdmin();
+            $accessibleCodes = $user->accessibleCompanyD365Codes()
+                ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+                ->filter(fn (string $code) => $code !== '')
+                ->unique()
+                ->values();
 
             try {
                 if (Schema::hasTable('companies')) {
-                    $companies = Company::query()
-                        ->select(['d365_id', 'name'])
+                    $query = Company::query()
+                        ->select(['id', 'd365_id', 'name'])
                         ->whereNotNull('d365_id')
-                        ->orderBy('name')
-                        ->get();
+                        ->orderBy('name');
+
+                    if (! $isSuperAdmin) {
+                        if ($accessibleCodes->isEmpty()) {
+                            $query->whereRaw('1 = 0');
+                        } else {
+                            $query->whereIn(\DB::raw('UPPER(d365_id)'), $accessibleCodes->all());
+                        }
+                    }
+
+                    $companies = $query->get();
                 }
             } catch (Throwable) {
                 $companies = collect();
@@ -63,25 +79,30 @@ class AppServiceProvider extends ServiceProvider
                 $selectedCompany = strtoupper((string) ($preferred->d365_id ?? ''));
             }
 
+            $selectedCompanyModel = $selectedCompany !== ''
+                ? $companies->first(fn ($company) => strtoupper((string) ($company->d365_id ?? '')) === $selectedCompany)
+                : null;
+
+            /** @var MenuAccessService $menuAccessService */
+            $menuAccessService = app(MenuAccessService::class);
+            $menuVisibility = $menuAccessService->menuVisibilityForUser($user, $selectedCompanyModel);
+
+            $canAccessMasters = $isSuperAdmin;
+            $canItemIssue = (bool) ($menuVisibility['modules.project-management.item-issue'] ?? false);
+            $canPr = (bool) ($menuVisibility['modules.procurement.purch-req'] ?? false);
+            $canGrn = (bool) ($menuVisibility['modules.procurement.grn'] ?? false);
+            $canSettings = $isSuperAdmin;
+            $canModulesGeneral = $canItemIssue || $canPr || $canGrn;
+
             $view->with('globalCompanyOptions', $companies);
             $view->with('globalSelectedCompany', $selectedCompany);
-            $isSuperAdmin = false;
-            $canAccessMasters = true;
             $view->with('authIsSuperAdmin', $isSuperAdmin);
             $view->with('authCanAccessMasters', $canAccessMasters);
-            $view->with('authShowMastersSettingsNav', $canAccessMasters);
-
-            if ($user) {
-                $view->with('canItemIssue', true);
-                $view->with('canPr', true);
-                $view->with('canGrn', true);
-                $view->with('canModulesGeneral', true);
-            } else {
-                $view->with('canItemIssue', false);
-                $view->with('canPr', false);
-                $view->with('canGrn', false);
-                $view->with('canModulesGeneral', false);
-            }
+            $view->with('authShowMastersSettingsNav', $isSuperAdmin);
+            $view->with('canItemIssue', $canItemIssue);
+            $view->with('canPr', $canPr);
+            $view->with('canGrn', $canGrn);
+            $view->with('canModulesGeneral', $canModulesGeneral);
         });
     }
 }

@@ -65,7 +65,7 @@ class CheckPermission
             abort(403, 'Selected company context is missing or invalid.');
         }
 
-        if ($user->hasPermissionForCompany($company, 'Super.access')) {
+        if ($user->hasPermissionForCompany($company, 'super.access')) {
             return $next($request);
         }
 

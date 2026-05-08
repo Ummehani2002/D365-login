@@ -17,8 +17,15 @@ abstract class Controller
             return collect();
         }
 
-        // Temporary bypass: allow all authenticated users to access all organizations.
-        return null;
+        if ($user->isSuperAdmin()) {
+            return null;
+        }
+
+        return $user->accessibleCompanyD365Codes()
+            ->map(fn (mixed $code) => strtoupper(trim((string) $code)))
+            ->filter(fn (string $code) => $code !== '')
+            ->unique()
+            ->values();
     }
 
     protected function scopedCompaniesQuery(?User $user): Builder

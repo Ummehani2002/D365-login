@@ -21,6 +21,10 @@ use App\Http\Controllers\PoolMasterController;
 use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\PurchReqController;
+use App\Http\Controllers\RbacMenuMatchController;
+use App\Http\Controllers\RbacPermissionController;
+use App\Http\Controllers\RbacRoleController;
+use App\Http\Controllers\RbacUserController;
 use App\Http\Controllers\SalesTaxGroupMasterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SiteMasterController;
@@ -38,7 +42,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/home', fn () => redirect()->route('dashboard'));
 
-    Route::get('/masters/company', [CompanyMasterController::class, 'index'])->name('masters.company.index');
+    Route::middleware('super_admin')->group(function () {
+        Route::get('/masters/company', [CompanyMasterController::class, 'index'])->name('masters.company.index');
         Route::post('/masters/company', [CompanyMasterController::class, 'store'])->name('masters.company.store');
         Route::post('/masters/company/quick-add', [CompanyMasterController::class, 'quickStore'])->name('masters.company.quick-add');
         Route::post('/masters/company/sync-d365', [CompanyMasterController::class, 'syncFromD365'])->name('masters.company.sync');
@@ -90,15 +95,56 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/item-units', [ApiItemUnitController::class, 'store'])->name('item-units.store');
             Route::delete('/item-units/{item_unit}', [ApiItemUnitController::class, 'destroy'])->name('item-units.destroy');
         });
+    });
 
-        Route::get('/settings', fn () => redirect()->route('settings.token'))->name('settings.index');
-        Route::get('/settings/token', [SettingsController::class, 'tokenIndex'])->name('settings.token');
-        Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->name('settings.token.generate');
-        Route::get('/settings/credentials', [SettingsController::class, 'credsIndex'])->name('settings.credentials');
-        Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->name('settings.credentials.save');
-        Route::get('/settings/roles-permissions', fn () => redirect()->route('settings.token'))->name('settings.roles-permissions');
+        Route::get('/settings', fn () => redirect()->route('settings.token'))->middleware('super_admin')->name('settings.index');
+        Route::get('/settings/token', [SettingsController::class, 'tokenIndex'])->middleware('super_admin')->name('settings.token');
+        Route::post('/settings/token/generate', [SettingsController::class, 'generateToken'])->middleware('super_admin')->name('settings.token.generate');
+        Route::get('/settings/credentials', [SettingsController::class, 'credsIndex'])->middleware('super_admin')->name('settings.credentials');
+        Route::post('/settings/credentials', [SettingsController::class, 'saveCredentials'])->middleware('super_admin')->name('settings.credentials.save');
+        Route::get('/settings/roles-permissions', fn () => redirect()->route('settings.token'))->middleware('super_admin')->name('settings.roles-permissions');
+        Route::prefix('/settings/rbac')->middleware('super_admin')->group(function () {
+            Route::get('/users', [RbacUserController::class, 'index'])->name('settings.users.index');
+            Route::get('/roles', [RbacRoleController::class, 'index'])->name('settings.roles.index');
+            Route::get('/permissions', [RbacPermissionController::class, 'index'])->name('settings.permissions.index');
+            Route::get('/menu-match', [RbacMenuMatchController::class, 'index'])->name('settings.menu-match.index');
 
-    Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])->name('modules.project-management.item-issue');
+            Route::prefix('/api/users')->group(function () {
+                Route::get('/memberships', [RbacUserController::class, 'listMemberships'])->name('settings.users.api.memberships.index');
+                Route::post('/memberships', [RbacUserController::class, 'storeMembership'])->name('settings.users.api.memberships.store');
+                Route::put('/memberships/{membership}', [RbacUserController::class, 'updateMembership'])->name('settings.users.api.memberships.update');
+                Route::delete('/memberships/{membership}', [RbacUserController::class, 'destroyMembership'])->name('settings.users.api.memberships.destroy');
+                Route::get('/companies', [RbacUserController::class, 'listCompanies'])->name('settings.users.api.companies.index');
+                Route::get('/roles', [RbacUserController::class, 'rolesForCompany'])->name('settings.users.api.roles.index');
+                Route::get('/memberships/{membership}/role-scopes', [RbacUserController::class, 'roleScopes'])->name('settings.users.api.memberships.role-scopes.index');
+                Route::put('/memberships/{membership}/role-scopes', [RbacUserController::class, 'upsertRoleScope'])->name('settings.users.api.memberships.role-scopes.upsert');
+            });
+
+            Route::prefix('/api/roles')->group(function () {
+                Route::get('/', [RbacRoleController::class, 'listRoles'])->name('settings.roles.api.roles.index');
+                Route::post('/', [RbacRoleController::class, 'store'])->name('settings.roles.api.roles.store');
+                Route::put('/{role}', [RbacRoleController::class, 'update'])->name('settings.roles.api.roles.update');
+                Route::delete('/{role}', [RbacRoleController::class, 'destroy'])->name('settings.roles.api.roles.destroy');
+                Route::get('/permissions/list', [RbacRoleController::class, 'listPermissions'])->name('settings.roles.api.permissions.index');
+            });
+
+            Route::prefix('/api/permissions')->group(function () {
+                Route::get('/', [RbacPermissionController::class, 'listPermissions'])->name('settings.permissions.api.permissions.index');
+                Route::post('/', [RbacPermissionController::class, 'store'])->name('settings.permissions.api.permissions.store');
+                Route::put('/{permission}', [RbacPermissionController::class, 'update'])->name('settings.permissions.api.permissions.update');
+                Route::delete('/{permission}', [RbacPermissionController::class, 'destroy'])->name('settings.permissions.api.permissions.destroy');
+            });
+
+            Route::prefix('/api/menu-match')->group(function () {
+                Route::get('/mappings', [RbacMenuMatchController::class, 'listMappings'])->name('settings.menu-match.api.mappings.index');
+                Route::put('/mappings', [RbacMenuMatchController::class, 'updateMappings'])->name('settings.menu-match.api.mappings.update');
+                Route::get('/available-menus', [RbacMenuMatchController::class, 'listAvailableMenus'])->name('settings.menu-match.api.available-menus.index');
+                Route::post('/assign', [RbacMenuMatchController::class, 'assignMapping'])->name('settings.menu-match.api.assign.store');
+            });
+        });
+
+    Route::middleware('permission:menu:modules.project-management.item-issue')->group(function () {
+        Route::get('/modules/project-management/item-issue', [ItemIssueController::class, 'index'])->name('modules.project-management.item-issue');
         Route::post('/modules/project-management/item-issue/api/items/lookup', [ItemIssueController::class, 'lookupItems'])->name('modules.project-management.item-issue.api.items.lookup');
         Route::post('/modules/project-management/item-issue/api/projects/lookup', [ItemIssueController::class, 'lookupProjects'])->name('modules.project-management.item-issue.api.projects.lookup');
         Route::post('/modules/project-management/item-issue/api/post', [ItemIssueController::class, 'post'])->name('modules.project-management.item-issue.api.post');
@@ -106,10 +152,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/modules/project-management/item-issue/api/units', [ItemIssueController::class, 'lookupUnits'])->name('modules.project-management.item-issue.api.units');
         Route::get('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'showJournal'])->name('modules.project-management.item-issue.api.journals.show');
         Route::delete('/modules/project-management/item-issue/api/journals/{journal}', [ItemIssueController::class, 'destroyJournal'])->name('modules.project-management.item-issue.api.journals.destroy');
+    });
 
-    Route::get('/purchase-requisitions', [PurchaseRequisitionController::class, 'index'])->name('purchase-requisitions.index');
-    Route::post('/purchase-requisitions/api/post', [PurchaseRequisitionController::class, 'post'])->name('purchase-requisitions.api.post');
-    Route::get('/modules/procurement/purch-req', [PurchReqController::class, 'index'])->name('modules.procurement.purch-req');
+    Route::middleware('permission:menu:modules.procurement.purch-req')->group(function () {
+        Route::get('/purchase-requisitions', [PurchaseRequisitionController::class, 'index'])->name('purchase-requisitions.index');
+        Route::post('/purchase-requisitions/api/post', [PurchaseRequisitionController::class, 'post'])->name('purchase-requisitions.api.post');
+        Route::get('/modules/procurement/purch-req', [PurchReqController::class, 'index'])->name('modules.procurement.purch-req');
         Route::post('/modules/procurement/purch-req/api/post', [PurchReqController::class, 'post'])->name('modules.procurement.purch-req.post');
         Route::post('/modules/procurement/purch-req/api/save', [PurchReqController::class, 'saveDraft'])->name('modules.procurement.purch-req.save');
         Route::put('/modules/procurement/purch-req/api/drafts/{journal}', [PurchReqController::class, 'updateDraft'])->name('modules.procurement.purch-req.drafts.update');
@@ -119,12 +167,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/modules/procurement/purch-req/api/catalog', [PurchReqController::class, 'lookupCatalog'])->name('modules.procurement.purch-req.api.catalog');
         Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}', [PurchReqController::class, 'downloadAttachment'])->name('modules.procurement.purch-req.attachment')->where('index', '[0-9]+');
         Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}/base64', [PurchReqController::class, 'viewBase64'])->name('modules.procurement.purch-req.attachment.base64')->where('index', '[0-9]+');
+    });
 
-    Route::get('/modules/procurement/grn', [GrnController::class, 'index'])->name('modules.procurement.grn');
+    Route::middleware('permission:menu:modules.procurement.grn')->group(function () {
+        Route::get('/modules/procurement/grn', [GrnController::class, 'index'])->name('modules.procurement.grn');
         Route::get('/modules/procurement/grn/view', [GrnController::class, 'view'])->name('modules.procurement.grn.view');
         Route::post('/modules/procurement/grn/api/search', [GrnController::class, 'search'])->name('modules.procurement.grn.api.search');
         Route::post('/modules/procurement/grn/api/lines', [GrnController::class, 'lineDetails'])->name('modules.procurement.grn.api.lines');
         Route::post('/modules/procurement/grn/api/post', [GrnController::class, 'postPackingSlip'])->name('modules.procurement.grn.api.post');
+    });
 
     Route::get('/quotations', fn () => 'Quotation Module - Coming Soon')->name('quotations.index');
     Route::get('/purchase-orders', fn () => 'Purchase Order Module - Coming Soon')->name('purchase-orders.index');

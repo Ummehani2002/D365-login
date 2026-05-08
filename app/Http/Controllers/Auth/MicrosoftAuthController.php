@@ -47,7 +47,8 @@ class MicrosoftAuthController extends Controller
             }
             
             // Log the user in
-            Auth::login($user, true);
+            // Do not persist remember cookie; require fresh login after logout/session end.
+            Auth::login($user, false);
             
             // Redirect to dashboard
             return redirect()->route('dashboard');
