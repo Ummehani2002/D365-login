@@ -143,18 +143,29 @@
                 <section class="sidebar-section {{ $activeSection === 'settings' ? 'active' : '' }}" data-section="settings">
                     <div class="nav-section-label">Settings</div>
                     @if($authIsSuperAdmin ?? false)
-                    <a class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}" href="{{ route('settings.index', $companyQuery ?? []) }}">API Configuration</a>
-                    <div class="nav-sub">
-                        <a class="nav-link {{ request()->routeIs('settings.token') ? 'active' : '' }}" href="{{ route('settings.token', $companyQuery ?? []) }}">API Token Timer</a>
-                        <a class="nav-link {{ request()->routeIs('settings.credentials') ? 'active' : '' }}" href="{{ route('settings.credentials', $companyQuery ?? []) }}">D365 Credentials</a>
+                        <div class="nav-subgroup">
+                            <button type="button" class="nav-subgroup-header" data-nav-target="settings-api-configuration" aria-expanded="false">
+                                API Configuration
+                                <span class="chevron-sm" aria-hidden="true">▲</span>
+                            </button>
+                            <div class="nav-subgroup-body" id="settings-api-configuration" hidden>
+                                <a class="nav-link nested {{ request()->routeIs('settings.token') ? 'active' : '' }}" href="{{ route('settings.token', $companyQuery ?? []) }}">API Token Timer</a>
+                                <a class="nav-link nested {{ request()->routeIs('settings.credentials') ? 'active' : '' }}" href="{{ route('settings.credentials', $companyQuery ?? []) }}">D365 Credentials</a>
+                            </div>
+                        </div>
                     @endif
-                        <a class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery ?? []) }}">Users</a>
-                        <a class="nav-link {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}" href="{{ route('settings.roles.index', $companyQuery ?? []) }}">Roles</a>
-                        <a class="nav-link {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}" href="{{ route('settings.permissions.index', $companyQuery ?? []) }}">Permissions</a>
-                        <a class="nav-link {{ request()->routeIs('settings.menu-match.*') ? 'active' : '' }}" href="{{ route('settings.menu-match.index', $companyQuery ?? []) }}">Menu match</a>
-                    @if($authIsSuperAdmin ?? false)
+                    <div class="nav-subgroup">
+                        <button type="button" class="nav-subgroup-header" data-nav-target="settings-system-administration" aria-expanded="false">
+                            System Administration
+                            <span class="chevron-sm" aria-hidden="true">▲</span>
+                        </button>
+                        <div class="nav-subgroup-body" id="settings-system-administration" hidden>
+                            <a class="nav-link nested {{ request()->routeIs('settings.users.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery ?? []) }}">Users</a>
+                            <a class="nav-link nested {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}" href="{{ route('settings.roles.index', $companyQuery ?? []) }}">Roles</a>
+                            <a class="nav-link nested {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}" href="{{ route('settings.permissions.index', $companyQuery ?? []) }}">Permissions</a>
+                            <a class="nav-link nested {{ request()->routeIs('settings.menu-match.*') ? 'active' : '' }}" href="{{ route('settings.menu-match.index', $companyQuery ?? []) }}">Menu match</a>
+                        </div>
                     </div>
-                    @endif
                 </section>
                 @endif
             </nav>
