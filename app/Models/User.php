@@ -64,7 +64,16 @@ class User extends Authenticatable
         $email = strtolower(trim((string) $this->email));
         $allowList = config('access.super_admin_emails', []);
 
-        return $email !== '' && in_array($email, $allowList, true);
+        if ($email !== '' && in_array($email, $allowList, true)) {
+            return true;
+        }
+
+        // Backward-compatible fallback: honor legacy RBAC role naming.
+        return $this->hasAnyRoleSlugOrName([
+            'superadmin',
+            'super_admin',
+            'super admin',
+        ]);
     }
 
     public function canAccessAdminScreens(): bool
@@ -276,11 +285,31 @@ class User extends Authenticatable
      */
     public function isCompanyAdmin(): bool
     {
+        return $this->hasAnyRoleSlugOrName(['admin']);
+    }
+
+    /**
+     * Check if the user has at least one role whose normalized slug/name
+     * matches any value from the provided list.
+     *
+     * @param  array<int, string>  $normalizedCandidates
+     */
+    private function hasAnyRoleSlugOrName(array $normalizedCandidates): bool
+    {
         if (
             ! Schema::hasTable('company_memberships')
             || ! Schema::hasTable('company_membership_roles')
             || ! Schema::hasTable('roles')
         ) {
+            return false;
+        }
+
+        $candidates = collect($normalizedCandidates)
+            ->map(fn (mixed $value) => strtolower(trim((string) $value)))
+            ->filter(fn (string $value) => $value !== '')
+            ->values();
+
+        if ($candidates->isEmpty()) {
             return false;
         }
 
@@ -294,13 +323,15 @@ class User extends Authenticatable
 
             return CompanyMembership::query()
                 ->where('user_id', $this->id)
-                ->whereHas('roles', function ($query) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
-                    $query->where(function ($inner) use ($hasRoleSlugColumn, $hasRoleNameColumn) {
-                        if ($hasRoleSlugColumn) {
-                            $inner->orWhereRaw('LOWER(slug) = ?', ['admin']);
-                        }
-                        if ($hasRoleNameColumn) {
-                            $inner->orWhereRaw('LOWER(name) = ?', ['admin']);
+                ->whereHas('roles', function ($query) use ($hasRoleSlugColumn, $hasRoleNameColumn, $candidates) {
+                    $query->where(function ($inner) use ($hasRoleSlugColumn, $hasRoleNameColumn, $candidates) {
+                        foreach ($candidates as $candidate) {
+                            if ($hasRoleSlugColumn) {
+                                $inner->orWhereRaw('LOWER(slug) = ?', [$candidate]);
+                            }
+                            if ($hasRoleNameColumn) {
+                                $inner->orWhereRaw('LOWER(name) = ?', [$candidate]);
+                            }
                         }
                     });
                 })
