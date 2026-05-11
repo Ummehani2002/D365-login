@@ -630,7 +630,7 @@
                         ${matches.map((item) => `
                             <button type="button" class="line-item-option" data-item-id="${escapeHtml(item.id)}">
                                 <span class="line-item-id-col">${escapeHtml(item.id)}</span>
-                                <span class="line-item-name-col">${escapeHtml(shortText(item.name, 15) || '-')}</span>
+                                <span class="line-item-name-col" title="${escapeHtml(item.name || '-')}">${escapeHtml(shortText(item.name, 15) || '-')}</span>
                             </button>
                         `).join('')}
                     `;
@@ -642,11 +642,13 @@
                 itemIdInput.value = itemId || '';
                 if (!itemId) {
                     pickerInput.value = '';
+                    pickerInput.title = '';
                     fillItemDetails(row, '');
                     return;
                 }
                 const item = itemsCache.get(itemId);
                 pickerInput.value = item ? `${item.id} - ${shortText(item.name, 15)}` : itemId;
+                pickerInput.title = item ? `${item.id} - ${item.name || ''}` : itemId;
                 fillItemDetails(row, itemId);
             };
 
