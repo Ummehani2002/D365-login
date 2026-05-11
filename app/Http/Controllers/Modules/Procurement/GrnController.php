@@ -217,7 +217,8 @@ class GrnController extends Controller
 
         try {
             $purchaseId = trim($validated['purchase_id']);
-            $requestId  = $this->generatePackingRequestId($purchaseId);
+            $company    = trim((string) $validated['company']);
+            $requestId  = $this->generatePackingRequestId($company);
 
             $header = [
                 'RequestID'       => $requestId,
@@ -243,7 +244,7 @@ class GrnController extends Controller
                 }
             }
 
-            $raw           = $service->postPackingSlip(trim($validated['company']), $header, $lines);
+            $raw           = $service->postPackingSlip($company, $header, $lines);
             $success       = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
             $errorMessage  = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
             $infoMessage   = $this->pickValue($raw, ['InfoMessage', 'infoMessage']);
@@ -255,7 +256,7 @@ class GrnController extends Controller
 
             $journal = GrnJournal::query()->create([
                 'request_id'      => $requestId,
-                'company'         => trim($validated['company']),
+                'company'         => $company,
                 'purch_id'        => $purchaseId,
                 'project_id'      => trim((string) ($validated['project_id'] ?? '')) ?: null,
                 'vendor_name'     => trim((string) ($validated['vendor_name'] ?? '')) ?: null,
@@ -446,10 +447,23 @@ class GrnController extends Controller
         return number_format((float) $value, 2, '.', '');
     }
 
-    private function generatePackingRequestId(string $purchaseId): string
+    private function generatePackingRequestId(string $company): string
     {
-        $base = preg_replace('/[^A-Za-z0-9\-]/', '', strtoupper($purchaseId)) ?: 'REQ';
-        return $base . '-' . now()->format('YmdHisv');
+        $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
+        $year = now()->format('Y');
+        $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
+        $latest = GrnJournal::query()
+            ->where('company', $company)
+            ->where('request_id', 'like', $prefix . '%')
+            ->orderByDesc('request_id')
+            ->value('request_id');
+
+        $next = 1;
+        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $latest, $m)) {
+            $next = ((int) $m[1]) + 1;
+        }
+
+        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     /**

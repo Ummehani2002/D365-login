@@ -22,7 +22,9 @@
         .hidden { display: none !important; }
         .card-head { padding: 12px 14px; border-bottom: 1px solid #edebe9; font-size: 20px; font-weight: 600; }
         .toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .toolbar-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
         .title { margin: 0; font-size: 24px; font-weight: 600; }
+        .search { width: 280px; border: 1px solid #8a8886; border-radius: 2px; padding: 7px 10px; font-size: 13px; }
         .btn { border: 1px solid #8a8886; background: #fff; color: #323130; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
         .btn-primary { border-color: #106ebe; background: #106ebe; color: #fff; }
         .btn-view { border-color: #4f46e5; background: #4f46e5; color: #fff; padding: 4px 10px; font-size: 11px; }
@@ -61,6 +63,10 @@
                         <button id="back-to-list-btn" type="button" class="btn hidden">Back to List</button>
                         <button id="search-btn" type="button" class="btn btn-primary hidden">Search from D365</button>
                     </div>
+                </div>
+
+                <div id="history-search-wrap" class="toolbar-actions">
+                    <input id="history-search-input" class="search" type="text" placeholder="Search GRN by request, purchase, company, vendor..." autocomplete="off">
                 </div>
 
                 <div id="status-box" class="status-box"></div>
@@ -171,6 +177,8 @@
             resultsCard: document.getElementById('results-card'),
             historyShell: document.getElementById('grn-history-shell'),
             searchShell: document.getElementById('grn-search-shell'),
+            historySearchWrap: document.getElementById('history-search-wrap'),
+            historySearchInput: document.getElementById('history-search-input'),
         };
 
         function showHistory() {
@@ -179,6 +187,7 @@
             els.createGrnBtn.classList.remove('hidden');
             els.searchBtn.classList.add('hidden');
             els.backToListBtn.classList.add('hidden');
+            els.historySearchWrap.classList.remove('hidden');
             setStatus('', '');
         }
 
@@ -188,7 +197,38 @@
             els.createGrnBtn.classList.add('hidden');
             els.searchBtn.classList.remove('hidden');
             els.backToListBtn.classList.remove('hidden');
+            els.historySearchWrap.classList.add('hidden');
             setStatus('', '');
+        }
+
+        function applyHistorySearch() {
+            const q = (els.historySearchInput.value || '').trim().toLowerCase();
+            const tbody = document.querySelector('#grn-history-shell tbody');
+            if (!tbody) return;
+
+            tbody.querySelector('tr.grn-no-results-msg')?.remove();
+            const rows = [...tbody.querySelectorAll('tr')].filter((tr) => tr.querySelector('.open-grn-btn'));
+            if (!rows.length) return;
+
+            if (!q) {
+                rows.forEach((tr) => tr.style.removeProperty('display'));
+                return;
+            }
+
+            let anyVisible = false;
+            rows.forEach((tr) => {
+                const text = tr.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+                const show = text.includes(q);
+                tr.style.display = show ? '' : 'none';
+                if (show) anyVisible = true;
+            });
+
+            if (!anyVisible) {
+                const tr = document.createElement('tr');
+                tr.className = 'grn-no-results-msg';
+                tr.innerHTML = '<td colspan="8" class="empty-note">No GRN records match your search.</td>';
+                tbody.appendChild(tr);
+            }
         }
 
         function setStatus(type, text) {
@@ -293,6 +333,7 @@
         els.searchBtn.addEventListener('click', searchGrn);
         els.createGrnBtn.addEventListener('click', showSearch);
         els.backToListBtn.addEventListener('click', showHistory);
+        els.historySearchInput.addEventListener('input', applyHistorySearch);
         [els.purchId, els.vendName, els.projId].forEach((input) => {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {

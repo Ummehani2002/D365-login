@@ -111,7 +111,7 @@ class ItemIssueController extends Controller
         ]);
         $this->assertCompanyAccess((string) $validated['company']);
 
-        $requestId       = $this->generateRequestId();
+        $requestId       = $this->generateRequestId((string) $validated['company']);
         $dataAreaId      = $this->resolveCompanyDataAreaId($validated['company']);
         $inventSiteId    = $validated['invent_site_id'];
         $inventLocationId= $validated['invent_location_id'];
@@ -308,15 +308,20 @@ class ItemIssueController extends Controller
         return $parts !== [] ? implode(' ', array_unique($parts)) : 'D365 rejected the item issue request.';
     }
 
-    private function generateRequestId(): string
+    private function generateRequestId(string $company): string
     {
+        $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper(trim($company))) ?: 'COMPANY';
         $year   = now()->format('Y');
-        $prefix = "IS{$year}";
-        $latest = ItemIssueJournal::query()->where('request_id', 'like', $prefix . '%')->orderByDesc('request_id')->value('request_id');
+        $prefix = sprintf('%s-IS-%s-', $companyCode, $year);
+        $latest = ItemIssueJournal::query()
+            ->where('company', $company)
+            ->where('request_id', 'like', $prefix . '%')
+            ->orderByDesc('request_id')
+            ->value('request_id');
         $next   = 1;
-        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d{4})$/', $latest, $m)) {
+        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $latest, $m)) {
             $next = ((int) $m[1]) + 1;
         }
-        return sprintf('%s%04d', $prefix, $next);
+        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 }

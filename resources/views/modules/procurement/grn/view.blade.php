@@ -151,7 +151,14 @@
         if (!Array.isArray(apiLines) || !Array.isArray(posted) || posted.length === 0) {
             return apiLines || [];
         }
-        return apiLines.map((line) => {
+        const onlyPostedLines = apiLines.filter((line) => {
+            return posted.some((p) =>
+                Number(p.LineNumber) === Number(line.line_number) &&
+                String(p.PurchLineRecId ?? '') === String(line.line_rec_id ?? '')
+            );
+        });
+
+        return onlyPostedLines.map((line) => {
             const match = posted.find((p) =>
                 Number(p.LineNumber) === Number(line.line_number) &&
                 String(p.PurchLineRecId ?? '') === String(line.line_rec_id ?? '')
@@ -240,7 +247,7 @@
 
             const mergedLines = mergePostedReceiveQuantities(data.lines || []);
             renderLineRows(mergedLines);
-            setStatus('success', `Loaded ${Array.isArray(data.lines) ? data.lines.length : 0} line(s).`);
+            setStatus('success', `Loaded ${Array.isArray(mergedLines) ? mergedLines.length : 0} line(s).`);
         } catch (e) {
             setStatus('error', e.message || 'Line item lookup failed.');
             els.linesBody.innerHTML = `<tr><td colspan="6" class="empty-note">Unable to load line items.</td></tr>`;

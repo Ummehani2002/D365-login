@@ -56,6 +56,7 @@
         .fields { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
         .field label { display: block; font-size: 12px; margin-bottom: 4px; color: #605e5c; font-weight: 500; }
         .field input, .field select { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 13px; background: #fff; }
+        .field-filter { margin-bottom: 6px; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 12px; width: 100%; }
         .field input[readonly] { background: #f3f2f1; color: #605e5c; cursor: not-allowed; }
         .status-box { margin-bottom: 10px; padding: 8px 10px; border-radius: 2px; font-size: 13px; display: none; }
         .status-box.success { display: block; background: #e8f6ee; color: #1f7a48; }
@@ -64,6 +65,7 @@
         .lines-toolbar-title { font-size: 13px; font-weight: 600; color: #323130; }
         .line-area { border: 1px solid #edebe9; border-radius: 2px; overflow: auto; }
         .line-select { width: 100%; min-width: 160px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
+        .line-search { width: 100%; min-width: 160px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; margin-bottom: 6px; }
         .line-input { width: 80px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; }
         .onhand-badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-top: 3px; background: #f3f2f1; color: #605e5c; }
         .onhand-badge.ok { background: #dff6dd; color: #107c10; }
@@ -163,6 +165,7 @@
                         <input id="company-id" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? '')) }}">
                         <div class="field">
                             <label>Project</label>
+                            <input id="project-filter" class="field-filter" type="text" placeholder="Search project..." autocomplete="off">
                             <select id="project-id">
                                 <option value="">Select a project...</option>
                                 @foreach($projects as $project)
@@ -232,6 +235,7 @@
         const statusBox        = document.getElementById('status-box');
         const companySelect    = document.getElementById('company-id');
         const projectSelect    = document.getElementById('project-id');
+        const projectFilter    = document.getElementById('project-filter');
         const itemsLoadingMsg  = document.getElementById('items-loading-msg');
         const csrfToken        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
  
@@ -247,6 +251,8 @@
         let itemsCache  = new Map();
         let itemsLoaded = false;
         let currentFormMode = 'create';
+        /** After a successful Post to D365, lines and re-post are frozen until Back / Create New Journal. */
+        let journalPostedLocked = false;
  
         /* ── Helpers ──────────────────────────────────────────────────── */
         const showStatus = (msg, type = 'success') => {
@@ -260,7 +266,7 @@
                 new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
         };
         const toggleNewLineBtn = () => {
-            newLineBtn.disabled = !projectSelect.value || !itemsLoaded;
+            newLineBtn.disabled = journalPostedLocked || !projectSelect.value || !itemsLoaded;
         };
         const linesTheadCreateHtml = `
                                 <tr>
@@ -345,6 +351,26 @@
         };
 
         journalSearchInput.addEventListener('input', applyJournalSearch);
+
+        const applyProjectFilter = () => {
+            if (!projectSelect) return;
+            const query = (projectFilter?.value || '').trim().toLowerCase();
+            const selectedValue = projectSelect.value;
+            Array.from(projectSelect.options).forEach((opt, idx) => {
+                if (idx === 0) {
+                    opt.hidden = false;
+                    return;
+                }
+                const haystack = `${opt.value} ${opt.textContent}`.toLowerCase();
+                opt.hidden = query !== '' && !haystack.includes(query);
+            });
+
+            if (selectedValue && projectSelect.selectedOptions.length && projectSelect.selectedOptions[0].hidden) {
+                projectSelect.value = '';
+            }
+        };
+
+        projectFilter?.addEventListener('input', applyProjectFilter);
  
         /* ── JSON POST helper ─────────────────────────────────────────── */
         const callPost = async (url, body) => {
@@ -401,10 +427,13 @@
         };
  
         /* ── Populate a <select> with items from cache ────────────────── */
-        const populateItemSelect = (sel) => {
+        const populateItemSelect = (sel, query = '') => {
             const prev = sel.value;
+            const needle = query.trim().toLowerCase();
             sel.innerHTML = '<option value="">— Select item —</option>';
             itemsCache.forEach(({ id, name }) => {
+                const haystack = `${id} ${name}`.toLowerCase();
+                if (needle && !haystack.includes(needle)) return;
                 const opt = document.createElement('option');
                 opt.value       = id;
                 opt.textContent = id;
@@ -461,6 +490,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
+                    <input type="text" class="line-search line-item-search" placeholder="Search item id/name..." autocomplete="off">
                     <select class="line-select line-item-select" style="min-width:180px;"></select>
                 </td>
                 <td>
@@ -478,10 +508,24 @@
             `;
  
             const itemSel = row.querySelector('.line-item-select');
+            const itemSearch = row.querySelector('.line-item-search');
             populateItemSelect(itemSel);
+            itemSearch.addEventListener('input', function () {
+                const current = itemSel.value;
+                populateItemSelect(itemSel, this.value || '');
+                if (current) {
+                    const stillExists = Array.from(itemSel.options).some((o) => o.value === current);
+                    itemSel.value = stillExists ? current : '';
+                }
+                fillItemDetails(row, itemSel.value);
+            });
  
             itemSel.addEventListener('change', function () {
                 fillItemDetails(row, this.value);
+                const selected = this.selectedOptions[0];
+                if (selected && selected.value) {
+                    itemSearch.value = selected.value;
+                }
             });
  
             return row;
@@ -506,6 +550,7 @@
  
         /* ── Reset form ───────────────────────────────────────────────── */
         const resetForm = () => {
+            journalPostedLocked = false;
             setFormMode('create');
             document.getElementById('journal-id').value        = 'Not Yet Posted';
             document.getElementById('request-id').value        = '';
@@ -518,6 +563,8 @@
             itemsCache.clear();
             itemsLoaded = false;
             toggleNewLineBtn();
+            postBtn.disabled    = false;
+            postBtn.textContent = 'Post to D365';
             clearStatus();
         };
         const openJournalView = async (journalId) => {
@@ -610,6 +657,7 @@
  
         /* ── New line ─────────────────────────────────────────────────── */
         newLineBtn.addEventListener('click', () => {
+            if (journalPostedLocked) return;
             if (linesBody.querySelector('.empty-note')) linesBody.innerHTML = '';
             linesBody.appendChild(createLineRow());
         });
@@ -688,12 +736,20 @@
                     projectId,
                     lineCount: lines.length
                 });
+
+                journalPostedLocked = true;
+                toggleNewLineBtn();
  
             } catch (err) {
                 showStatus(err.message, 'error');
             } finally {
-                postBtn.disabled    = false;
-                postBtn.textContent = 'Post to D365';
+                if (journalPostedLocked) {
+                    postBtn.disabled    = true;
+                    postBtn.textContent = 'Posted';
+                } else {
+                    postBtn.disabled    = false;
+                    postBtn.textContent = 'Post to D365';
+                }
             }
         });
  
