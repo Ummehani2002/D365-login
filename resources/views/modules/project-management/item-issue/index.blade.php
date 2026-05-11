@@ -130,7 +130,6 @@
                                     <td>{{ $journal->created_at->format('d M Y H:i') }}</td>
                                     <td>
                                         <button type="button" class="btn btn-sm journal-view-btn" data-journal-id="{{ $journal->id }}">View</button>
-                                        <button type="button" class="btn btn-danger btn-sm journal-delete-btn" data-journal-id="{{ $journal->id }}">Delete</button>
                                     </td>
                                 </tr>
                                 @empty
@@ -173,7 +172,7 @@
                         </div>
                         <div class="field">
                             <label>Tax Group ID</label>
-                            <input id="tax-group-id" type="text" value="C-DXB" placeholder="e.g. C-DXB">
+                            <input id="tax-group-id" type="text" value="" placeholder="optional">
                         </div>
                         <div class="field">
                             <label>Tax Item Group ID</label>
@@ -242,7 +241,6 @@
             units:      "{{ route('modules.project-management.item-issue.api.units') }}",
             post:       "{{ route('modules.project-management.item-issue.api.post') }}",
             showJournalTemplate: "{{ route('modules.project-management.item-issue.api.journals.show', ['journal' => '__JOURNAL__']) }}",
-            deleteJournalTemplate: "{{ route('modules.project-management.item-issue.api.journals.destroy', ['journal' => '__JOURNAL__']) }}",
         };
  
         /* ── Item cache: Map<itemId → { id, name, onhandQty }> ─────────── */
@@ -450,7 +448,7 @@
             document.getElementById('request-id').value        = '';
             document.getElementById('invent-site-id').value    = '';
             document.getElementById('invent-location-id').value = '';
-            document.getElementById('tax-group-id').value      = 'C-DXB';
+            document.getElementById('tax-group-id').value      = '';
             document.getElementById('tax-item-group-id').value = '';
             projectSelect.value = '';
             linesBody.innerHTML = '<tr><td class="empty-note" colspan="6">No lines added yet.</td></tr>';
@@ -496,7 +494,6 @@
                 <td>${now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })} ${now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}</td>
                 <td>
                     <button type="button" class="btn btn-sm journal-view-btn" data-journal-id="${journalDbId ?? ''}">View</button>
-                    <button type="button" class="btn btn-danger btn-sm journal-delete-btn" data-journal-id="${journalDbId ?? ''}">Delete</button>
                 </td>
             `;
             journalsListBody.prepend(row);
@@ -653,31 +650,6 @@
                     showStatus(err.message, 'error');
                 }
                 return;
-            }
-
-            const deleteBtn = event.target.closest('.journal-delete-btn');
-            if (!deleteBtn) return;
-
-            const journalId = deleteBtn.getAttribute('data-journal-id');
-            if (!window.confirm('Delete this journal?')) return;
-
-            try {
-                const url = buildJournalUrl(endpoints.deleteJournalTemplate, journalId);
-                const res = await fetch(url, {
-                    method: 'DELETE',
-                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                });
-                const payload = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    throw new Error(payload?.message || payload?.error || 'Failed to delete journal.');
-                }
-                deleteBtn.closest('tr')?.remove();
-                if (!journalsListBody.querySelector('tr')) {
-                    journalsListBody.innerHTML = '<tr><td class="empty-note" colspan="8">No journal records yet.</td></tr>';
-                }
-                showStatus('Journal deleted successfully.', 'success');
-            } catch (err) {
-                showStatus(err.message, 'error');
             }
         });
  
