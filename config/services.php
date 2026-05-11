@@ -76,6 +76,7 @@ return [
     'connect_timeout' => (int) env('D365_CONNECT_TIMEOUT', 10),
     'request_timeout' => (int) env('D365_REQUEST_TIMEOUT', 25),
     'grn_post_timeout' => (int) env('D365_GRN_POST_TIMEOUT', 90),
+    'item_issue_post_timeout' => (int) env('D365_ITEM_ISSUE_POST_TIMEOUT', 120),
 ],
 
 'webapp' => [

@@ -87,6 +87,11 @@ class D365ItemIssueService
             $requestTimeout = max($requestTimeout, (int) config('services.d365.grn_post_timeout', 90));
         }
 
+        // Item issue journal create often exceeds the default 25s on busy D365 environments.
+        if (str_contains(strtolower($path), 'itemissue')) {
+            $requestTimeout = max($requestTimeout, (int) config('services.d365.item_issue_post_timeout', 120));
+        }
+
         $response = Http::withToken($token)
             ->acceptJson()
             ->asJson()
