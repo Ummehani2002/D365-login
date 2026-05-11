@@ -99,7 +99,7 @@
                     <div class="toolbar-actions">
                         <button id="create-journal-btn" class="btn btn-primary" type="button">+ Create New Journal</button>
                     </div>
-                    <input class="search" type="text" placeholder="Search journals..." disabled>
+                    <input id="journal-search-input" class="search" type="text" placeholder="Search journals..." autocomplete="off">
                 </div>
  
                 <div id="journal-list-view" class="card">
@@ -204,11 +204,10 @@
                                     <th style="min-width:90px;">On Hand</th>
                                     <th style="min-width:110px;">Unit</th>
                                     <th style="min-width:80px;">Qty</th>
-                                    <th style="width:70px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="journal-lines-body">
-                                <tr><td class="empty-note" colspan="6">No lines added yet.</td></tr>
+                                <tr><td class="empty-note" colspan="5">No lines added yet.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -229,6 +228,7 @@
         const postBtn          = document.getElementById('post-journal-btn');
         const linesBody        = document.getElementById('journal-lines-body');
         const journalsListBody = document.getElementById('journals-list-body');
+        const journalSearchInput = document.getElementById('journal-search-input');
         const statusBox        = document.getElementById('status-box');
         const companySelect    = document.getElementById('company-id');
         const projectSelect    = document.getElementById('project-id');
@@ -274,6 +274,36 @@
             });
         };
         const buildJournalUrl = (template, journalId) => template.replace('__JOURNAL__', encodeURIComponent(journalId));
+
+        const applyJournalSearch = () => {
+            const q = journalSearchInput.value.trim().toLowerCase();
+            journalsListBody.querySelector('tr.journal-no-results-msg')?.remove();
+
+            const dataRows = [...journalsListBody.querySelectorAll('tr')].filter((tr) => tr.querySelector('.journal-view-btn'));
+            if (!dataRows.length) return;
+
+            if (!q) {
+                dataRows.forEach((tr) => tr.style.removeProperty('display'));
+                return;
+            }
+
+            let anyVisible = false;
+            dataRows.forEach((tr) => {
+                const text = tr.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+                const show = text.includes(q);
+                tr.style.display = show ? '' : 'none';
+                if (show) anyVisible = true;
+            });
+
+            if (!anyVisible) {
+                const tr = document.createElement('tr');
+                tr.className = 'journal-no-results-msg';
+                tr.innerHTML = '<td class="empty-note" colspan="8">No journals match your search.</td>';
+                journalsListBody.appendChild(tr);
+            }
+        };
+
+        journalSearchInput.addEventListener('input', applyJournalSearch);
  
         /* ── JSON POST helper ─────────────────────────────────────────── */
         const callPost = async (url, body) => {
@@ -336,7 +366,8 @@
             itemsCache.forEach(({ id, name }) => {
                 const opt = document.createElement('option');
                 opt.value       = id;
-                opt.textContent = name ? `${id}  –  ${name}` : id;
+                opt.textContent = id;
+                if (name) opt.title = name;
                 if (id === prev) opt.selected = true;
                 sel.appendChild(opt);
             });
@@ -344,21 +375,20 @@
  
         /* ── Fill description + on-hand + load units when item selected ── */
         const fillItemDetails = async (row, itemId) => {
-            const descEl   = row.querySelector('.line-desc');
-            const badge    = row.querySelector('.onhand-badge');
-            const qtyInput = row.querySelector('.line-qty');
-            const unitSel  = row.querySelector('.line-unit-select');
+            const descEl     = row.querySelector('.line-desc');
+            const badge      = row.querySelector('.onhand-badge');
+            const qtyInput   = row.querySelector('.line-qty');
+            const unitFrozen = row.querySelector('.line-unit-frozen');
  
             if (!itemId) {
-                descEl.textContent    = '—';
-                badge.textContent     = '—';
-                badge.className       = 'onhand-badge';
-                unitSel.innerHTML     = '<option value="">— select item first —</option>';
-                unitSel.disabled      = true;
+                descEl.textContent = '—';
+                badge.textContent  = '—';
+                badge.className    = 'onhand-badge';
+                unitFrozen.value   = '';
+                unitFrozen.placeholder = '—';
                 return;
             }
  
-            // On-hand + description from cache
             const item = itemsCache.get(itemId);
             const qty  = item?.onhandQty ?? 0;
             descEl.textContent = item?.name ?? '—';
@@ -366,25 +396,22 @@
             badge.className    = qty > 10 ? 'onhand-badge ok' : qty > 0 ? 'onhand-badge low' : 'onhand-badge zero';
             qtyInput.max       = qty > 0 ? qty : '';
  
-            // Load units from D365 for this item (falls back to common units if service unavailable)
-            unitSel.innerHTML = '<option value="">Loading units…</option>';
-            unitSel.disabled  = true;
+            unitFrozen.value       = '';
+            unitFrozen.placeholder = 'Loading…';
  
             try {
                 const res   = await callPost(endpoints.units, { company: companySelect.value, item_id: itemId });
                 const units = res.units ?? [];
                 if (units.length > 0) {
-                    unitSel.innerHTML = units.map(u => `<option value="${u.id}">${u.id}</option>`).join('');
-                    unitSel.disabled  = false;
-                    // Auto-select if only one unit returned (D365 assigns one unit per item)
-                    if (units.length === 1) {
-                        unitSel.value = units[0].id;
-                    }
+                    unitFrozen.value = units[0].id;
+                    unitFrozen.placeholder = '';
                 } else {
-                    unitSel.innerHTML = '<option value="">No unit</option>';
+                    unitFrozen.value = '';
+                    unitFrozen.placeholder = 'No unit';
                 }
             } catch (err) {
-                unitSel.innerHTML = `<option value="">Error: ${err.message}</option>`;
+                unitFrozen.value = '';
+                unitFrozen.placeholder = 'Error';
             }
         };
  
@@ -402,15 +429,10 @@
                     <span class="onhand-badge">—</span>
                 </td>
                 <td>
-                    <select class="line-select line-unit-select" disabled>
-                        <option value="">— select item first —</option>
-                    </select>
+                    <input type="text" class="line-input line-unit-frozen" readonly tabindex="-1" value="" placeholder="—" title="Unit from D365 (read-only)" style="width:90px;background:#f3f2f1;color:#323130;cursor:default;">
                 </td>
                 <td>
                     <input class="line-input line-qty" type="number" min="0.01" step="0.01" value="1" style="width:75px;">
-                </td>
-                <td>
-                    <button type="button" class="btn line-remove-btn" style="font-size:11px;padding:4px 8px;">Remove</button>
                 </td>
             `;
  
@@ -425,7 +447,7 @@
         };
         const renderReadOnlyLineRows = (lines) => {
             if (!Array.isArray(lines) || !lines.length) {
-                linesBody.innerHTML = '<tr><td class="empty-note" colspan="6">No lines found.</td></tr>';
+                linesBody.innerHTML = '<tr><td class="empty-note" colspan="5">No lines found.</td></tr>';
                 return;
             }
 
@@ -436,7 +458,6 @@
                     <td>${line.onhand_qty ?? '—'}</td>
                     <td>${line.unit ?? '—'}</td>
                     <td>${line.qty ?? '—'}</td>
-                    <td>—</td>
                 </tr>
             `).join('');
         };
@@ -451,7 +472,7 @@
             document.getElementById('tax-group-id').value      = '';
             document.getElementById('tax-item-group-id').value = '';
             projectSelect.value = '';
-            linesBody.innerHTML = '<tr><td class="empty-note" colspan="6">No lines added yet.</td></tr>';
+            linesBody.innerHTML = '<tr><td class="empty-note" colspan="5">No lines added yet.</td></tr>';
             itemsCache.clear();
             itemsLoaded = false;
             toggleNewLineBtn();
@@ -497,6 +518,7 @@
                 </td>
             `;
             journalsListBody.prepend(row);
+            applyJournalSearch();
         };
  
         /* ── Toolbar / form toggle ────────────────────────────────────── */
@@ -543,16 +565,6 @@
             linesBody.appendChild(createLineRow());
         });
  
-        /* ── Remove line ──────────────────────────────────────────────── */
-        linesBody.addEventListener('click', (e) => {
-            if (currentFormMode === 'view') return;
-            if (!e.target.classList.contains('line-remove-btn')) return;
-            e.target.closest('tr')?.remove();
-            if (!linesBody.querySelector('tr')) {
-                linesBody.innerHTML = '<tr><td class="empty-note" colspan="6">No lines added yet.</td></tr>';
-            }
-        });
- 
         /* ── Post journal ─────────────────────────────────────────────── */
         postBtn.addEventListener('click', async () => {
             if (currentFormMode === 'view') return;
@@ -574,7 +586,7 @@
  
                 const lines = lineRows.map((row, index) => {
                     const itemId = row.querySelector('.line-item-select')?.value?.trim() ?? '';
-                    const unit   = row.querySelector('.line-unit-select')?.value?.trim() ?? '';
+                    const unit   = row.querySelector('.line-unit-frozen')?.value?.trim() ?? '';
                     const qty    = Number(row.querySelector('.line-qty')?.value ?? 0);
                     const onhand = itemsCache.get(itemId)?.onhandQty ?? 0;
  
