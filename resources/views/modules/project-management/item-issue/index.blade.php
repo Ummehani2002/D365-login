@@ -268,6 +268,11 @@
         const toggleNewLineBtn = () => {
             newLineBtn.disabled = journalPostedLocked || !projectSelect.value || !itemsLoaded;
         };
+        const lockPostedJournalLineControls = () => {
+            linesBody.querySelectorAll('.line-item-select, .line-item-search, .line-qty').forEach((el) => {
+                el.disabled = true;
+            });
+        };
         const linesTheadCreateHtml = `
                                 <tr>
                                     <th style="min-width:200px;">Item ID</th>
@@ -322,6 +327,40 @@
             return '';
         };
 
+        const normalizeSearchText = (value) => String(value ?? '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const isSubsequenceMatch = (needle, haystack) => {
+            if (!needle) return true;
+            let i = 0;
+            for (const ch of haystack) {
+                if (ch === needle[i]) i += 1;
+                if (i >= needle.length) return true;
+            }
+            return false;
+        };
+
+        const isLooseMatch = (query, text) => {
+            const q = normalizeSearchText(query);
+            if (!q) return true;
+            const t = normalizeSearchText(text);
+            if (!t) return false;
+            if (t.includes(q)) return true;
+            const qTokens = q.split(' ').filter(Boolean);
+            const tTokens = t.split(' ').filter(Boolean);
+            const allTokenMatched = qTokens.every((token) =>
+                tTokens.some((word) =>
+                    word.includes(token) ||
+                    word.startsWith(token) ||
+                    isSubsequenceMatch(token, word)
+                )
+            );
+            return allTokenMatched || isSubsequenceMatch(q.replace(/\s+/g, ''), t.replace(/\s+/g, ''));
+        };
+
         const applyJournalSearch = () => {
             const q = journalSearchInput.value.trim().toLowerCase();
             journalsListBody.querySelector('tr.journal-no-results-msg')?.remove();
@@ -354,15 +393,15 @@
 
         const applyProjectFilter = () => {
             if (!projectSelect) return;
-            const query = (projectFilter?.value || '').trim().toLowerCase();
+            const query = (projectFilter?.value || '').trim();
             const selectedValue = projectSelect.value;
             Array.from(projectSelect.options).forEach((opt, idx) => {
                 if (idx === 0) {
                     opt.hidden = false;
                     return;
                 }
-                const haystack = `${opt.value} ${opt.textContent}`.toLowerCase();
-                opt.hidden = query !== '' && !haystack.includes(query);
+                const haystack = `${opt.value} ${opt.textContent}`;
+                opt.hidden = query !== '' && !isLooseMatch(query, haystack);
             });
 
             if (selectedValue && projectSelect.selectedOptions.length && projectSelect.selectedOptions[0].hidden) {
@@ -429,11 +468,10 @@
         /* ── Populate a <select> with items from cache ────────────────── */
         const populateItemSelect = (sel, query = '') => {
             const prev = sel.value;
-            const needle = query.trim().toLowerCase();
             sel.innerHTML = '<option value="">— Select item —</option>';
             itemsCache.forEach(({ id, name }) => {
-                const haystack = `${id} ${name}`.toLowerCase();
-                if (needle && !haystack.includes(needle)) return;
+                const haystack = `${id} ${name}`;
+                if (query && !isLooseMatch(query, haystack)) return;
                 const opt = document.createElement('option');
                 opt.value       = id;
                 opt.textContent = id;
@@ -559,6 +597,10 @@
             document.getElementById('tax-group-id').value      = '';
             document.getElementById('tax-item-group-id').value = '';
             projectSelect.value = '';
+            if (projectFilter) {
+                projectFilter.value = '';
+                applyProjectFilter();
+            }
             linesBody.innerHTML = '<tr><td class="empty-note" colspan="5">No lines added yet.</td></tr>';
             itemsCache.clear();
             itemsLoaded = false;
@@ -739,6 +781,7 @@
 
                 journalPostedLocked = true;
                 toggleNewLineBtn();
+                lockPostedJournalLineControls();
  
             } catch (err) {
                 showStatus(err.message, 'error');
