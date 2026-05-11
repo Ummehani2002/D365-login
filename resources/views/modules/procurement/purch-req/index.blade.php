@@ -454,6 +454,26 @@
             }
         }
 
+        function syncLineDescriptionFromItem(tr) {
+            if (!tr || currentViewOnly) return;
+            const itemInput = tr.querySelector('.lf-item-id');
+            const descInput = tr.querySelector('.lf-desc');
+            if (!itemInput || !descInput) return;
+
+            const itemId = itemInput.value.trim();
+            if (!itemId) {
+                return;
+            }
+
+            const selectedItem = getItemById(itemId);
+            const name = String(selectedItem?.name ?? '').trim();
+            if (!name) {
+                return;
+            }
+
+            descInput.value = name.slice(0, 255);
+        }
+
         function updateItemSelectForRow(tr, preferredItemId = '') {
             const itemInput = tr.querySelector('.lf-item-id');
             const itemList = tr.querySelector('.lf-item-id-list');
@@ -690,6 +710,7 @@
                 const tr = e.target.closest('tr');
                 if (tr) {
                     updateLineCategoryFromItem(tr);
+                    syncLineDescriptionFromItem(tr);
                     loadUnitsForRow(tr);
                 }
             }
@@ -700,6 +721,10 @@
             const tr = e.target.closest('tr');
             if (!tr) return;
             updateLineCategoryFromItem(tr);
+            const vid = e.target.value.trim();
+            if (vid && getItemById(vid)) {
+                syncLineDescriptionFromItem(tr);
+            }
         });
 
         linesBody.addEventListener('blur', (e) => {
@@ -707,6 +732,7 @@
                 const tr = e.target.closest('tr');
                 if (tr) {
                     updateLineCategoryFromItem(tr);
+                    syncLineDescriptionFromItem(tr);
                     loadUnitsForRow(tr);
                 }
             }
@@ -759,6 +785,7 @@
                     }
                     updateItemSelectForRow(tr, existingItem);
                     updateLineCategoryFromItem(tr);
+                    syncLineDescriptionFromItem(tr);
                 });
             } catch (err) {
                 showStatus('✗ ' + (err.message || 'Unable to load item catalog.'), 'error');
