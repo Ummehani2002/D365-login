@@ -236,6 +236,9 @@
         const companySelect    = document.getElementById('company-id');
         const projectSelect    = document.getElementById('project-id');
         const projectFilter    = document.getElementById('project-filter');
+        const allProjectOptions = Array.from(document.querySelectorAll('#project-id option'))
+            .slice(1)
+            .map((opt) => ({ value: opt.value, text: opt.textContent }));
         const itemsLoadingMsg  = document.getElementById('items-loading-msg');
         const csrfToken        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
  
@@ -395,16 +398,21 @@
             if (!projectSelect) return;
             const query = (projectFilter?.value || '').trim();
             const selectedValue = projectSelect.value;
-            Array.from(projectSelect.options).forEach((opt, idx) => {
-                if (idx === 0) {
-                    opt.hidden = false;
-                    return;
-                }
-                const haystack = `${opt.value} ${opt.textContent}`;
-                opt.hidden = query !== '' && !isLooseMatch(query, haystack);
+            const matched = query === ''
+                ? allProjectOptions
+                : allProjectOptions.filter((opt) => isLooseMatch(query, `${opt.value} ${opt.text}`));
+
+            projectSelect.innerHTML = '<option value="">Select a project...</option>';
+            matched.forEach((opt) => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.text;
+                projectSelect.appendChild(option);
             });
 
-            if (selectedValue && projectSelect.selectedOptions.length && projectSelect.selectedOptions[0].hidden) {
+            if (selectedValue && matched.some((opt) => opt.value === selectedValue)) {
+                projectSelect.value = selectedValue;
+            } else {
                 projectSelect.value = '';
             }
         };
