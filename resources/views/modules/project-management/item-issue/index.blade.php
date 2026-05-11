@@ -68,12 +68,32 @@
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
         .lines-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .lines-toolbar-title { font-size: 13px; font-weight: 600; color: #323130; }
-        .line-area { border: 1px solid #edebe9; border-radius: 2px; overflow: auto; }
+        .line-area {
+            border: 1px solid #edebe9;
+            border-radius: 2px;
+            overflow-x: auto;
+            overflow-y: visible;
+            position: relative;
+            padding-bottom: 220px;
+        }
         .line-item-picker { position: relative; min-width: 220px; }
         .line-item-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
-        .line-item-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; border: 1px solid #8a8886; border-radius: 2px; background: #fff; max-height: 240px; overflow-y: auto; z-index: 1200; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
-        .line-item-menu-head { display: grid; grid-template-columns: 150px 1fr; gap: 8px; font-size: 11px; font-weight: 600; color: #605e5c; background: #faf9f8; padding: 6px 8px; border-bottom: 1px solid #edebe9; }
-        .line-item-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; padding: 6px 8px; text-align: left; cursor: pointer; display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; }
+        .line-item-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            min-width: 560px;
+            width: max(100%, 560px);
+            border: 1px solid #8a8886;
+            border-radius: 2px;
+            background: #fff;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1200;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        }
+        .line-item-menu-head { display: grid; grid-template-columns: 180px 1fr; gap: 10px; font-size: 12px; font-weight: 600; color: #605e5c; background: #faf9f8; padding: 8px 10px; border-bottom: 1px solid #edebe9; }
+        .line-item-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; padding: 8px 10px; text-align: left; cursor: pointer; display: grid; grid-template-columns: 180px 1fr; gap: 10px; align-items: center; }
         .line-item-option:hover { background: #f3f2f1; }
         .line-item-empty { padding: 8px; font-size: 12px; color: #8a8886; }
         .line-item-id-col { color: #201f1e; }
