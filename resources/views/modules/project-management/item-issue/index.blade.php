@@ -69,8 +69,15 @@
         .lines-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .lines-toolbar-title { font-size: 13px; font-weight: 600; color: #323130; }
         .line-area { border: 1px solid #edebe9; border-radius: 2px; overflow: auto; }
-        .line-select { width: 100%; min-width: 160px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
-        .line-search { width: 100%; min-width: 160px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; margin-bottom: 6px; }
+        .line-item-picker { position: relative; min-width: 220px; }
+        .line-item-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
+        .line-item-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; border: 1px solid #8a8886; border-radius: 2px; background: #fff; max-height: 220px; overflow-y: auto; z-index: 30; }
+        .line-item-menu-head { display: grid; grid-template-columns: 150px 1fr; gap: 8px; font-size: 11px; font-weight: 600; color: #605e5c; background: #faf9f8; padding: 6px 8px; border-bottom: 1px solid #edebe9; }
+        .line-item-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; padding: 6px 8px; text-align: left; cursor: pointer; display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; }
+        .line-item-option:hover { background: #f3f2f1; }
+        .line-item-empty { padding: 8px; font-size: 12px; color: #8a8886; }
+        .line-item-id-col { color: #201f1e; }
+        .line-item-name-col { color: #605e5c; }
         .line-input { width: 80px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; }
         .onhand-badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-top: 3px; background: #f3f2f1; color: #605e5c; }
         .onhand-badge.ok { background: #dff6dd; color: #107c10; }
@@ -279,7 +286,7 @@
             newLineBtn.disabled = journalPostedLocked || !projectSelect.value || !itemsLoaded;
         };
         const lockPostedJournalLineControls = () => {
-            linesBody.querySelectorAll('.line-item-select, .line-item-search, .line-qty').forEach((el) => {
+            linesBody.querySelectorAll('.line-item-picker-input, .line-qty').forEach((el) => {
                 el.disabled = true;
             });
         };
@@ -335,6 +342,11 @@
                 return String(itemsCache.get(id).name ?? '').trim();
             }
             return '';
+        };
+        const shortText = (value, max = 15) => {
+            const text = String(value ?? '').trim();
+            if (text.length <= max) return text;
+            return text.slice(0, max) + '...';
         };
 
         const normalizeSearchText = (value) => String(value ?? '')
@@ -484,11 +496,15 @@
                 itemsLoaded = true;
                 toggleNewLineBtn();
  
-                // Refresh item selects already in the table
-                linesBody.querySelectorAll('.line-item-select').forEach(sel => {
-                    const current = sel.value;
-                    populateItemSelect(sel);
-                    if (current) sel.value = current;
+                // Clear selected items that are no longer in fetched list
+                linesBody.querySelectorAll('tr').forEach((row) => {
+                    const itemIdInput = row.querySelector('.line-item-id');
+                    const pickerInput = row.querySelector('.line-item-picker-input');
+                    const selectedId = itemIdInput?.value || '';
+                    if (!selectedId || itemsCache.has(selectedId)) return;
+                    if (itemIdInput) itemIdInput.value = '';
+                    if (pickerInput) pickerInput.value = '';
+                    fillItemDetails(row, '');
                 });
  
             } catch (err) {
@@ -496,22 +512,6 @@
             } finally {
                 itemsLoadingMsg.classList.add('hidden');
             }
-        };
- 
-        /* ── Populate a <select> with items from cache ────────────────── */
-        const populateItemSelect = (sel, query = '') => {
-            const prev = sel.value;
-            sel.innerHTML = '<option value="">— Select item —</option>';
-            itemsCache.forEach(({ id, name }) => {
-                const haystack = `${id} ${name}`;
-                if (query && !isLooseMatch(query, haystack)) return;
-                const opt = document.createElement('option');
-                opt.value       = id;
-                opt.textContent = id;
-                if (name) opt.title = name;
-                if (id === prev) opt.selected = true;
-                sel.appendChild(opt);
-            });
         };
  
         /* ── Fill description + on-hand + load units when item selected ── */
@@ -561,8 +561,11 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
-                    <input type="text" class="line-search line-item-search" placeholder="Search item id/name..." autocomplete="off">
-                    <select class="line-select line-item-select" style="min-width:180px;"></select>
+                    <div class="line-item-picker">
+                        <input type="text" class="line-item-picker-input" placeholder="Search item id/name..." autocomplete="off">
+                        <input type="hidden" class="line-item-id" value="">
+                        <div class="line-item-menu hidden"></div>
+                    </div>
                 </td>
                 <td>
                     <span class="line-desc" style="font-size:12px;color:#323130;">—</span>
@@ -578,24 +581,66 @@
                 </td>
             `;
  
-            const itemSel = row.querySelector('.line-item-select');
-            const itemSearch = row.querySelector('.line-item-search');
-            populateItemSelect(itemSel);
-            itemSearch.addEventListener('input', function () {
-                const current = itemSel.value;
-                populateItemSelect(itemSel, this.value || '');
-                if (current) {
-                    const stillExists = Array.from(itemSel.options).some((o) => o.value === current);
-                    itemSel.value = stillExists ? current : '';
+            const pickerInput = row.querySelector('.line-item-picker-input');
+            const itemIdInput = row.querySelector('.line-item-id');
+            const menu = row.querySelector('.line-item-menu');
+
+            const hideMenu = () => menu.classList.add('hidden');
+            const renderMenu = (query = '') => {
+                const q = (query || '').trim();
+                const matches = [];
+                itemsCache.forEach(({ id, name }) => {
+                    if (!q || isLooseMatch(q, `${id} ${name}`)) {
+                        matches.push({ id, name });
+                    }
+                });
+
+                if (matches.length === 0) {
+                    menu.innerHTML = '<div class="line-item-empty">No matching item.</div>';
+                } else {
+                    menu.innerHTML = `
+                        <div class="line-item-menu-head"><span>Item ID</span><span>Description</span></div>
+                        ${matches.map((item) => `
+                            <button type="button" class="line-item-option" data-item-id="${escapeHtml(item.id)}">
+                                <span class="line-item-id-col">${escapeHtml(item.id)}</span>
+                                <span class="line-item-name-col">${escapeHtml(shortText(item.name, 15) || '-')}</span>
+                            </button>
+                        `).join('')}
+                    `;
                 }
-                fillItemDetails(row, itemSel.value);
+                menu.classList.remove('hidden');
             });
  
-            itemSel.addEventListener('change', function () {
-                fillItemDetails(row, this.value);
-                const selected = this.selectedOptions[0];
-                if (selected && selected.value) {
-                    itemSearch.value = selected.value;
+            const selectItem = (itemId) => {
+                itemIdInput.value = itemId || '';
+                if (!itemId) {
+                    pickerInput.value = '';
+                    fillItemDetails(row, '');
+                    return;
+                }
+                const item = itemsCache.get(itemId);
+                pickerInput.value = item ? `${item.id} - ${shortText(item.name, 15)}` : itemId;
+                fillItemDetails(row, itemId);
+            };
+
+            pickerInput.addEventListener('focus', () => renderMenu(pickerInput.value || ''));
+            pickerInput.addEventListener('click', () => renderMenu(pickerInput.value || ''));
+            pickerInput.addEventListener('input', function () {
+                itemIdInput.value = '';
+                fillItemDetails(row, '');
+                renderMenu(this.value || '');
+            });
+
+            menu.addEventListener('click', (event) => {
+                const btn = event.target.closest('.line-item-option');
+                if (!btn) return;
+                selectItem(btn.getAttribute('data-item-id') || '');
+                hideMenu();
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!event.target.closest('.line-item-picker')) {
+                    hideMenu();
                 }
             });
  
@@ -722,8 +767,14 @@
             itemsCache.clear();
             itemsLoaded = false;
             toggleNewLineBtn();
-            linesBody.querySelectorAll('.line-item-select').forEach(sel => {
-                sel.innerHTML = '<option value="">— Select item —</option>';
+            linesBody.querySelectorAll('.line-item-id').forEach((input) => {
+                input.value = '';
+            });
+            linesBody.querySelectorAll('.line-item-picker-input').forEach((input) => {
+                input.value = '';
+            });
+            linesBody.querySelectorAll('.line-item-menu').forEach((menu) => {
+                menu.classList.add('hidden');
             });
             if (projId) loadItems();
         });
@@ -755,7 +806,7 @@
                 if (!lineRows.length) throw new Error('Add at least one item line before posting.');
  
                 const lines = lineRows.map((row, index) => {
-                    const itemId = row.querySelector('.line-item-select')?.value?.trim() ?? '';
+                    const itemId = row.querySelector('.line-item-id')?.value?.trim() ?? '';
                     const unit   = row.querySelector('.line-unit-frozen')?.value?.trim() ?? '';
                     const qty    = Number(row.querySelector('.line-qty')?.value ?? 0);
                     const onhand = itemsCache.get(itemId)?.onhandQty ?? 0;
