@@ -46,6 +46,7 @@
 @php
     $companyCode = strtoupper((string) ($company ?? $globalSelectedCompany ?? request()->query('company', '')));
     $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
+    $freezeGrnForm = $freezeGrnForm ?? (!empty($viewOnly ?? false));
 @endphp
 @include('settings.rbac.partials.sidebar')
 <main class="main">
@@ -61,7 +62,7 @@
                     <h1 class="title" id="po-title">{{ $purchaseId }}</h1>
                     <div class="vendor-sub">Vendor: <span id="vendor-sub">{{ $vendorName ?: '-' }}</span></div>
                 </div>
-                <button id="post-btn" class="btn btn-primary {{ !empty($viewOnly) ? 'hidden' : '' }}" type="button">Post</button>
+                <button id="post-btn" class="btn btn-primary {{ !empty($freezeGrnForm) ? 'hidden' : '' }}" type="button">Post</button>
             </div>
 
             <div id="status-box" class="status-box"></div>
@@ -70,8 +71,10 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id" {{ !empty($viewOnly) ? 'readonly' : '' }}></div>
-                <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($viewOnly) ? 'readonly' : '' }}></div>
+                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label>TRANSACTION DATE</label><input id="transaction-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label>PO DATE <span style="font-weight:400;color:#8a8886;">(from D365)</span></label><input id="po-date" type="text" readonly placeholder="—" title="Purchase order date returned from D365"></div>
             </div>
 
             <div class="card">
@@ -88,13 +91,11 @@
                             <th>Name</th>
                             <th>Ordered Qty</th>
                             <th>Remaining Qty</th>
-                            @if(empty($viewOnly))
-                                <th>ReceiveNow</th>
-                            @endif
+                            <th>Receive Now</th>
                         </tr>
                         </thead>
                         <tbody id="lines-body">
-                        <tr><td colspan="{{ empty($viewOnly) ? 6 : 5 }}" class="empty-note">Loading line items...</td></tr>
+                        <tr><td colspan="6" class="empty-note">Loading line items...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -109,6 +110,8 @@
     const vendorName = @json($vendorName);
     const projectId = @json($projectId);
     const isViewOnly = @json(!empty($viewOnly));
+    const freezeGrnForm = @json(!empty($freezeGrnForm));
+    const grnJournalPayload = @json($grnJournalPayload ?? null);
 
     const els = {
         backBtn: document.getElementById('back-btn'),
@@ -119,6 +122,8 @@
         projectId: document.getElementById('project-id'),
         packingSlipId: document.getElementById('packing-slip-id'),
         documentDate: document.getElementById('document-date'),
+        transactionDate: document.getElementById('transaction-date'),
+        poDate: document.getElementById('po-date'),
         linesBody: document.getElementById('lines-body'),
         lineCount: document.getElementById('line-count-note'),
     };
@@ -128,24 +133,52 @@
         els.statusBox.textContent = text || '';
     }
 
+    function formatReceiveQty(val) {
+        if (val === undefined || val === null || val === '') return '';
+        const n = Number(val);
+        return Number.isFinite(n) ? n.toFixed(2) : String(val);
+    }
+
+    function mergePostedReceiveQuantities(apiLines) {
+        const posted = grnJournalPayload?.posted_lines;
+        if (!Array.isArray(apiLines) || !Array.isArray(posted) || posted.length === 0) {
+            return apiLines || [];
+        }
+        return apiLines.map((line) => {
+            const match = posted.find((p) =>
+                Number(p.LineNumber) === Number(line.line_number) &&
+                String(p.PurchLineRecId ?? '') === String(line.line_rec_id ?? '')
+            );
+            const rq = match != null ? formatReceiveQty(match.ReceiveNow) : (line.receive_qty ?? '');
+            return { ...line, receive_qty: rq };
+        });
+    }
+
     function renderLineRows(lines) {
         if (!Array.isArray(lines) || lines.length === 0) {
             els.lineCount.textContent = '0 line';
-            els.linesBody.innerHTML = `<tr><td colspan="${isViewOnly ? 5 : 6}" class="empty-note">No line items found.</td></tr>`;
+            els.linesBody.innerHTML = `<tr><td colspan="6" class="empty-note">No line items found.</td></tr>`;
             return;
         }
 
+        const showReceiveReadonly = freezeGrnForm || isViewOnly;
+
         els.lineCount.textContent = `${lines.length} line${lines.length > 1 ? 's' : ''}`;
-        els.linesBody.innerHTML = lines.map((line) => `
+        els.linesBody.innerHTML = lines.map((line) => {
+            const rq = line.receive_qty;
+            const receiveCell = showReceiveReadonly
+                ? `<td>${(rq !== undefined && rq !== null && rq !== '') ? formatReceiveQty(rq) : '—'}</td>`
+                : `<td><input class="qty-input" type="number" step="0.01" min="0" value="${rq ?? ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>`;
+            return `
             <tr data-line-number="${line.line_number || ''}" data-line-rec-id="${line.line_rec_id || ''}">
                 <td>${line.line_number || '-'}</td>
                 <td>${line.item_id || '-'}</td>
                 <td>${line.name || '-'}</td>
                 <td>${line.ordered_qty || '0.00'}</td>
                 <td>${line.remaining_qty || '0.00'}</td>
-                ${isViewOnly ? '' : `<td><input class="qty-input" type="number" step="0.01" min="0" value="${line.receive_qty || ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>`}
-            </tr>
-        `).join('');
+                ${receiveCell}
+            </tr>`;
+        }).join('');
     }
 
     async function loadLines() {
@@ -172,23 +205,43 @@
 
             const header = data.header || {};
             els.purchaseOrder.value = header.purchase_order || purchaseId;
-            els.vendorName.value = header.vendor_name || vendorName || '-';
-            els.projectId.value = header.project_id || projectId || '-';
-            els.packingSlipId.value = header.packing_slip_id || '';
-            els.documentDate.value = header.document_date || '';
 
-            renderLineRows(data.lines || []);
+            if (grnJournalPayload) {
+                els.packingSlipId.value = grnJournalPayload.packing_slip_id || '';
+                els.documentDate.value = grnJournalPayload.document_date || '';
+                if (grnJournalPayload.vendor_name) {
+                    els.vendorName.value = grnJournalPayload.vendor_name;
+                } else {
+                    els.vendorName.value = header.vendor_name || vendorName || '-';
+                }
+                if (grnJournalPayload.project_id) {
+                    els.projectId.value = grnJournalPayload.project_id;
+                } else {
+                    els.projectId.value = header.project_id || projectId || '-';
+                }
+            } else {
+                els.vendorName.value = header.vendor_name || vendorName || '-';
+                els.projectId.value = header.project_id || projectId || '-';
+                els.packingSlipId.value = header.packing_slip_id || '';
+                els.documentDate.value = header.document_date || '';
+            }
+
+            els.transactionDate.value = header.transaction_date || '';
+            els.poDate.value = header.po_date || '';
+
+            const mergedLines = mergePostedReceiveQuantities(data.lines || []);
+            renderLineRows(mergedLines);
             setStatus('success', `Loaded ${Array.isArray(data.lines) ? data.lines.length : 0} line(s).`);
         } catch (e) {
             setStatus('error', e.message || 'Line item lookup failed.');
-            els.linesBody.innerHTML = `<tr><td colspan="${isViewOnly ? 5 : 6}" class="empty-note">Unable to load line items.</td></tr>`;
+            els.linesBody.innerHTML = `<tr><td colspan="6" class="empty-note">Unable to load line items.</td></tr>`;
         }
     }
 
     els.backBtn.addEventListener('click', () => {
         window.location.href = "{{ route('modules.procurement.grn', $companyQuery) }}";
     });
-    if (!isViewOnly) {
+    if (!freezeGrnForm) {
     els.postBtn.addEventListener('click', () => {
         const packingSlipId = (els.packingSlipId.value || '').trim();
         const documentDate = (els.documentDate.value || '').trim();
@@ -247,6 +300,9 @@
                 purchase_id: (els.purchaseOrder.value || '').trim(),
                 packing_slip_id: packingSlipId,
                 document_date: documentDate,
+                transaction_date: (els.transactionDate.value || '').trim() || null,
+                vendor_name: (els.vendorName.value || '').trim(),
+                project_id: (els.projectId.value || '').trim(),
                 lines: lines,
             }),
         })

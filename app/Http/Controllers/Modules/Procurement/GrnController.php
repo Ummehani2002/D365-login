@@ -83,15 +83,40 @@ class GrnController extends Controller
             'vendor_name' => ['nullable', 'string', 'max:255'],
             'project_id'  => ['nullable', 'string', 'max:100'],
             'view_only'   => ['nullable', 'boolean'],
+            'journal_id'  => ['nullable', 'integer', 'exists:grn_journals,id'],
         ]);
         $this->assertCompanyAccess((string) $validated['company']);
 
+        $grnJournalPayload = null;
+        if (! empty($validated['journal_id'])) {
+            $journal = GrnJournal::query()->find((int) $validated['journal_id']);
+            if ($journal !== null) {
+                if (strtoupper((string) $journal->company) !== strtoupper(trim($validated['company']))) {
+                    abort(403, 'This GRN record does not belong to the selected company.');
+                }
+                $this->assertCompanyAccess((string) $journal->company);
+                $grnJournalPayload = [
+                    'id'              => $journal->id,
+                    'request_id'      => $journal->request_id,
+                    'packing_slip_id' => $journal->packing_slip_id,
+                    'document_date'   => optional($journal->document_date)->format('Y-m-d'),
+                    'vendor_name'     => $journal->vendor_name,
+                    'project_id'      => $journal->project_id,
+                    'posted_lines'    => is_array($journal->lines) ? $journal->lines : [],
+                ];
+            }
+        }
+
+        $freezeGrnForm = ((bool) ($validated['view_only'] ?? false)) || $grnJournalPayload !== null;
+
         return view('modules.procurement.grn.view', [
-            'company'     => trim($validated['company']),
-            'purchaseId'  => trim($validated['purchase_id']),
-            'vendorName'  => trim((string) ($validated['vendor_name'] ?? '')),
-            'projectId'   => trim((string) ($validated['project_id'] ?? '')),
-            'viewOnly'    => (bool) ($validated['view_only'] ?? false),
+            'company'           => trim($validated['company']),
+            'purchaseId'        => trim($validated['purchase_id']),
+            'vendorName'        => trim((string) ($validated['vendor_name'] ?? '')),
+            'projectId'         => trim((string) ($validated['project_id'] ?? '')),
+            'viewOnly'          => (bool) ($validated['view_only'] ?? false),
+            'grnJournalPayload' => $grnJournalPayload,
+            'freezeGrnForm'     => $freezeGrnForm,
         ]);
     }
 
@@ -110,16 +135,29 @@ class GrnController extends Controller
         try {
             $raw   = $service->lookupLines(trim($validated['company']), trim($validated['purchase_id']));
             $lines = $this->normalizeLineRows($raw);
+            $poDateFormatted = $this->extractPurchaseOrderDate($raw);
+
+            $vendorIn  = trim((string) ($validated['vendor_name'] ?? ''));
+            $projectIn = trim((string) ($validated['project_id'] ?? ''));
+            $headerVp  = $this->enrichVendorProjectFromRaw($raw, $vendorIn, $projectIn);
+            if ($lines !== []) {
+                $firstRaw = $lines[0]['_raw'] ?? null;
+                if (is_array($firstRaw)) {
+                    $headerVp = $this->enrichVendorProjectFromRaw($firstRaw, $headerVp['vendor_name'], $headerVp['project_id']);
+                }
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'GRN line details fetched from D365.',
                 'header' => [
-                    'purchase_order'  => $validated['purchase_id'],
-                    'vendor_name'     => trim((string) ($validated['vendor_name'] ?? '')) ?: '-',
-                    'project_id'      => trim((string) ($validated['project_id'] ?? '')) ?: '-',
-                    'packing_slip_id' => '',
-                    'document_date'   => '',
+                    'purchase_order'    => $validated['purchase_id'],
+                    'vendor_name'       => $headerVp['vendor_name'],
+                    'project_id'        => $headerVp['project_id'],
+                    'packing_slip_id'   => '',
+                    'document_date'     => '',
+                    'transaction_date'  => '',
+                    'po_date'           => $poDateFormatted ?? '',
                 ],
                 'lines' => $lines,
                 'data'  => $raw,
@@ -139,6 +177,9 @@ class GrnController extends Controller
             'purchase_id'                => ['required', 'string', 'max:100'],
             'packing_slip_id'            => ['required', 'string', 'max:100'],
             'document_date'              => ['required', 'date'],
+            'transaction_date'           => ['nullable', 'date'],
+            'vendor_name'                => ['nullable', 'string', 'max:255'],
+            'project_id'                 => ['nullable', 'string', 'max:100'],
             'lines'                      => ['required', 'array', 'min:1'],
             'lines.*.line_number'        => ['required', 'integer', 'min:1'],
             'lines.*.line_rec_id'        => ['required'],
@@ -151,11 +192,16 @@ class GrnController extends Controller
             $requestId  = $this->generatePackingRequestId($purchaseId);
 
             $header = [
-                'RequestID'      => $requestId,
-                'PackingSlipDate'=> $validated['document_date'],
-                'PurchId'        => $purchaseId,
-                'PackingSlipID'  => trim($validated['packing_slip_id']),
+                'RequestID'       => $requestId,
+                'PackingSlipDate' => $validated['document_date'],
+                'PurchId'         => $purchaseId,
+                'PackingSlipID'   => trim($validated['packing_slip_id']),
             ];
+
+            $transDate = trim((string) ($validated['transaction_date'] ?? ''));
+            if ($transDate !== '') {
+                $header['TransactionDate'] = $transDate;
+            }
 
             $lines = array_map(fn (array $line) => [
                 'LineNumber'      => (int) $line['line_number'],
@@ -183,8 +229,8 @@ class GrnController extends Controller
                 'request_id'      => $requestId,
                 'company'         => trim($validated['company']),
                 'purch_id'        => $purchaseId,
-                'project_id'      => null,
-                'vendor_name'     => null,
+                'project_id'      => trim((string) ($validated['project_id'] ?? '')) ?: null,
+                'vendor_name'     => trim((string) ($validated['vendor_name'] ?? '')) ?: null,
                 'packing_slip_id' => $packingSlipId,
                 'document_date'   => $validated['document_date'],
                 'lines'           => $lines,
@@ -376,5 +422,87 @@ class GrnController extends Controller
     {
         $base = preg_replace('/[^A-Za-z0-9\-]/', '', strtoupper($purchaseId)) ?: 'REQ';
         return $base . '-' . now()->format('YmdHisv');
+    }
+
+    /**
+     * Fill vendor / project from D365 payload when the URL did not pass them (common when opening PO by id only).
+     *
+     * @return array{vendor_name: string, project_id: string}
+     */
+    private function enrichVendorProjectFromRaw(array $raw, string $vendorIn, string $projectIn): array
+    {
+        $vendor = trim($vendorIn);
+        $project = trim($projectIn);
+        if ($vendor === '-') {
+            $vendor = '';
+        }
+        if ($project === '-') {
+            $project = '';
+        }
+
+        if ($vendor === '') {
+            $v = $this->pickValue($raw, [
+                'VendorName', 'VendName', 'VendorAccount', 'InvoiceAccount', 'OrderAccount', 'PurchName',
+                'Vendor', 'AccountNum', 'VendorPartyNumber',
+            ]);
+            if ($v !== null) {
+                $vendor = $v;
+            }
+        }
+
+        if ($project === '') {
+            $p = $this->pickValue($raw, [
+                'ProjId', 'ProjectId', 'ProjectWarehouse', 'Warehouse', 'ProjWarehouse',
+                'SiteId', 'InventSiteId', 'DeliveryName', 'ProjTableRefId',
+            ]);
+            if ($p !== null) {
+                $project = $p;
+            }
+        }
+
+        return [
+            'vendor_name' => ($vendor !== '') ? $vendor : '-',
+            'project_id'  => ($project !== '') ? $project : '-',
+        ];
+    }
+
+    /**
+     * Best-effort PO / order date from D365 line lookup JSON (field names vary by service).
+     */
+    private function extractPurchaseOrderDate(array $raw): ?string
+    {
+        $candidates = [
+            'PurchOrderDate', 'OrderDate', 'PurchaseOrderDate', 'PurchDate', 'OrderCreatedDate',
+            'CreatedDate', 'AccountingDate', 'DocumentDate', 'RequestedReceiptDate', 'confirmedDlv',
+            'ConfirmedDlv', 'DeliveryDate', 'PurchaseOrderCreatedDate',
+        ];
+        $picked = $this->pickValue($raw, $candidates);
+        if ($picked === null) {
+            return null;
+        }
+
+        return $this->normalizeDateForDisplay($picked);
+    }
+
+    private function normalizeDateForDisplay(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('#^/Date\((\d+)\)/?$#', $value, $m)) {
+            return gmdate('Y-m-d', (int) (((int) $m[1]) / 1000));
+        }
+
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $value, $m)) {
+            return $m[1];
+        }
+
+        try {
+            return (new \DateTimeImmutable($value))->format('Y-m-d');
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 }

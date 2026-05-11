@@ -96,6 +96,7 @@
                                                 <button
                                                     type="button"
                                                     class="btn btn-view open-grn-btn"
+                                                    data-journal-id="{{ $j->id }}"
                                                     data-company="{{ $j->company }}"
                                                     data-purchase-id="{{ $j->purch_id }}"
                                                     data-vendor-name="{{ $j->vendor_name }}"
@@ -310,6 +311,10 @@
                     project_id: btn.getAttribute('data-project-id') || '',
                     view_only: '1',
                 });
+                const jid = btn.getAttribute('data-journal-id');
+                if (jid) {
+                    params.set('journal_id', jid);
+                }
                 window.location.href = `{{ route('modules.procurement.grn.view') }}?${params.toString()}`;
             });
         });
