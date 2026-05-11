@@ -145,6 +145,34 @@ class GrnController extends Controller
                 if (is_array($firstRaw)) {
                     $headerVp = $this->enrichVendorProjectFromRaw($firstRaw, $headerVp['vendor_name'], $headerVp['project_id']);
                 }
+                foreach ($lines as $line) {
+                    if (($headerVp['vendor_name'] ?? '-') !== '-') {
+                        break;
+                    }
+                    $lr = $line['_raw'] ?? null;
+                    if (is_array($lr)) {
+                        $headerVp = $this->enrichVendorProjectFromRaw($lr, $headerVp['vendor_name'], $headerVp['project_id']);
+                    }
+                }
+            }
+
+            if (($headerVp['vendor_name'] ?? '-') === '-') {
+                $fromPurchLookup = $this->resolveVendorFromPurchHeaderLookup(
+                    $service,
+                    trim($validated['company']),
+                    trim($validated['purchase_id'])
+                );
+                if ($fromPurchLookup !== null && $fromPurchLookup !== '') {
+                    $headerVp['vendor_name'] = $fromPurchLookup;
+                }
+            }
+
+            if ($poDateFormatted === null || $poDateFormatted === '') {
+                $poDateFormatted = $this->extractPurchaseOrderDateFromPurchLookup(
+                    $service,
+                    trim($validated['company']),
+                    trim($validated['purchase_id'])
+                ) ?? $poDateFormatted;
             }
 
             return response()->json([
@@ -442,8 +470,11 @@ class GrnController extends Controller
 
         if ($vendor === '') {
             $v = $this->pickValue($raw, [
+                'Purch name', 'PurchName', 'Purch_Name', 'Purch Name',
                 'VendorName', 'VendName', 'VendorAccount', 'InvoiceAccount', 'OrderAccount', 'PurchName',
-                'Vendor', 'AccountNum', 'VendorPartyNumber',
+                'Vendor', 'AccountNum', 'VendorPartyNumber', 'VendorPartyName',
+                'OrderingVendorAccountNumber', 'VendorAccountNumber', 'VendAccount', 'OrderedVendorAccountNumber',
+                'LedgerVendorAccount', 'VendorInformation_OrganizationName',
             ]);
             if ($v !== null) {
                 $vendor = $v;
@@ -503,6 +534,54 @@ class GrnController extends Controller
             return (new \DateTimeImmutable($value))->format('Y-m-d');
         } catch (\Throwable) {
             return $value;
+        }
+    }
+
+    /**
+     * GRN purch-id lookup often returns vendor display name while purch-line service does not.
+     */
+    private function resolveVendorFromPurchHeaderLookup(D365GrnService $service, string $company, string $purchaseId): ?string
+    {
+        try {
+            $lookupRaw = $service->lookup($company, $purchaseId, '', '');
+            $rows       = $this->normalizeRows($lookupRaw);
+            $needle     = strtoupper(trim($purchaseId));
+
+            foreach ($rows as $row) {
+                $po = strtoupper(trim((string) ($row['purchase_order'] ?? '')));
+                if ($po !== '' && ($po === $needle || str_contains($po, $needle) || str_contains($needle, $po))) {
+                    $v = trim((string) ($row['vendor_name'] ?? ''));
+                    if ($v !== '' && $v !== '-') {
+                        return $v;
+                    }
+                }
+            }
+
+            foreach ($rows as $row) {
+                $v = trim((string) ($row['vendor_name'] ?? ''));
+                if ($v !== '' && $v !== '-') {
+                    return $v;
+                }
+            }
+
+            $fromRaw = $this->pickValue($lookupRaw, [
+                'Purch name', 'PurchName', 'Purch_Name', 'VendorName', 'VendName',
+            ]);
+
+            return ($fromRaw !== null && trim($fromRaw) !== '') ? trim($fromRaw) : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function extractPurchaseOrderDateFromPurchLookup(D365GrnService $service, string $company, string $purchaseId): ?string
+    {
+        try {
+            $lookupRaw = $service->lookup($company, $purchaseId, '', '');
+
+            return $this->extractPurchaseOrderDate($lookupRaw);
+        } catch (Throwable) {
+            return null;
         }
     }
 }

@@ -119,6 +119,7 @@
         statusBox: document.getElementById('status-box'),
         purchaseOrder: document.getElementById('purchase-order'),
         vendorName: document.getElementById('vendor-name'),
+        vendorSub: document.getElementById('vendor-sub'),
         projectId: document.getElementById('project-id'),
         packingSlipId: document.getElementById('packing-slip-id'),
         documentDate: document.getElementById('document-date'),
@@ -131,6 +132,12 @@
     function setStatus(type, text) {
         els.statusBox.className = 'status-box ' + (type || '');
         els.statusBox.textContent = text || '';
+    }
+
+    function syncVendorSubtitle() {
+        if (els.vendorSub) {
+            els.vendorSub.textContent = (els.vendorName.value || '').trim() || '—';
+        }
     }
 
     function formatReceiveQty(val) {
@@ -229,6 +236,8 @@
             els.transactionDate.value = header.transaction_date || '';
             els.poDate.value = header.po_date || '';
 
+            syncVendorSubtitle();
+
             const mergedLines = mergePostedReceiveQuantities(data.lines || []);
             renderLineRows(mergedLines);
             setStatus('success', `Loaded ${Array.isArray(data.lines) ? data.lines.length : 0} line(s).`);
@@ -323,6 +332,7 @@
     });
     }
 
+    syncVendorSubtitle();
     loadLines();
 </script>
 </body>
