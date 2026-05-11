@@ -262,18 +262,59 @@
         const toggleNewLineBtn = () => {
             newLineBtn.disabled = !projectSelect.value || !itemsLoaded;
         };
+        const linesTheadCreateHtml = `
+                                <tr>
+                                    <th style="min-width:200px;">Item ID</th>
+                                    <th style="min-width:240px;">Description</th>
+                                    <th style="min-width:90px;">On Hand</th>
+                                    <th style="min-width:110px;">Unit</th>
+                                    <th style="min-width:80px;">Qty</th>
+                                </tr>`;
+        const linesTheadViewHtml = `
+                                <tr>
+                                    <th style="min-width:200px;">Item ID</th>
+                                    <th style="min-width:280px;">Description</th>
+                                    <th style="min-width:110px;">Unit</th>
+                                    <th style="min-width:80px;">Qty</th>
+                                </tr>`;
+
+        const applyJournalLinesTableMode = (isViewMode) => {
+            const thead = document.querySelector('#lines-table thead');
+            if (!thead) return;
+            thead.innerHTML = isViewMode ? linesTheadViewHtml : linesTheadCreateHtml;
+        };
+
         const setFormMode = (mode) => {
             currentFormMode = mode;
             const isViewMode = mode === 'view';
             document.querySelector('.journal-title').textContent = isViewMode ? 'View Journal' : 'New Journal';
             postBtn.classList.toggle('hidden', isViewMode);
             newLineBtn.classList.toggle('hidden', isViewMode);
+            applyJournalLinesTableMode(isViewMode);
             formView.querySelectorAll('input, select').forEach((el) => {
                 if (el.id === 'journal-id' || el.type === 'hidden') return;
                 el.disabled = isViewMode;
             });
         };
         const buildJournalUrl = (template, journalId) => template.replace('__JOURNAL__', encodeURIComponent(journalId));
+
+        const escapeHtml = (s) => String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        const resolveLineDescription = (line) => {
+            const fromStored = line.item_name ?? line.item_description ?? line.description;
+            if (fromStored != null && String(fromStored).trim() !== '') {
+                return String(fromStored).trim();
+            }
+            const id = String(line.item_id ?? '').trim();
+            if (id && itemsCache.has(id)) {
+                return String(itemsCache.get(id).name ?? '').trim();
+            }
+            return '';
+        };
 
         const applyJournalSearch = () => {
             const q = journalSearchInput.value.trim().toLowerCase();
@@ -447,19 +488,20 @@
         };
         const renderReadOnlyLineRows = (lines) => {
             if (!Array.isArray(lines) || !lines.length) {
-                linesBody.innerHTML = '<tr><td class="empty-note" colspan="5">No lines found.</td></tr>';
+                linesBody.innerHTML = '<tr><td class="empty-note" colspan="4">No lines found.</td></tr>';
                 return;
             }
 
-            linesBody.innerHTML = lines.map((line) => `
+            linesBody.innerHTML = lines.map((line) => {
+                const desc = resolveLineDescription(line);
+                return `
                 <tr>
-                    <td>${line.item_id ?? '—'}</td>
-                    <td>${line.item_name ?? line.description ?? '—'}</td>
-                    <td>${line.onhand_qty ?? '—'}</td>
-                    <td>${line.unit ?? '—'}</td>
-                    <td>${line.qty ?? '—'}</td>
-                </tr>
-            `).join('');
+                    <td>${escapeHtml(line.item_id ?? '—')}</td>
+                    <td>${desc ? escapeHtml(desc) : '—'}</td>
+                    <td>${escapeHtml(line.unit ?? '—')}</td>
+                    <td>${escapeHtml(line.qty ?? '—')}</td>
+                </tr>`;
+            }).join('');
         };
  
         /* ── Reset form ───────────────────────────────────────────────── */
@@ -497,6 +539,13 @@
             document.getElementById('invent-location-id').value = journal.invent_location_id || '';
             document.getElementById('tax-group-id').value = journal.tax_group_id || '';
             document.getElementById('tax-item-group-id').value = journal.tax_item_group_id || '';
+            try {
+                if (journal.project_id && companySelect.value) {
+                    await loadItems();
+                }
+            } catch (_) {
+                /* cache may stay empty; description still uses stored item_name */
+            }
             renderReadOnlyLineRows(journal.lines || []);
         };
  
@@ -598,6 +647,7 @@
                     return {
                         project_id:     projectId,
                         item_id:        itemId,
+                        item_name:      itemsCache.get(itemId)?.name ?? '',
                         category:       'Material',
                         currency:       'AED',
                         sales_price:    0,

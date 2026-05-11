@@ -97,6 +97,7 @@ class ItemIssueController extends Controller
             'lines'               => ['required', 'array', 'min:1'],
             'lines.*.project_id'  => ['required', 'string', 'max:100'],
             'lines.*.item_id'     => ['required', 'string', 'max:100'],
+            'lines.*.item_name'   => ['nullable', 'string', 'max:500'],
             'lines.*.category'    => ['required', 'string', 'max:100'],
             'lines.*.currency'    => ['required', 'string', 'max:20'],
             'lines.*.sales_price' => ['required', 'numeric'],
