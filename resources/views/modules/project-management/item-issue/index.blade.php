@@ -609,7 +609,7 @@
                     `;
                 }
                 menu.classList.remove('hidden');
-            });
+            };
  
             const selectItem = (itemId) => {
                 itemIdInput.value = itemId || '';
