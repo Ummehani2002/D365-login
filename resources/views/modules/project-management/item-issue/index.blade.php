@@ -56,7 +56,12 @@
         .fields { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
         .field label { display: block; font-size: 12px; margin-bottom: 4px; color: #605e5c; font-weight: 500; }
         .field input, .field select { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 13px; background: #fff; }
-        .field-filter { margin-bottom: 6px; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 12px; width: 100%; }
+        .project-picker { position: relative; }
+        .project-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 13px; background: #fff; }
+        .project-picker-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #8a8886; border-radius: 2px; max-height: 240px; overflow-y: auto; z-index: 20; }
+        .project-picker-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; text-align: left; padding: 7px 8px; font-size: 13px; cursor: pointer; }
+        .project-picker-option:hover { background: #f3f2f1; }
+        .project-picker-empty { padding: 9px 8px; font-size: 12px; color: #8a8886; }
         .field input[readonly] { background: #f3f2f1; color: #605e5c; cursor: not-allowed; }
         .status-box { margin-bottom: 10px; padding: 8px 10px; border-radius: 2px; font-size: 13px; display: none; }
         .status-box.success { display: block; background: #e8f6ee; color: #1f7a48; }
@@ -165,13 +170,11 @@
                         <input id="company-id" type="hidden" value="{{ strtoupper((string) ($currentCompanyCode ?? '')) }}">
                         <div class="field">
                             <label>Project</label>
-                            <input id="project-filter" class="field-filter" type="text" placeholder="Search project..." autocomplete="off">
-                            <select id="project-id">
-                                <option value="">Select a project...</option>
-                                @foreach($projects as $project)
-                                    <option value="{{ $project->d365_id }}">{{ $project->d365_id }} – {{ $project->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="project-picker">
+                                <input id="project-picker-input" class="project-picker-input" type="text" placeholder="Select a project..." autocomplete="off">
+                                <input id="project-id" type="hidden" value="">
+                                <div id="project-picker-menu" class="project-picker-menu hidden"></div>
+                            </div>
                         </div>
                         <div class="field">
                             <label>Tax Group ID</label>
@@ -235,10 +238,14 @@
         const statusBox        = document.getElementById('status-box');
         const companySelect    = document.getElementById('company-id');
         const projectSelect    = document.getElementById('project-id');
-        const projectFilter    = document.getElementById('project-filter');
-        const allProjectOptions = Array.from(document.querySelectorAll('#project-id option'))
-            .slice(1)
-            .map((opt) => ({ value: opt.value, text: opt.textContent }));
+        const projectPickerInput = document.getElementById('project-picker-input');
+        const projectPickerMenu  = document.getElementById('project-picker-menu');
+        const allProjectOptions = @json(
+            $projects->map(fn ($project) => [
+                'value' => (string) $project->d365_id,
+                'text' => (string) ($project->d365_id . ' – ' . $project->name),
+            ])->values()
+        );
         const itemsLoadingMsg  = document.getElementById('items-loading-msg');
         const csrfToken        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
  
@@ -394,30 +401,48 @@
 
         journalSearchInput.addEventListener('input', applyJournalSearch);
 
-        const applyProjectFilter = () => {
-            if (!projectSelect) return;
-            const query = (projectFilter?.value || '').trim();
-            const selectedValue = projectSelect.value;
-            const matched = query === ''
-                ? allProjectOptions
-                : allProjectOptions.filter((opt) => isLooseMatch(query, `${opt.value} ${opt.text}`));
-
-            projectSelect.innerHTML = '<option value="">Select a project...</option>';
-            matched.forEach((opt) => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.text;
-                projectSelect.appendChild(option);
-            });
-
-            if (selectedValue && matched.some((opt) => opt.value === selectedValue)) {
-                projectSelect.value = selectedValue;
-            } else {
-                projectSelect.value = '';
-            }
+        const hideProjectMenu = () => {
+            projectPickerMenu.classList.add('hidden');
         };
 
-        projectFilter?.addEventListener('input', applyProjectFilter);
+        const renderProjectMenu = (query = '') => {
+            const q = query.trim();
+            const matched = q === ''
+                ? allProjectOptions
+                : allProjectOptions.filter((opt) => isLooseMatch(q, `${opt.value} ${opt.text}`));
+
+            if (matched.length === 0) {
+                projectPickerMenu.innerHTML = '<div class="project-picker-empty">No matching project.</div>';
+            } else {
+                projectPickerMenu.innerHTML = matched.map((opt) =>
+                    `<button type="button" class="project-picker-option" data-value="${escapeHtml(opt.value)}" data-text="${escapeHtml(opt.text)}">${escapeHtml(opt.text)}</button>`
+                ).join('');
+            }
+            projectPickerMenu.classList.remove('hidden');
+        };
+        const syncProjectPickerFromValue = () => {
+            const selected = allProjectOptions.find((opt) => opt.value === (projectSelect.value || '').trim());
+            projectPickerInput.value = selected ? selected.text : '';
+        };
+        projectPickerInput?.addEventListener('focus', () => renderProjectMenu(projectPickerInput.value || ''));
+        projectPickerInput?.addEventListener('click', () => renderProjectMenu(projectPickerInput.value || ''));
+        projectPickerInput?.addEventListener('input', () => {
+            projectSelect.value = '';
+            renderProjectMenu(projectPickerInput.value || '');
+            projectSelect.dispatchEvent(new Event('change'));
+        });
+        projectPickerMenu?.addEventListener('click', (event) => {
+            const btn = event.target.closest('.project-picker-option');
+            if (!btn) return;
+            projectSelect.value = btn.getAttribute('data-value') || '';
+            projectPickerInput.value = btn.getAttribute('data-text') || '';
+            hideProjectMenu();
+            projectSelect.dispatchEvent(new Event('change'));
+        });
+        document.addEventListener('click', (event) => {
+            const picker = event.target.closest('.project-picker');
+            if (!picker) hideProjectMenu();
+        });
  
         /* ── JSON POST helper ─────────────────────────────────────────── */
         const callPost = async (url, body) => {
@@ -605,10 +630,7 @@
             document.getElementById('tax-group-id').value      = '';
             document.getElementById('tax-item-group-id').value = '';
             projectSelect.value = '';
-            if (projectFilter) {
-                projectFilter.value = '';
-                applyProjectFilter();
-            }
+            projectPickerInput.value = '';
             linesBody.innerHTML = '<tr><td class="empty-note" colspan="5">No lines added yet.</td></tr>';
             itemsCache.clear();
             itemsLoaded = false;
@@ -630,6 +652,7 @@
             document.getElementById('journal-id').value = journal.journal_id || '—';
             companySelect.value = journal.company || '';
             projectSelect.value = journal.project_id || '';
+            syncProjectPickerFromValue();
             document.getElementById('description').value = journal.description || '';
             document.getElementById('request-id').value = journal.request_id || '';
             document.getElementById('invent-site-id').value = journal.invent_site_id || '';
