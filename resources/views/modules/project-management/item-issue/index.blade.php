@@ -71,7 +71,7 @@
         .line-area { border: 1px solid #edebe9; border-radius: 2px; overflow: auto; }
         .line-item-picker { position: relative; min-width: 220px; }
         .line-item-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
-        .line-item-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; border: 1px solid #8a8886; border-radius: 2px; background: #fff; max-height: 220px; overflow-y: auto; z-index: 30; }
+        .line-item-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; border: 1px solid #8a8886; border-radius: 2px; background: #fff; max-height: 240px; overflow-y: auto; z-index: 1200; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
         .line-item-menu-head { display: grid; grid-template-columns: 150px 1fr; gap: 8px; font-size: 11px; font-weight: 600; color: #605e5c; background: #faf9f8; padding: 6px 8px; border-bottom: 1px solid #edebe9; }
         .line-item-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; padding: 6px 8px; text-align: left; cursor: pointer; display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; }
         .line-item-option:hover { background: #f3f2f1; }
@@ -247,6 +247,7 @@
         const projectSelect    = document.getElementById('project-id');
         const projectPickerInput = document.getElementById('project-picker-input');
         const projectPickerMenu  = document.getElementById('project-picker-menu');
+        const globalCompanySelect = document.getElementById('global-company-select');
         const allProjectOptions = @json(
             $projects->map(fn ($project) => [
                 'value' => (string) $project->d365_id,
@@ -470,7 +471,7 @@
  
         /* ── Load items from D365 for the selected company + project ───── */
         const loadItems = async () => {
-            const company   = companySelect.value;
+            const company   = (companySelect.value || '').trim();
             const projectId = projectSelect.value;
             if (!company || !projectId) return;
  
@@ -495,6 +496,9 @@
  
                 itemsLoaded = true;
                 toggleNewLineBtn();
+                if (rows.length === 0) {
+                    showStatus('No items found for selected project/company.', 'error');
+                }
  
                 // Clear selected items that are no longer in fetched list
                 linesBody.querySelectorAll('tr').forEach((row) => {
@@ -586,7 +590,10 @@
             const menu = row.querySelector('.line-item-menu');
 
             const hideMenu = () => menu.classList.add('hidden');
-            const renderMenu = (query = '') => {
+            const renderMenu = async (query = '') => {
+                if (!itemsLoaded && projectSelect.value) {
+                    await loadItems();
+                }
                 const q = (query || '').trim();
                 const matches = [];
                 itemsCache.forEach(({ id, name }) => {
@@ -880,6 +887,9 @@
  
         /* ── Init ─────────────────────────────────────────────────────── */
         document.getElementById('request-id').value = '';
+        if (!(companySelect.value || '').trim() && globalCompanySelect) {
+            companySelect.value = (globalCompanySelect.value || '').trim().toUpperCase();
+        }
         journalsListBody.addEventListener('click', async (event) => {
             const viewBtn = event.target.closest('.journal-view-btn');
             if (viewBtn) {
