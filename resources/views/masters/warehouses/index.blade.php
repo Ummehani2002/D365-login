@@ -129,6 +129,10 @@
                             @csrf
                             <div class="form-row">
                                 <div>
+                                    <label for="company_id">Company ID (D365)</label>
+                                    <input id="company_id" name="company_id" type="text" value="{{ old('company_id', $companyCode !== '' ? $companyCode : '') }}" required maxlength="100" placeholder="e.g. PS">
+                                </div>
+                                <div>
                                     <label for="warehouse_id">Warehouse ID</label>
                                     <input id="warehouse_id" name="warehouse_id" type="text" value="{{ old('warehouse_id') }}" required>
                                 </div>
@@ -148,6 +152,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
+                                <th>Company ID</th>
                                 <th>Warehouse ID</th>
                                 <th>Warehouse Name</th>
                                 <th>Created At</th>
@@ -158,6 +163,7 @@
                             @forelse ($warehouses as $index => $warehouse)
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
+                                    <td>{{ $warehouse->company_id }}</td>
                                     <td>{{ $warehouse->warehouse_id }}</td>
                                     <td>{{ $warehouse->warehouse_name }}</td>
                                     <td>{{ optional($warehouse->created_at)->format('d M Y H:i') }}</td>
@@ -171,7 +177,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5">No warehouses found.</td>
+                                    <td colspan="6">No warehouses found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

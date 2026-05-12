@@ -6,13 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class WarehouseMasterController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $warehouses = Warehouse::query()->orderByDesc('created_at')->get();
+        $companyCode = strtoupper(trim((string) $request->query('company', '')));
+
+        $warehouses = Warehouse::query()
+            ->when($companyCode !== '', fn ($q) => $q->where('company_id', $companyCode))
+            ->orderByDesc('created_at')
+            ->get();
 
         return view('masters.warehouses.index', ['warehouses' => $warehouses]);
     }
@@ -20,18 +26,29 @@ class WarehouseMasterController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'warehouse_id' => ['required', 'string', 'max:100', 'unique:warehouses,warehouse_id'],
+            'company_id' => ['required', 'string', 'max:100'],
+            'warehouse_id' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('warehouses', 'warehouse_id')->where(
+                    fn ($q) => $q->where(
+                        'company_id',
+                        strtoupper(trim((string) $request->input('company_id')))
+                    )
+                ),
+            ],
             'warehouse_name' => ['required', 'string', 'max:255'],
         ]);
 
         Warehouse::create([
+            'company_id' => strtoupper(trim($validated['company_id'])),
             'warehouse_id' => trim($validated['warehouse_id']),
             'warehouse_name' => trim($validated['warehouse_name']),
             'created_by' => auth()->id(),
         ]);
 
-        $company = strtoupper((string) $request->query('company', ''));
-        $params = $company !== '' ? ['company' => $company] : [];
+        $params = ['company' => strtoupper(trim($validated['company_id']))];
 
         return redirect()->route('masters.warehouses.index', $params)->with('status', 'Warehouse created successfully.');
     }
@@ -40,8 +57,7 @@ class WarehouseMasterController extends Controller
     {
         $warehouse->delete();
 
-        $company = strtoupper((string) $request->query('company', ''));
-        $params = $company !== '' ? ['company' => $company] : [];
+        $params = ['company' => strtoupper((string) $warehouse->company_id)];
 
         return redirect()->route('masters.warehouses.index', $params)->with('status', 'Warehouse deleted successfully.');
     }

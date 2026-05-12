@@ -107,23 +107,26 @@ class PoolController extends Controller
     {
         $this->normalizeLegacyPoolIdInput($request);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'pool_id' => ['required', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:255'],
             'company_id' => ['required', 'string', 'max:100'],
-        ]);
+        ], $this->poolOptionalD365ValidationRules()));
 
         $companyId = strtoupper(trim($validated['company_id']));
         $poolId = trim($validated['pool_id']);
+
+        $upsert = array_merge(
+            ['name' => trim($validated['name'])],
+            $this->mergeOptionalPoolD365FieldsFromRequest($request, $validated)
+        );
 
         $pool = Pool::updateOrCreate(
             [
                 'pool_id' => $poolId,
                 'company_id' => $companyId,
             ],
-            [
-                'name' => trim($validated['name']),
-            ]
+            $upsert
         );
 
         return response()->json([
@@ -209,16 +212,69 @@ class PoolController extends Controller
             $uniqueRule->ignore($pool->id);
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'pool_id' => ['required', 'string', 'max:100', $uniqueRule],
             'name' => ['required', 'string', 'max:255'],
             'company_id' => ['required', 'string', 'max:100'],
-        ]);
+        ], $this->poolOptionalD365ValidationRules()));
 
-        return [
+        $out = [
             'pool_id' => trim($validated['pool_id']),
             'name' => trim($validated['name']),
             'company_id' => strtoupper(trim($validated['company_id'])),
         ];
+
+        return array_merge($out, $this->mergeOptionalPoolD365FieldsFromValidated($validated));
+    }
+
+    /**
+     * Optional D365 fields — include only keys you have for that pool. Omitted keys are not changed on PATCH/sync.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function poolOptionalD365ValidationRules(): array
+    {
+        return [
+            'project' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'warehouse' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'warehouse_company_id' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'attachment' => ['sometimes', 'nullable', 'string', 'max:60000'],
+            'item_category' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'item_id' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'project_warehouse' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'category_item' => ['sometimes', 'nullable', 'string', 'max:500'],
+        ];
+    }
+
+    /** @return array<string, string|null> */
+    private function mergeOptionalPoolD365FieldsFromRequest(Request $request, array $validated): array
+    {
+        $out = [];
+        foreach (array_keys($this->poolOptionalD365ValidationRules()) as $key) {
+            if (! $request->has($key)) {
+                continue;
+            }
+            $v = $validated[$key] ?? null;
+            $trimmed = ($v !== null && trim((string) $v) !== '') ? trim((string) $v) : null;
+            $out[$key] = ($key === 'warehouse_company_id' && $trimmed !== null) ? strtoupper($trimmed) : $trimmed;
+        }
+
+        return $out;
+    }
+
+    /** @return array<string, string|null> */
+    private function mergeOptionalPoolD365FieldsFromValidated(array $validated): array
+    {
+        $out = [];
+        foreach (array_keys($this->poolOptionalD365ValidationRules()) as $key) {
+            if (! array_key_exists($key, $validated)) {
+                continue;
+            }
+            $v = $validated[$key];
+            $trimmed = ($v !== null && trim((string) $v) !== '') ? trim((string) $v) : null;
+            $out[$key] = ($key === 'warehouse_company_id' && $trimmed !== null) ? strtoupper($trimmed) : $trimmed;
+        }
+
+        return $out;
     }
 }

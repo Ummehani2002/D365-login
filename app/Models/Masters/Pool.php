@@ -13,6 +13,14 @@ class Pool extends Model
     protected $fillable = [
         'pool_id',
         'name',
+        'project',
+        'warehouse',
+        'warehouse_company_id',
+        'project_warehouse',
+        'attachment',
+        'item_category',
+        'item_id',
+        'category_item',
         'company_id',
     ];
 

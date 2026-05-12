@@ -73,6 +73,9 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
 
         Route::get('/pools', [ApiPoolController::class, 'index'])->name('pools.index');
         Route::post('/pools', [ApiPoolController::class, 'store'])->name('pools.store');
+        Route::post('/pools/sync-d365', [ApiPoolController::class, 'syncFromD365'])->name('pools.sync-d365');
+        Route::put('/pools/{pool}', [ApiPoolController::class, 'update'])->name('pools.update');
+        Route::patch('/pools/{pool}', [ApiPoolController::class, 'update'])->name('pools.patch');
         Route::delete('/pools/{pool}', [ApiPoolController::class, 'destroy'])->name('pools.destroy');
 
         Route::get('/currencies', [ApiCurrencyController::class, 'index'])->name('currencies.index');
