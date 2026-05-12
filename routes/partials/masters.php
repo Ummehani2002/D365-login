@@ -51,6 +51,9 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
     Route::post('/masters/warehouses', [WarehouseMasterController::class, 'store'])->name('masters.warehouses.store');
     Route::delete('/masters/warehouses/{warehouse}', [WarehouseMasterController::class, 'destroy'])->name('masters.warehouses.destroy');
 
+    Route::get('/masters/fd-locations', fn () => view('masters.placeholder', ['title' => 'FD Location Master']))->name('masters.fd-locations.index');
+    Route::get('/masters/budget-resource-codes', fn () => view('masters.placeholder', ['title' => 'Budget Resource Code']))->name('masters.budget-resource-codes.index');
+
     foreach (['colors' => 'Colors', 'styles' => 'Styles', 'locations' => 'Locations', 'batches' => 'Batches', 'department-managers' => 'Department Managers'] as $slug => $title) {
         Route::get("/masters/{$slug}", fn () => view('masters.placeholder', ['title' => $title]))->name("masters.{$slug}.index");
     }

@@ -19,7 +19,7 @@
     @include('partials.global-company-selector')
     <div class="card">
         <h1 style="margin-top:0;color:#1e293b;">{{ $title }}</h1>
-        <p>Master screen — coming soon.</p>
+        <p>Master screen — scaffolding only. Add models, migrations, and forms when you are ready.</p>
         <p><a href="{{ route('dashboard') }}">← Back to Dashboard</a></p>
     </div>
 </body>
