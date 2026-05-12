@@ -163,16 +163,16 @@
             <thead>
                 <tr>
                     <th scope="col">#</th>
-                    <th scope="col"><span class="th-main">Pool ID</span><span class="th-sub">Unique pool code</span></th>
-                    <th scope="col"><span class="th-main">Name</span><span class="th-sub">Description</span></th>
-                    <th scope="col"><span class="th-main">Company ID</span><span class="th-sub">DataArea / legal entity</span></th>
+                    <th scope="col"><span class="th-main">Pool ID</span></th>
+                    <th scope="col"><span class="th-main">Name</span></th>
+                    <th scope="col"><span class="th-main">Company ID</span</th>
                     <th scope="col"><span class="th-main">Project</span><span class="th-sub">PR uses project field</span></th>
-                    <th scope="col"><span class="th-main">Warehouse</span><span class="th-sub">PR uses warehouse</span></th>
-                    <th scope="col"><span class="th-main">Wh. company ID</span><span class="th-sub">Separate warehouse company</span></th>
-                    <th scope="col"><span class="th-main">Attachment</span><span class="th-sub">Mandatory on PR</span></th>
-                    <th scope="col"><span class="th-main">Item category</span><span class="th-sub">Line column</span></th>
-                    <th scope="col"><span class="th-main">Item ID</span><span class="th-sub">Line column</span></th>
-                    <th scope="col"><span class="th-main">Created at</span><span class="th-sub">Saved / synced</span></th>
+                    <th scope="col"><span class="th-main">Warehouse</span></th>
+                    <th scope="col"><span class="th-main">Wh. company ID</span></th>
+                    <th scope="col"><span class="th-main">Attachment</span></th>
+                    <th scope="col"><span class="th-main">Item category</span></th>
+                    <th scope="col"><span class="th-main">Item ID</span></th>
+                    <th scope="col"><span class="th-main">Created at</span></th>
                     <th scope="col">Action</th>
                 </tr>
             </thead>
