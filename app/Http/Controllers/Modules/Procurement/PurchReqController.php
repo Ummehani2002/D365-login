@@ -8,6 +8,7 @@ use App\Models\DepartmentManager;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Pool;
+use App\Models\Project;
 use App\Models\PurchReqJournal;
 use App\Models\Warehouse;
 use App\Services\D365PurchReqService;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PurchReqController extends Controller
@@ -65,15 +67,8 @@ class PurchReqController extends Controller
                 'company'                     => ['required', 'string', 'max:20'],
                 'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
                 'pr_date'                     => ['required', 'date'],
-                'warehouse'                   => [
-                    'required',
-                    'string',
-                    'max:100',
-                    Rule::exists('warehouses', 'warehouse_id')->where(fn ($q) => $q->where(
-                        'company_id',
-                        strtoupper(trim((string) $request->input('company')))
-                    )),
-                ],
+                'warehouse'                   => ['nullable', 'string', 'max:100'],
+                'project_id'                  => ['nullable', 'string', 'max:100'],
                 'pool_id'                     => [
                     'required',
                     'string',
@@ -107,7 +102,18 @@ class PurchReqController extends Controller
                 'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
             ]);
             $this->assertCompanyAccess((string) $validated['company']);
-            $validated['lines'] = $this->normalizeSubmittedLines($validated['lines']);
+
+            $poolRow = Pool::query()
+                ->where('company_id', strtoupper(trim((string) $validated['company'])))
+                ->where('pool_id', trim((string) $validated['pool_id']))
+                ->first();
+
+            if (! $poolRow) {
+                throw ValidationException::withMessages(['pool_id' => ['Pool not found for this company.']]);
+            }
+
+            $this->assertPurchReqMatchesPool($validated, $poolRow);
+            $validated['lines'] = $this->normalizeSubmittedLines($validated['lines'], $poolRow);
 
             $requestId = $this->generatePRRequestId();
             $prNo      = $this->generatePRNo();
@@ -119,7 +125,8 @@ class PurchReqController extends Controller
                         'RequestID'   => $requestId,
                         'PRNo'        => $prNo,
                         'PRDate'      => $validated['pr_date'],
-                        'Warehouse'   => $validated['warehouse'],
+                        'Warehouse'   => trim((string) ($validated['warehouse'] ?? '')),
+                        'ProjectId'   => trim((string) ($validated['project_id'] ?? '')),
                         'PoolID'      => $validated['pool_id'],
                         'ContactName' => $validated['contact_name'],
                         'Remarks'     => $validated['remarks'] ?? '',
@@ -171,10 +178,10 @@ class PurchReqController extends Controller
                 if (!$draft->canBeManagedBy(auth()->user())) {
                     return response()->json(['status' => false, 'message' => 'You do not have access to submit or modify this purchase requisition.'], 403);
                 }
-                $draft->update(['request_id' => $requestId, 'pr_no' => $prNo, 'company' => $validated['company'], 'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'], 'pr_date' => $validated['pr_date'], 'warehouse' => $validated['warehouse'], 'pool_id' => $validated['pool_id'], 'contact_name' => $validated['contact_name'], 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'], 'lines' => $validated['lines'], 'attachments' => $attachmentsForDb, 'd365_response' => $result, 'posted_by' => auth()->id()]);
+                $draft->update(['request_id' => $requestId, 'pr_no' => $prNo, 'company' => $validated['company'], 'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'], 'pr_date' => $validated['pr_date'], 'warehouse' => $validated['warehouse'] ?? null, 'project_id' => $validated['project_id'] ?? null, 'pool_id' => $validated['pool_id'], 'contact_name' => $validated['contact_name'], 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'], 'lines' => $validated['lines'], 'attachments' => $attachmentsForDb, 'd365_response' => $result, 'posted_by' => auth()->id()]);
                 $journal = $draft->fresh();
             } else {
-                $journal = PurchReqJournal::create(['request_id' => $requestId, 'pr_no' => $prNo, 'company' => $validated['company'], 'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'], 'pr_date' => $validated['pr_date'], 'warehouse' => $validated['warehouse'], 'pool_id' => $validated['pool_id'], 'contact_name' => $validated['contact_name'], 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'], 'lines' => $validated['lines'], 'attachments' => $attachmentsForDb, 'd365_response' => $result, 'posted_by' => auth()->id()]);
+                $journal = PurchReqJournal::create(['request_id' => $requestId, 'pr_no' => $prNo, 'company' => $validated['company'], 'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'], 'pr_date' => $validated['pr_date'], 'warehouse' => $validated['warehouse'] ?? null, 'project_id' => $validated['project_id'] ?? null, 'pool_id' => $validated['pool_id'], 'contact_name' => $validated['contact_name'], 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'], 'lines' => $validated['lines'], 'attachments' => $attachmentsForDb, 'd365_response' => $result, 'posted_by' => auth()->id()]);
             }
 
             return response()->json(['status' => true, 'message' => 'Purchase Requisition submitted to D365.', 'request_id' => $requestId, 'pr_no' => $prNo, 'journal_id' => $journal->id, 'data' => $result]);
@@ -193,6 +200,7 @@ class PurchReqController extends Controller
             'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
             'pr_date'                     => ['nullable', 'date'],
             'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
+            'project_id'                  => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
             'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
             'contact_name'                => ['nullable', 'string', 'max:255'],
             'remarks'                     => ['nullable', 'string', 'max:500'],
@@ -224,7 +232,7 @@ class PurchReqController extends Controller
 
         $attachmentsForDb = array_map(fn ($a) => ['file_name' => $a['file_name'], 'file_type' => $a['file_type'], 'mime_type' => $a['mime_type'] ?? null, 'size_bytes' => $a['size_bytes'] ?? null, 'file_content' => $a['file_content']], $validated['attachments'] ?? []);
 
-        $journal = PurchReqJournal::create(['request_id' => null, 'pr_no' => null, 'company' => $validated['company'] ?? null, 'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null), 'pr_date' => $validated['pr_date'] ?? null, 'warehouse' => $validated['warehouse'] ?? null, 'pool_id' => $validated['pool_id'] ?? null, 'contact_name' => $validated['contact_name'] ?? null, 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'] ?? null, 'lines' => $validated['lines'] ?? [], 'attachments' => $attachmentsForDb, 'd365_response' => null, 'posted_by' => auth()->id()]);
+        $journal = PurchReqJournal::create(['request_id' => null, 'pr_no' => null, 'company' => $validated['company'] ?? null, 'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null), 'pr_date' => $validated['pr_date'] ?? null, 'warehouse' => $validated['warehouse'] ?? null, 'project_id' => $validated['project_id'] ?? null, 'pool_id' => $validated['pool_id'] ?? null, 'contact_name' => $validated['contact_name'] ?? null, 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'] ?? null, 'lines' => $validated['lines'] ?? [], 'attachments' => $attachmentsForDb, 'd365_response' => null, 'posted_by' => auth()->id()]);
 
         return response()->json(['status' => true, 'message' => 'PR saved as draft.', 'journal_id' => $journal->id]);
     }
@@ -243,6 +251,7 @@ class PurchReqController extends Controller
             'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
             'pr_date'                     => ['nullable', 'date'],
             'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
+            'project_id'                  => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
             'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
             'contact_name'                => ['nullable', 'string', 'max:255'],
             'remarks'                     => ['nullable', 'string', 'max:500'],
@@ -274,7 +283,7 @@ class PurchReqController extends Controller
 
         $attachmentsForDb = array_map(fn ($a) => ['file_name' => $a['file_name'], 'file_type' => $a['file_type'], 'mime_type' => $a['mime_type'] ?? null, 'size_bytes' => $a['size_bytes'] ?? null, 'file_content' => $a['file_content']], $validated['attachments'] ?? []);
 
-        $journal->update(['company' => $validated['company'] ?? null, 'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null), 'pr_date' => $validated['pr_date'] ?? null, 'warehouse' => $validated['warehouse'] ?? null, 'pool_id' => $validated['pool_id'] ?? null, 'contact_name' => $validated['contact_name'] ?? null, 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'] ?? null, 'lines' => $validated['lines'] ?? [], 'attachments' => $attachmentsForDb]);
+        $journal->update(['company' => $validated['company'] ?? null, 'buying_legal_entity' => $validated['buying_legal_entity'] ?? ($validated['company'] ?? null), 'pr_date' => $validated['pr_date'] ?? null, 'warehouse' => $validated['warehouse'] ?? null, 'project_id' => $validated['project_id'] ?? null, 'pool_id' => $validated['pool_id'] ?? null, 'contact_name' => $validated['contact_name'] ?? null, 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'] ?? null, 'lines' => $validated['lines'] ?? [], 'attachments' => $attachmentsForDb]);
 
         return response()->json(['status' => true, 'message' => 'Draft updated successfully.', 'journal_id' => $journal->id]);
     }
@@ -410,12 +419,57 @@ class PurchReqController extends Controller
         $rows = Pool::query()
             ->where('company_id', $companyCode)
             ->orderBy('pool_id')
-            ->get(['id', 'pool_id', 'name', 'company_id']);
+            ->get([
+                'id',
+                'pool_id',
+                'name',
+                'company_id',
+                'uses_project',
+                'uses_warehouse',
+                'has_attachment',
+                'has_item_category',
+                'has_item_id',
+            ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Pools fetched.',
             'data' => $rows,
+        ]);
+    }
+
+    public function lookupProjects(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json([
+                'status' => true,
+                'message' => 'Projects fetched.',
+                'data' => [],
+            ]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = Project::query()
+            ->whereHas('company', fn ($q) => $q->whereRaw('UPPER(TRIM(d365_id)) = ?', [$companyCode]))
+            ->orderBy('name')
+            ->get(['d365_id', 'name']);
+
+        $data = $rows->map(fn ($p) => [
+            'project_id' => trim((string) ($p->d365_id ?? '')),
+            'name' => trim((string) ($p->name ?? '')),
+        ])->filter(fn ($r) => $r['project_id'] !== '')->values();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Projects fetched.',
+            'data' => $data,
         ]);
     }
 
@@ -455,7 +509,7 @@ class PurchReqController extends Controller
         }, $rows)));
     }
 
-    private function normalizeSubmittedLines(array $lines): array
+    private function normalizeSubmittedLines(array $lines, Pool $pool): array
     {
         $itemIds = collect($lines)->map(fn ($l) => trim((string) ($l['item_id'] ?? '')))->filter()->unique()->values();
         $itemCategoryMap = [];
@@ -463,23 +517,37 @@ class PurchReqController extends Controller
             $items = Item::query()->select(['d365_id', 'd365_item_id', 'item_category_id'])->whereIn('d365_id', $itemIds->all())->orWhereIn('d365_item_id', $itemIds->all())->get();
             foreach ($items as $item) {
                 $category = trim((string) ($item->item_category_id ?? ''));
-                if ($category === '') continue;
+                if ($category === '') {
+                    continue;
+                }
                 foreach (array_filter([trim((string) ($item->d365_id ?? '')), trim((string) ($item->d365_item_id ?? ''))]) as $key) {
                     $itemCategoryMap[strtolower($key)] = $category;
                 }
             }
         }
 
-        return array_map(function (array $line) use ($itemCategoryMap) {
+        return array_map(function (array $line) use ($itemCategoryMap, $pool) {
             $itemId       = trim((string) ($line['item_id'] ?? ''));
             $itemCategory = trim((string) ($line['item_category'] ?? ''));
-            if ($itemCategory === '' && $itemId !== '') $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
-            if ($itemCategory === '' && $itemId === '') {
-                throw \Illuminate\Validation\ValidationException::withMessages(['lines' => ['Each line must include either Item Category or Item ID.']]);
+
+            if (! $pool->has_item_id) {
+                $itemId = '';
             }
-            if ($itemId === '') $line['unit'] = '';
+            if (! $pool->has_item_category) {
+                $itemCategory = '';
+            }
+
+            if ($itemCategory === '' && $itemId !== '') {
+                $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
+            }
+
+            if ($itemId === '') {
+                $line['unit'] = '';
+            }
+
             $line['item_id']       = $itemId;
             $line['item_category'] = $itemCategory;
+
             return $line;
         }, $lines);
     }
@@ -522,6 +590,62 @@ class PurchReqController extends Controller
         return $parts !== [] ? implode(' ', array_unique($parts)) : 'D365 rejected the purchase requisition.';
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertPurchReqMatchesPool(array &$validated, Pool $pool): void
+    {
+        if (! $pool->has_item_category && ! $pool->has_item_id) {
+            throw ValidationException::withMessages(['pool_id' => ['This pool must allow item category and/or item ID on lines (update Pool Master).']]);
+        }
+
+        $company = strtoupper(trim((string) $validated['company']));
+        $errors  = [];
+
+        if ($pool->uses_warehouse) {
+            $w = trim((string) ($validated['warehouse'] ?? ''));
+            if ($w === '') {
+                $errors['warehouse'] = ['Warehouse is required for this pool.'];
+            } elseif (! Warehouse::query()->where('company_id', $company)->where('warehouse_id', $w)->exists()) {
+                $errors['warehouse'] = ['The warehouse does not exist for the selected company.'];
+            }
+        } else {
+            $validated['warehouse'] = null;
+        }
+
+        if ($pool->uses_project) {
+            $p = trim((string) ($validated['project_id'] ?? ''));
+            if ($p === '') {
+                $errors['project_id'] = ['Project is required for this pool.'];
+            } elseif (! Project::query()->where('d365_id', $p)->whereHas('company', fn ($q) => $q->whereRaw('UPPER(TRIM(d365_id)) = ?', [$company]))->exists()) {
+                $errors['project_id'] = ['The project does not exist for the selected company.'];
+            }
+        } else {
+            $validated['project_id'] = null;
+        }
+
+        $attachments = $validated['attachments'] ?? [];
+        if ($pool->has_attachment && (! is_array($attachments) || count($attachments) === 0)) {
+            $errors['attachments'] = ['At least one attachment is required for this pool.'];
+        }
+
+        foreach ($validated['lines'] as $idx => $line) {
+            $i   = $idx + 1;
+            $cat = trim((string) ($line['item_category'] ?? ''));
+            $iid = trim((string) ($line['item_id'] ?? ''));
+            if ($pool->has_item_category && $cat === '') {
+                $errors["lines.$idx.item_category"] = ["Line {$i}: Item category is required for this pool."];
+            }
+            if ($pool->has_item_id && $iid === '') {
+                $errors["lines.$idx.item_id"] = ["Line {$i}: Item ID is required for this pool."];
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
     private function warehouseIdExistsForCompanyRule(Request $request): \Closure
     {
         return function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
@@ -538,6 +662,26 @@ class PurchReqController extends Controller
                 ->exists();
             if (! $exists) {
                 $fail('The warehouse does not exist for the selected company.');
+            }
+        };
+    }
+
+    private function projectIdExistsForCompanyRule(Request $request): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+            if ($value === null || $value === '') {
+                return;
+            }
+            $company = strtoupper(trim((string) $request->input('company', '')));
+            if ($company === '') {
+                return;
+            }
+            $exists = Project::query()
+                ->where('d365_id', trim((string) $value))
+                ->whereHas('company', fn ($q) => $q->whereRaw('UPPER(TRIM(d365_id)) = ?', [$company]))
+                ->exists();
+            if (! $exists) {
+                $fail('The project does not exist for the selected company.');
             }
         };
     }

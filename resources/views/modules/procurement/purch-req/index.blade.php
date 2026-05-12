@@ -179,16 +179,26 @@
                             <label>PR Date <span style="color:#a4262c">*</span></label>
                             <input id="pr-date" type="date">
                         </div>
-                        <div class="field">
-                            <label>Warehouse <span style="color:#a4262c">*</span></label>
-                            <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
-                        </div>
-                        <div class="field">
+                        <div class="field span-2">
                             <label>Pool <span style="color:#a4262c">*</span></label>
                             <select id="pool-id">
                                 <option value="">— Select Pool —</option>
                             </select>
+                            <small style="display:block;margin-top:4px;color:#605e5c;font-size:11px;">Fields below follow your Pool Master flags (project / warehouse / lines / attachments).</small>
                         </div>
+                        <div class="field hidden" id="field-project">
+                            <label>Project <span style="color:#a4262c">*</span></label>
+                            <select id="project-id">
+                                <option value="">— Select Project —</option>
+                            </select>
+                        </div>
+                        <div class="field hidden" id="field-warehouse">
+                            <label>Warehouse <span style="color:#a4262c">*</span></label>
+                            <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
+                        </div>
+                    </div>
+
+                    <div class="fields hidden" id="pool-detail-fields">
                         <div class="field">
                             <label>Department Manager</label>
                             <select id="department-manager">
@@ -203,8 +213,8 @@
                             <label>Department <span style="color:#a4262c">*</span></label>
                             <input id="department" type="text" placeholder="e.g. Procurement">
                         </div>
-                        <div class="field span-2">
-                            <label>Remarks</label>
+                        <div class="field span-3">
+                            <label>Department remarks</label>
                             <textarea id="remarks" placeholder="Optional remarks..."></textarea>
                         </div>
                     </div>
@@ -221,8 +231,8 @@
                                 <tr>
                                     <th style="width:28px;"></th>
                                     <th style="width:50px;">Line</th>
-                                    <th>Item Category</th>
-                                    <th>Item ID</th>
+                                    <th data-col="category">Item Category</th>
+                                    <th data-col="item-id">Item ID</th>
                                     <th>Description</th>
                                     <th>Required Date</th>
                                     <th>Unit</th>
@@ -238,18 +248,20 @@
                         </table>
                     </div>
 
-                    <div class="section-title" style="margin-top:4px;">
-                        <span>Attachments</span>
-                        <small style="font-weight:400;color:#8a8886;">PDF · DOC · DOCX · XLS · XLSX</small>
+                    <div id="pr-attachments-block" class="hidden">
+                        <div class="section-title" style="margin-top:4px;">
+                            <span>Attachments</span>
+                            <small style="font-weight:400;color:#8a8886;">PDF · DOC · DOCX · XLS · XLSX</small>
+                        </div>
+                        <div class="attach-zone" id="attach-zone">
+                            📎 &nbsp;Click or drag &amp; drop files here
+                            <div style="font-size:11px;margin-top:4px;color:#8a8886;">Supported: PDF, DOC, DOCX, XLS, XLSX</div>
+                        </div>
+                        <input type="file" id="file-input"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            multiple style="display:none">
+                        <div class="attach-list" id="attach-list"></div>
                     </div>
-                    <div class="attach-zone" id="attach-zone">
-                        📎 &nbsp;Click or drag &amp; drop files here
-                        <div style="font-size:11px;margin-top:4px;color:#8a8886;">Supported: PDF, DOC, DOCX, XLS, XLSX</div>
-                    </div>
-                    <input type="file" id="file-input"
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        multiple style="display:none">
-                    <div class="attach-list" id="attach-list"></div>
                 </div>
             </div>
         </div>
@@ -274,6 +286,7 @@
                                 <th>PR No</th>
                                 <th>Company</th>
                                 <th>Warehouse</th>
+                                <th>Project</th>
                                 <th>Contact</th>
                                 <th>Lines</th>
                                 <th>Attachments</th>
@@ -299,6 +312,7 @@
                                 <td>{{ $j->pr_no }}</td>
                                 <td>{{ $j->company }}</td>
                                 <td>{{ $j->warehouse }}</td>
+                                <td>{{ $j->project_id ?? '—' }}</td>
                                 <td>{{ $j->contact_name }}</td>
                                 <td><span class="badge badge-count">{{ is_array($j->lines) ? count($j->lines) : 0 }}</span></td>
                                 <td>
@@ -363,6 +377,11 @@
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
         const warehouseEl   = document.getElementById('warehouse');
+        const projectEl     = document.getElementById('project-id');
+        const fieldProject  = document.getElementById('field-project');
+        const fieldWarehouse = document.getElementById('field-warehouse');
+        const poolDetailFields = document.getElementById('pool-detail-fields');
+        const attBlock      = document.getElementById('pr-attachments-block');
         const poolEl        = document.getElementById('pool-id');
         const departmentManagerEl = document.getElementById('department-manager');
         const contactEl     = document.getElementById('contact-name');
@@ -385,6 +404,7 @@
         let currentViewOnly = false;
         let departmentManagers = [];
         let poolRows = [];
+        let projectRows = [];
 
         const showStatus = (msg, type) => {
             statusBox.textContent   = msg;
@@ -495,14 +515,75 @@
 
                 poolRows = Array.isArray(payload.data) ? payload.data : [];
                 renderPoolOptions(selectedPoolId);
-
-                if (!selectedPoolId && poolRows.length > 0 && poolEl) {
-                    const fallback = poolRows.find((row) => String(row.pool_id ?? '').toUpperCase() === 'P_LPO') ?? poolRows[0];
-                    poolEl.value = String(fallback.pool_id ?? '');
-                }
             } catch {
                 // Keep PR form usable even if pool list is unavailable.
             }
+        }
+
+        function renderProjectOptions(selectedProjectId = '') {
+            if (!projectEl) return;
+            const selectedKey = String(selectedProjectId ?? '').trim().toUpperCase();
+            const options = projectRows.map((row) => {
+                const pid = String(row.project_id ?? '').trim();
+                const name = String(row.name ?? '').trim();
+                const selectedAttr = pid.toUpperCase() === selectedKey ? ' selected' : '';
+                const label = name ? `${pid} (${name})` : pid;
+                return `<option value="${escapeHtml(pid)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+            projectEl.innerHTML = `<option value="">— Select Project —</option>${options}`;
+        }
+
+        async function loadProjects(companyCode, selectedProjectId = '') {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            projectRows = [];
+            renderProjectOptions('');
+            if (!company) return;
+
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.projects") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) return;
+
+                projectRows = Array.isArray(payload.data) ? payload.data : [];
+                renderProjectOptions(selectedProjectId);
+            } catch {
+                // ignore
+            }
+        }
+
+        function getSelectedPool() {
+            const key = String(poolEl?.value ?? '').trim().toUpperCase();
+            if (!key) return null;
+            return poolRows.find((row) => String(row.pool_id ?? '').trim().toUpperCase() === key) ?? null;
+        }
+
+        function applyPoolLineColumns(p) {
+            const showCat = p == null ? true : !!p.has_item_category;
+            const showItem = p == null ? true : !!p.has_item_id;
+            document.querySelectorAll('[data-col="category"]').forEach((el) => el.classList.toggle('hidden', !showCat));
+            document.querySelectorAll('[data-col="item-id"]').forEach((el) => el.classList.toggle('hidden', !showItem));
+        }
+
+        function applyPoolUi() {
+            const p = getSelectedPool();
+            const hasPool = Boolean(poolEl?.value?.trim());
+
+            if (!hasPool) {
+                fieldProject?.classList.add('hidden');
+                fieldWarehouse?.classList.add('hidden');
+                poolDetailFields?.classList.add('hidden');
+                attBlock?.classList.add('hidden');
+                applyPoolLineColumns(null);
+                return;
+            }
+
+            fieldProject?.classList.toggle('hidden', !p?.uses_project);
+            fieldWarehouse?.classList.toggle('hidden', !p?.uses_warehouse);
+            poolDetailFields?.classList.remove('hidden');
+            attBlock?.classList.toggle('hidden', !p?.has_attachment);
+            applyPoolLineColumns(p);
         }
 
         function getItemsByCategory(categoryId) {
@@ -627,8 +708,8 @@
                     </button>
                 </td>
                 <td style="text-align:center;"><span class="line-serial"></span></td>
-                <td><select class="line-select lf-category">${catOptions}</select></td>
-                <td>
+                <td data-col="category"><select class="line-select lf-category">${catOptions}</select></td>
+                <td data-col="item-id">
                     <input class="line-input item-id lf-item-id" type="text" list="lf-item-id-list-${lineId}" placeholder="Type Item ID to search">
                     <datalist id="lf-item-id-list-${lineId}" class="lf-item-id-list"></datalist>
                 </td>
@@ -904,6 +985,7 @@
             loadCatalogForCompany(companyCode);
             loadDepartmentManagers(companyCode);
             loadPools(companyCode);
+            loadProjects(companyCode);
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -922,6 +1004,7 @@
         buyingLegalEntityEl.addEventListener('change', () => {
             loadDepartmentManagers(getCurrentCompanyCode());
             loadPools(getCurrentCompanyCode());
+            loadProjects(getCurrentCompanyCode());
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -938,6 +1021,8 @@
             });
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
+
+        poolEl?.addEventListener('change', applyPoolUi);
 
         const attachZone = document.getElementById('attach-zone');
         attachZone.addEventListener('click', () => fileInput.click());
@@ -1072,8 +1157,24 @@
             const company = (buyingLegalEntityEl?.value || companyEl.value || '').trim();
             if (!company) { showStatus('Please select a company.', 'error'); return; }
             if (!prDateEl.value) { showStatus('PR Date is required.', 'error'); return; }
-            if (!warehouseEl.value.trim()) { showStatus('Warehouse is required.', 'error'); return; }
             if (!poolEl.value.trim()) { showStatus('Pool is required.', 'error'); return; }
+
+            const poolCfg = getSelectedPool();
+            if (!poolCfg) { showStatus('Selected pool is not valid for this company.', 'error'); return; }
+
+            if (poolCfg.uses_warehouse && !warehouseEl.value.trim()) {
+                showStatus('Warehouse is required for this pool.', 'error');
+                return;
+            }
+            if (poolCfg.uses_project && !(projectEl?.value ?? '').trim()) {
+                showStatus('Project is required for this pool.', 'error');
+                return;
+            }
+            if (poolCfg.has_attachment && attachments.length === 0) {
+                showStatus('This pool requires at least one attachment.', 'error');
+                return;
+            }
+
             if (!contactEl.value.trim()) { showStatus('Contact Name is required.', 'error'); return; }
             if (!departmentEl.value.trim()) { showStatus('Department is required.', 'error'); return; }
 
@@ -1084,17 +1185,27 @@
                 const ln = lines[i];
                 const hasCategory = Boolean(String(ln.item_category ?? '').trim());
                 const hasItemId = Boolean(String(ln.item_id ?? '').trim());
-                if (!hasCategory && !hasItemId) {
-                    showStatus(`Line ${i + 1}: Enter either Item Category or Item ID.`, 'error');
+
+                if (poolCfg.has_item_category && !hasCategory) {
+                    showStatus(`Line ${i + 1}: Item category is required for this pool.`, 'error');
                     return;
                 }
-                if (hasItemId && !hasCategory) {
+                if (poolCfg.has_item_id && !hasItemId) {
+                    showStatus(`Line ${i + 1}: Item ID is required for this pool.`, 'error');
+                    return;
+                }
+
+                if (poolCfg.has_item_id && hasItemId && !hasCategory) {
                     const inferredItem = getItemById(ln.item_id);
                     if (inferredItem?.category) {
                         ln.item_category = inferredItem.category;
                     }
                 }
-                if (hasItemId && !ln.unit) { showStatus(`Line ${i + 1}: Unit is required when Item ID is selected.`, 'error'); return; }
+
+                if (poolCfg.has_item_id && hasItemId && !ln.unit) {
+                    showStatus(`Line ${i + 1}: Unit is required when Item ID is used.`, 'error');
+                    return;
+                }
                 if (!ln.required_date) { showStatus(`Line ${i + 1}: Required Date is required.`, 'error'); return; }
                 if (parseFloat(ln.qty) <= 0) { showStatus(`Line ${i + 1}: Qty must be > 0.`, 'error'); return; }
             }
@@ -1108,6 +1219,7 @@
                 buying_legal_entity: (buyingLegalEntityEl?.value || company),
                 pr_date:      prDateEl.value,
                 warehouse:    warehouseEl.value.trim(),
+                project_id:   (projectEl?.value ?? '').trim(),
                 pool_id:      poolEl.value.trim(),
                 contact_name: contactEl.value.trim(),
                 remarks:      remarksEl.value.trim(),
@@ -1178,6 +1290,7 @@
                 buying_legal_entity: (buyingLegalEntityEl?.value || getCurrentCompanyCode() || null),
                 pr_date: prDateEl.value || null,
                 warehouse: warehouseEl.value.trim() || null,
+                project_id: (projectEl?.value ?? '').trim() || null,
                 pool_id: poolEl.value.trim() || null,
                 contact_name: contactEl.value.trim() || null,
                 remarks: remarksEl.value.trim() || null,
@@ -1239,7 +1352,8 @@
                 <td><strong>${data.request_id ?? '—'}</strong></td>
                 <td>${data.pr_no ?? '—'}</td>
                 <td>${payload.company}</td>
-                <td>${payload.warehouse}</td>
+                <td>${payload.warehouse ?? '—'}</td>
+                <td>${payload.project_id ?? '—'}</td>
                 <td>${payload.contact_name}</td>
                 <td><span class="badge badge-count">${payload.lines.length}</span></td>
                 <td>${payload.attachments.length
@@ -1265,9 +1379,11 @@
             }
             prDateEl.value      = todayStr();
             warehouseEl.value   = '';
+            if (projectEl) projectEl.value = '';
             if (poolEl) {
                 poolEl.value = '';
             }
+            applyPoolUi();
             contactEl.value     = '';
             remarksEl.value     = '';
             departmentEl.value  = '';
@@ -1350,6 +1466,7 @@
                 await loadCatalogForCompany(j.company || '');
                 await loadDepartmentManagers(j.company || '');
                 await loadPools(j.company || '', j.pool_id || '');
+                await loadProjects(j.company || '', j.project_id || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
                 prDateEl.value = j.pr_date || '';
@@ -1357,6 +1474,10 @@
                 if (poolEl) {
                     poolEl.value = j.pool_id || '';
                 }
+                if (projectEl) {
+                    projectEl.value = j.project_id || '';
+                }
+                applyPoolUi();
                 contactEl.value = j.contact_name || '';
                 remarksEl.value = j.remarks || '';
                 departmentEl.value = j.department || '';
@@ -1405,6 +1526,8 @@
         loadCatalogForCompany(companyEl.value || '');
         loadDepartmentManagers(getCurrentCompanyCode());
         loadPools(getCurrentCompanyCode());
+        loadProjects(getCurrentCompanyCode());
+        applyPoolUi();
     })();
     </script>
 </body>
