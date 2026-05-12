@@ -57,7 +57,17 @@
         .field label { display: block; font-size: 12px; margin-bottom: 4px; color: #605e5c; font-weight: 500; }
         .field input, .field select { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 13px; background: #fff; }
         .project-picker { position: relative; }
-        .project-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 13px; background: #fff; }
+        .project-picker::after {
+            content: "▼";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #605e5c;
+            font-size: 11px;
+            pointer-events: none;
+        }
+        .project-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 28px 6px 8px; font-size: 13px; background: #fff; }
         .project-picker-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #8a8886; border-radius: 2px; max-height: 240px; overflow-y: auto; z-index: 20; }
         .project-picker-option { width: 100%; border: 0; border-bottom: 1px solid #edebe9; background: #fff; text-align: left; padding: 7px 8px; font-size: 13px; cursor: pointer; }
         .project-picker-option:hover { background: #f3f2f1; }
