@@ -15,7 +15,7 @@
         .menu-link.active { background: #deecf9; color: #005a9e; }
         .sub { margin-left: 16px; padding-left: 8px; border-left: 2px solid #edebe9; }
         .main { flex: 1; padding: 12px 16px; overflow: auto; }
-        .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: visible; }
+        .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
         .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; padding: 0 12px; }
         .crumb { font-size: 12px; color: #605e5c; }
         .card { background: #fff; border: 1px solid #edebe9; border-radius: 2px; }
@@ -31,57 +31,11 @@
         .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 10px; margin-bottom: 12px; }
         .field label { display: block; font-size: 12px; margin-bottom: 4px; color: #605e5c; font-weight: 500; }
         .field input, .field select { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 7px 8px; font-size: 13px; background: #fff; }
-        .po-picker { position: relative; }
-        .po-picker-menu {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid #d2d0ce;
-            border-radius: 2px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1100;
-        }
-        .po-picker-head,
-        .po-picker-option {
-            display: grid;
-            grid-template-columns: 190px 1fr;
-            gap: 10px;
-            align-items: center;
-        }
-        .po-picker-head {
-            padding: 6px 10px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #605e5c;
-            border-bottom: 1px solid #edebe9;
-            background: #faf9f8;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-        .po-picker-option {
-            width: 100%;
-            border: 0;
-            border-bottom: 1px solid #edebe9;
-            background: #fff;
-            padding: 7px 10px;
-            text-align: left;
-            cursor: pointer;
-            font-size: 13px;
-            color: #323130;
-        }
-        .po-picker-option:hover { background: #f3f2f1; }
-        .po-picker-empty { padding: 8px 10px; font-size: 12px; color: #8a8886; }
         .status-box { margin-bottom: 10px; padding: 8px 10px; border-radius: 2px; font-size: 13px; display: none; }
         .status-box.success { display: block; background: #e8f6ee; color: #1f7a48; }
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border-bottom: 1px solid #edebe9; padding: 8px 10px; text-align: left; font-size: 13px; }
-        td.request-id-cell { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
         th { color: #605e5c; font-weight: 600; background: #faf9f8; white-space: nowrap; }
         .empty-note { text-align: center; color: #8a8886; padding: 22px 10px; font-size: 13px; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #deecf9; color: #005a9e; }
@@ -120,15 +74,14 @@
                 <div id="grn-history-shell">
                     <div class="card">
                         <div class="card-head">Recently Added GRN</div>
-                        <p class="card-hint" style="margin:0 14px 10px;font-size:12px;color:#605e5c;line-height:1.45;">System <strong>Request ID</strong> is generated only when you post (not from Packing Slip ID). Packing Slip ID is your own free-text reference.</p>
                         <div style="overflow:auto;">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th title="Assigned by this app when you post — independent of Packing Slip ID">System request ID</th>
+                                        <th>Request ID</th>
                                         <th>Purchase ID</th>
                                         <th>Company</th>
-                                        <th title="What you typed — sent to D365 as packing slip reference">Packing Slip ID</th>
+                                        <th>Packing Slip ID</th>
                                         <th>Lines</th>
                                         <th>Created By</th>
                                         <th>Created At</th>
@@ -138,7 +91,7 @@
                                 <tbody>
                                     @forelse($journals as $j)
                                         <tr>
-                                            <td class="request-id-cell" title="{{ $j->request_id ? e($j->request_id) : '' }}">{{ $j->request_id ?: '—' }}</td>
+                                            <td>{{ $j->request_id ?: '—' }}</td>
                                             <td>{{ $j->purch_id ?: '—' }}</td>
                                             <td>{{ $j->company ?: '—' }}</td>
                                             <td>{{ $j->packing_slip_id ?: '—' }}</td>
@@ -173,10 +126,7 @@
                     <div class="filter-grid">
                         <div class="field">
                             <label>Purchase ID</label>
-                            <div class="po-picker">
-                                <input id="purch-id" type="text" placeholder="Search purchase order..." autocomplete="off">
-                                <div id="po-picker-menu" class="po-picker-menu hidden"></div>
-                            </div>
+                            <input id="purch-id" type="text" placeholder="e.g. PO12345">
                         </div>
                         <div class="field">
                             <label>Vendor Name</label>
@@ -217,7 +167,6 @@
         const els = {
             company: document.getElementById('company'),
             purchId: document.getElementById('purch-id'),
-            poPickerMenu: document.getElementById('po-picker-menu'),
             vendName: document.getElementById('vend-name'),
             projId: document.getElementById('proj-id'),
             searchBtn: document.getElementById('search-btn'),
@@ -285,95 +234,6 @@
         function setStatus(type, text) {
             els.statusBox.className = 'status-box ' + (type || '');
             els.statusBox.textContent = text || '';
-        }
-
-        function escapeHtml(v) {
-            return String(v ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        function hidePoPickerMenu() {
-            els.poPickerMenu.classList.add('hidden');
-        }
-
-        function renderPoPickerMenu(rows) {
-            if (!Array.isArray(rows) || rows.length === 0) {
-                els.poPickerMenu.innerHTML = '<div class="po-picker-empty">No matching purchase order.</div>';
-                els.poPickerMenu.classList.remove('hidden');
-                return;
-            }
-
-            const uniqueRows = [];
-            const seen = new Set();
-            rows.forEach((row) => {
-                const purchaseOrder = String(row.purchase_order || '').trim();
-                if (!purchaseOrder || seen.has(purchaseOrder)) return;
-                seen.add(purchaseOrder);
-                uniqueRows.push({
-                    purchase_order: purchaseOrder,
-                    vendor_name: String(row.vendor_name || '-').trim() || '-',
-                    project_id: String(row.project_id || '').trim(),
-                });
-            });
-
-            if (!uniqueRows.length) {
-                els.poPickerMenu.innerHTML = '<div class="po-picker-empty">No matching purchase order.</div>';
-                els.poPickerMenu.classList.remove('hidden');
-                return;
-            }
-
-            els.poPickerMenu.innerHTML = `
-                <div class="po-picker-head"><span>Purchase order</span><span>Vendor name</span></div>
-                ${uniqueRows.map((row) => `
-                    <button
-                        type="button"
-                        class="po-picker-option"
-                        data-po="${escapeHtml(row.purchase_order)}"
-                        data-vendor="${escapeHtml(row.vendor_name)}"
-                        data-project="${escapeHtml(row.project_id)}"
-                    >
-                        <span>${escapeHtml(row.purchase_order)}</span>
-                        <span>${escapeHtml(row.vendor_name)}</span>
-                    </button>
-                `).join('')}
-            `;
-            els.poPickerMenu.classList.remove('hidden');
-        }
-
-        async function fetchPurchaseOrderSuggestions() {
-            const company = (els.company.value || '').trim();
-            const purchId = (els.purchId.value || '').trim();
-            if (!company) {
-                hidePoPickerMenu();
-                return;
-            }
-            try {
-                const resp = await fetch("{{ route('modules.procurement.grn.api.search') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({
-                        company,
-                        purch_id: purchId,
-                        vend_name: '',
-                        proj_id: '',
-                    }),
-                });
-                const data = await resp.json();
-                if (!resp.ok || data.status === false) {
-                    hidePoPickerMenu();
-                    return;
-                }
-                renderPoPickerMenu(data.rows || []);
-            } catch (_) {
-                hidePoPickerMenu();
-            }
         }
 
         function renderRows(rows) {
@@ -474,30 +334,6 @@
         els.createGrnBtn.addEventListener('click', showSearch);
         els.backToListBtn.addEventListener('click', showHistory);
         els.historySearchInput.addEventListener('input', applyHistorySearch);
-        let poSuggestTimer = null;
-        els.purchId.addEventListener('focus', () => {
-            fetchPurchaseOrderSuggestions();
-        });
-        els.purchId.addEventListener('input', () => {
-            if (poSuggestTimer) window.clearTimeout(poSuggestTimer);
-            poSuggestTimer = window.setTimeout(fetchPurchaseOrderSuggestions, 180);
-        });
-        els.poPickerMenu.addEventListener('click', (event) => {
-            const option = event.target.closest('.po-picker-option');
-            if (!option) return;
-            els.purchId.value = option.getAttribute('data-po') || '';
-            if (!els.vendName.value.trim()) {
-                els.vendName.value = option.getAttribute('data-vendor') || '';
-            }
-            if (!els.projId.value.trim()) {
-                els.projId.value = option.getAttribute('data-project') || '';
-            }
-            hidePoPickerMenu();
-        });
-        document.addEventListener('click', (event) => {
-            const picker = event.target.closest('.po-picker');
-            if (!picker) hidePoPickerMenu();
-        });
         [els.purchId, els.vendName, els.projId].forEach((input) => {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {

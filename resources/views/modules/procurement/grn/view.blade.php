@@ -20,7 +20,7 @@
         .crumb { font-size: 12px; color: #605e5c; }
         .content { padding: 14px; }
         .top-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .title { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; word-break: break-word; }
+        .title { margin: 0; font-size: 28px; font-weight: 700; }
         .vendor-sub { margin-top: 4px; font-size: 12px; color: #605e5c; }
         .btn { border: 1px solid #8a8886; background: #fff; color: #323130; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
         .btn-primary { border-color: #106ebe; background: #106ebe; color: #fff; }
@@ -38,13 +38,6 @@
         .status-box { margin-bottom: 10px; padding: 8px 10px; border-radius: 2px; font-size: 13px; display: none; }
         .status-box.success { display: block; background: #e8f6ee; color: #1f7a48; }
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
-        .line-name-cell {
-            max-width: min(360px, 40vw);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            vertical-align: middle;
-        }
     </style>
     @include('settings.rbac.partials.styles')
 </head>
@@ -78,7 +71,7 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label for="packing-slip-id">PACKING SLIP ID</label><input id="packing-slip-id" type="text" maxlength="255" autocomplete="off" placeholder="Free text — any slip / delivery reference you use" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}><div style="font-size:11px;color:#8a8886;margin-top:4px;">This field is only your reference text for D365. The system <strong>Request ID</strong> is created separately when you click Post.</div></div>
+                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>TRANSACTION DATE</label><input id="transaction-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>PO DATE <span style="font-weight:400;color:#8a8886;">(from D365)</span></label><input id="po-date" type="text" readonly placeholder="—" title="Purchase order date returned from D365"></div>
@@ -153,14 +146,6 @@
         return Number.isFinite(n) ? n.toFixed(2) : String(val);
     }
 
-    function escapeHtml(s) {
-        return String(s ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
     function mergePostedReceiveQuantities(apiLines) {
         const posted = grnJournalPayload?.posted_lines;
         if (!Array.isArray(apiLines) || !Array.isArray(posted) || posted.length === 0) {
@@ -198,13 +183,11 @@
             const receiveCell = showReceiveReadonly
                 ? `<td>${(rq !== undefined && rq !== null && rq !== '') ? formatReceiveQty(rq) : '—'}</td>`
                 : `<td><input class="qty-input" type="number" step="0.01" min="0" value="${rq ?? ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>`;
-            const nameText = line.name != null && String(line.name).trim() !== '' ? String(line.name) : '—';
-            const nameHtml = escapeHtml(nameText);
             return `
             <tr data-line-number="${line.line_number || ''}" data-line-rec-id="${line.line_rec_id || ''}">
                 <td>${line.line_number || '-'}</td>
-                <td>${escapeHtml(line.item_id || '-')}</td>
-                <td class="line-name-cell" title="${nameHtml}">${nameHtml}</td>
+                <td>${line.item_id || '-'}</td>
+                <td>${line.name || '-'}</td>
                 <td>${line.ordered_qty || '0.00'}</td>
                 <td>${line.remaining_qty || '0.00'}</td>
                 ${receiveCell}
@@ -279,7 +262,7 @@
         const packingSlipId = (els.packingSlipId.value || '').trim();
         const documentDate = (els.documentDate.value || '').trim();
         if (!packingSlipId) {
-            setStatus('error', 'Enter a Packing Slip ID (any text).');
+            setStatus('error', 'Packing Slip ID is required.');
             return;
         }
         if (!documentDate) {
@@ -344,16 +327,10 @@
             if (!resp.ok || data.status === false) {
                 throw new Error(data.error || data.message || 'Posting failed.');
             }
-            setStatus('success', `${data.message} System request ID: ${data.request_id}. Your packing slip ref: ${data.packing_slip_id || '—'}.`);
+            setStatus('success', `${data.message} Request ID: ${data.request_id}`);
         })
         .catch((err) => {
-            let msg = err.message || 'Posting failed.';
-            if (/[A-Za-z0-9]+-G\d{2}-\d{4}|[A-Za-z0-9]+-GRNT-\d{4}-\d{3}|Request\s*ID[^\n]*(?:PS-|ML-)/i.test(msg)) {
-                msg += ' That value is the system Request ID (not Packing Slip ID). Post again to use the next number, or ask an admin if D365 already has it.';
-            } else if (/packing\s*slip/i.test(msg) && /already exists|duplicate/i.test(msg)) {
-                msg += ' Try a different Packing Slip ID, or open the existing GRN from Recently Added.';
-            }
-            setStatus('error', msg);
+            setStatus('error', err.message || 'Posting failed.');
         })
         .finally(() => {
             els.postBtn.disabled = false;

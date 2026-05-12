@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Modules\Procurement;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\GrnJournal;
-use App\Models\GrnRequestIdReservation;
 use App\Services\D365GrnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -205,8 +203,7 @@ class GrnController extends Controller
         $validated = $request->validate([
             'company'                    => ['required', 'string', 'max:20'],
             'purchase_id'                => ['required', 'string', 'max:100'],
-            'request_id'                 => ['prohibited'],
-            'packing_slip_id'            => ['required', 'string', 'max:255'],
+            'packing_slip_id'            => ['required', 'string', 'max:100'],
             'document_date'              => ['required', 'date'],
             'transaction_date'           => ['nullable', 'date'],
             'vendor_name'                => ['nullable', 'string', 'max:255'],
@@ -219,14 +216,15 @@ class GrnController extends Controller
         $this->assertCompanyAccess((string) $validated['company']);
 
         try {
-            $purchaseId      = trim($validated['purchase_id']);
-            $company         = trim((string) $validated['company']);
-            $userPackingSlip = trim($validated['packing_slip_id']);
+            $purchaseId = trim($validated['purchase_id']);
+            $company    = trim((string) $validated['company']);
+            $requestId  = $this->generatePackingRequestId($company);
 
             $header = [
+                'RequestID'       => $requestId,
                 'PackingSlipDate' => $validated['document_date'],
                 'PurchId'         => $purchaseId,
-                'PackingSlipID'   => $userPackingSlip,
+                'PackingSlipID'   => trim($validated['packing_slip_id']),
             ];
 
             $transDate = trim((string) ($validated['transaction_date'] ?? ''));
@@ -246,17 +244,14 @@ class GrnController extends Controller
                 }
             }
 
-            $requestId = $this->allocateNextPackingRequestId($company);
-            $this->rememberGrnAllocatedRequestId($company, $requestId);
-            $header['RequestID'] = $requestId;
-
-            $raw          = $service->postPackingSlip($company, $header, $lines);
-            $success      = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
-            $errorMessage = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
-            $infoMessage  = $this->pickValue($raw, ['InfoMessage', 'infoMessage']);
+            $raw           = $service->postPackingSlip($company, $header, $lines);
+            $success       = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
+            $errorMessage  = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
+            $infoMessage   = $this->pickValue($raw, ['InfoMessage', 'infoMessage']);
+            $packingSlipId = $this->pickValue($raw, ['PackingSlipId', 'packingSlipId']) ?: $header['PackingSlipID'];
 
             if (!$success) {
-                return response()->json(['status' => false, 'message' => $errorMessage ?: 'Posting failed in D365.', 'request_id' => $requestId, 'packing_slip_id' => $userPackingSlip, 'data' => $raw], 422);
+                return response()->json(['status' => false, 'message' => $errorMessage ?: 'Posting failed in D365.', 'request_id' => $requestId, 'packing_slip_id' => $packingSlipId, 'data' => $raw], 422);
             }
 
             $journal = GrnJournal::query()->create([
@@ -265,16 +260,14 @@ class GrnController extends Controller
                 'purch_id'        => $purchaseId,
                 'project_id'      => trim((string) ($validated['project_id'] ?? '')) ?: null,
                 'vendor_name'     => trim((string) ($validated['vendor_name'] ?? '')) ?: null,
-                'packing_slip_id' => $userPackingSlip,
+                'packing_slip_id' => $packingSlipId,
                 'document_date'   => $validated['document_date'],
                 'lines'           => $lines,
                 'd365_response'   => $raw,
                 'posted_by'       => auth()->id(),
             ]);
 
-            $this->forgetGrnAllocatedRequestId($company, $requestId);
-
-            return response()->json(['status' => true, 'message' => $infoMessage ?: 'Packing slip posted successfully.', 'request_id' => $requestId, 'packing_slip_id' => $userPackingSlip, 'journal_id' => $journal->id, 'data' => $raw]);
+            return response()->json(['status' => true, 'message' => $infoMessage ?: 'Packing slip posted successfully.', 'request_id' => $requestId, 'packing_slip_id' => $packingSlipId, 'journal_id' => $journal->id, 'data' => $raw]);
         } catch (Throwable $e) {
             report($e);
             return response()->json(['status' => false, 'message' => $e->getMessage() !== '' ? $e->getMessage() : 'GRN post failed.', 'error' => $e->getMessage()], 500);
@@ -454,72 +447,23 @@ class GrnController extends Controller
         return number_format((float) $value, 2, '.', '');
     }
 
-    private function rememberGrnAllocatedRequestId(string $company, string $requestId): void
-    {
-        if (! Schema::hasTable('grn_request_id_reservations')) {
-            return;
-        }
-        GrnRequestIdReservation::query()->create([
-            'company'    => $company,
-            'request_id' => $requestId,
-            'created_at' => now(),
-        ]);
-    }
-
-    private function forgetGrnAllocatedRequestId(string $company, string $requestId): void
-    {
-        if (! Schema::hasTable('grn_request_id_reservations')) {
-            return;
-        }
-        GrnRequestIdReservation::query()
-            ->where('company', $company)
-            ->where('request_id', $requestId)
-            ->delete();
-    }
-
-    /**
-     * Next compact `{COMPANY}-G{YY}-{####}` Request ID for D365 (e.g. PS-G26-0001). Allocated only at post time (never the Packing Slip ID field).
-     * Uses a cache lock so the next sequence is unique even when no prior journal rows exist for this prefix.
-     */
-    private function allocateNextPackingRequestId(string $company): string
+    private function generatePackingRequestId(string $company): string
     {
         $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
-        $year2 = now()->format('y');
-        $prefix = sprintf('%s-G%s-', $companyCode, $year2);
-        $pad = 4;
+        $year = now()->format('Y');
+        $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
+        $latest = GrnJournal::query()
+            ->where('company', $company)
+            ->where('request_id', 'like', $prefix . '%')
+            ->orderByDesc('request_id')
+            ->value('request_id');
 
-        if (! Schema::hasTable('grn_journals')) {
-            return $prefix.str_pad('1', $pad, '0', STR_PAD_LEFT);
+        $next = 1;
+        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $latest, $m)) {
+            $next = ((int) $m[1]) + 1;
         }
 
-        $lockKey = 'grn-request-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
-
-        return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix, $pad) {
-            $maxSeq = 0;
-            foreach (GrnJournal::query()
-                ->where('company', $company)
-                ->where('request_id', 'like', $prefix.'%')
-                ->pluck('request_id') as $rid) {
-                if (preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $rid, $m)) {
-                    $maxSeq = max($maxSeq, (int) $m[1]);
-                }
-            }
-
-            if (Schema::hasTable('grn_request_id_reservations')) {
-                foreach (GrnRequestIdReservation::query()
-                    ->where('company', $company)
-                    ->where('request_id', 'like', $prefix.'%')
-                    ->pluck('request_id') as $rid) {
-                    if (preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $rid, $m)) {
-                        $maxSeq = max($maxSeq, (int) $m[1]);
-                    }
-                }
-            }
-
-            $next = $maxSeq + 1;
-
-            return $prefix.str_pad((string) $next, $pad, '0', STR_PAD_LEFT);
-        });
+        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     /**
