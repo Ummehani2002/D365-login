@@ -106,24 +106,7 @@
         <h1>Pool Master</h1>
     </div>
 
-    <div class="card" style="font-size:13px;line-height:1.5;color:#323130;">
-        <h2 style="margin-top:0;">D365 / manager sync API</h2>
-        <p style="margin:0 0 8px;color:#605e5c;">Each pool records <strong>whether</strong> it uses a project, warehouse, attachment, item category, and/or item id — as <strong>yes/no</strong> flags for your manager. Send <code>true</code>/<code>false</code>, <code>1</code>/<code>0</code>, or <code>yes</code>/<code>no</code> (case-insensitive). Omitted flag keys are left unchanged on update/sync.</p>
-        <p style="margin:0 0 8px;color:#605e5c;"><strong>Manager sync flags (optional on each request):</strong></p>
-        <ul style="margin:0 0 8px;padding-left:18px;">
-            <li><code>uses_project</code> — pool is tied to a project (yes/no)</li>
-            <li><code>uses_warehouse</code> — pool is tied to a warehouse (yes/no)</li>
-            <li><code>has_attachment</code> — pool has an attachment (yes/no)</li>
-            <li><code>has_item_category</code> — pool uses item category (yes/no)</li>
-            <li><code>has_item_id</code> — pool uses item id (yes/no)</li>
-        </ul>
-        <p style="margin:0 0 8px;color:#605e5c;"><strong>Optional D365 text fields</strong> (only if you store references: <code>project</code>, <code>warehouse</code>, <code>warehouse_company_id</code>, <code>attachment</code>, <code>item_category</code>, <code>item_id</code>, legacy <code>project_warehouse</code> / <code>category_item</code>) — same omit = no change rule.</p>
-        <ul style="margin:0;padding-left:18px;">
-            <li><strong>Bearer token</strong>: <code>POST {{ url('/api/pools/sync-d365') }}</code> — required: <code>pool_id</code>, <code>name</code>, <code>company_id</code>; optional flags + text fields as above.</li>
-            <li><strong>Super admin session</strong>: <code>POST {{ url('/masters/api/pools/sync-d365') }}</code> with the same JSON + CSRF.</li>
-            <li><strong>Update one row</strong>: <code>PATCH {{ url('/masters/api/pools') }}/{id}</code> (send only keys you want to change).</li>
-        </ul>
-    </div>
+   
 
     <div class="card">
         <h2>Add pool</h2>
@@ -203,12 +186,12 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Project</th>
-                    <th>Warehouse</th>
-                    <th>Wh. company</th>
-                    <th>Attachment</th>
-                    <th>Item category</th>
-                    <th>Item ID</th>
+                    <th title="From sync: uses_project">Uses project</th>
+                    <th title="From sync: uses_warehouse">Uses warehouse</th>
+                    <th title="Yes if warehouse_company_id is set">Wh. company ID</th>
+                    <th title="From sync: has_attachment">Has attachment</th>
+                    <th title="From sync: has_item_category">Has item category</th>
+                    <th title="From sync: has_item_id">Has item ID</th>
                     <th>Pool ID</th>
                     <th>Name</th>
                     <th>Company ID</th>
