@@ -184,6 +184,12 @@
                             <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
                         </div>
                         <div class="field">
+                            <label>Pool <span style="color:#a4262c">*</span></label>
+                            <select id="pool-id">
+                                <option value="">— Select Pool —</option>
+                            </select>
+                        </div>
+                        <div class="field">
                             <label>Department Manager</label>
                             <select id="department-manager">
                                 <option value="">— Select Department Manager —</option>
@@ -348,7 +354,6 @@
     <script>
     (() => {
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const DEFAULT_POOL_ID = 'P_LPO';
         const authUserId = {{ (int) auth()->id() }};
 
         const statusBox     = document.getElementById('status-box');
@@ -358,6 +363,7 @@
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
         const warehouseEl   = document.getElementById('warehouse');
+        const poolEl        = document.getElementById('pool-id');
         const departmentManagerEl = document.getElementById('department-manager');
         const contactEl     = document.getElementById('contact-name');
         const remarksEl     = document.getElementById('remarks');
@@ -378,6 +384,7 @@
         let currentDraftId = null;
         let currentViewOnly = false;
         let departmentManagers = [];
+        let poolRows = [];
 
         const showStatus = (msg, type) => {
             statusBox.textContent   = msg;
@@ -457,6 +464,44 @@
                 renderDepartmentManagerOptions(selectedId);
             } catch {
                 // Keep PR form usable even if manager list is unavailable.
+            }
+        }
+
+        function renderPoolOptions(selectedPoolId = '') {
+            if (!poolEl) return;
+            const selectedKey = String(selectedPoolId ?? '').trim().toUpperCase();
+            const options = poolRows.map((pool) => {
+                const poolId = String(pool.pool_id ?? '').trim();
+                const name = String(pool.name ?? '').trim();
+                const selectedAttr = poolId.toUpperCase() === selectedKey ? ' selected' : '';
+                const label = name ? `${poolId} (${name})` : poolId;
+                return `<option value="${escapeHtml(poolId)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+            poolEl.innerHTML = `<option value="">— Select Pool —</option>${options}`;
+        }
+
+        async function loadPools(companyCode, selectedPoolId = '') {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            poolRows = [];
+            renderPoolOptions('');
+            if (!company) return;
+
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.pools") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) return;
+
+                poolRows = Array.isArray(payload.data) ? payload.data : [];
+                renderPoolOptions(selectedPoolId);
+
+                if (!selectedPoolId && poolRows.length > 0 && poolEl) {
+                    const fallback = poolRows.find((row) => String(row.pool_id ?? '').toUpperCase() === 'P_LPO') ?? poolRows[0];
+                    poolEl.value = String(fallback.pool_id ?? '');
+                }
+            } catch {
+                // Keep PR form usable even if pool list is unavailable.
             }
         }
 
@@ -858,6 +903,7 @@
             }
             loadCatalogForCompany(companyCode);
             loadDepartmentManagers(companyCode);
+            loadPools(companyCode);
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -875,6 +921,7 @@
         });
         buyingLegalEntityEl.addEventListener('change', () => {
             loadDepartmentManagers(getCurrentCompanyCode());
+            loadPools(getCurrentCompanyCode());
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -1026,6 +1073,7 @@
             if (!company) { showStatus('Please select a company.', 'error'); return; }
             if (!prDateEl.value) { showStatus('PR Date is required.', 'error'); return; }
             if (!warehouseEl.value.trim()) { showStatus('Warehouse is required.', 'error'); return; }
+            if (!poolEl.value.trim()) { showStatus('Pool is required.', 'error'); return; }
             if (!contactEl.value.trim()) { showStatus('Contact Name is required.', 'error'); return; }
             if (!departmentEl.value.trim()) { showStatus('Department is required.', 'error'); return; }
 
@@ -1060,7 +1108,7 @@
                 buying_legal_entity: (buyingLegalEntityEl?.value || company),
                 pr_date:      prDateEl.value,
                 warehouse:    warehouseEl.value.trim(),
-                pool_id:      DEFAULT_POOL_ID,
+                pool_id:      poolEl.value.trim(),
                 contact_name: contactEl.value.trim(),
                 remarks:      remarksEl.value.trim(),
                 department:   departmentEl.value.trim(),
@@ -1130,7 +1178,7 @@
                 buying_legal_entity: (buyingLegalEntityEl?.value || getCurrentCompanyCode() || null),
                 pr_date: prDateEl.value || null,
                 warehouse: warehouseEl.value.trim() || null,
-                pool_id: DEFAULT_POOL_ID,
+                pool_id: poolEl.value.trim() || null,
                 contact_name: contactEl.value.trim() || null,
                 remarks: remarksEl.value.trim() || null,
                 department: departmentEl.value.trim() || null,
@@ -1217,6 +1265,9 @@
             }
             prDateEl.value      = todayStr();
             warehouseEl.value   = '';
+            if (poolEl) {
+                poolEl.value = '';
+            }
             contactEl.value     = '';
             remarksEl.value     = '';
             departmentEl.value  = '';
@@ -1298,10 +1349,14 @@
                 buyingLegalEntityEl.value = j.buying_legal_entity || '';
                 await loadCatalogForCompany(j.company || '');
                 await loadDepartmentManagers(j.company || '');
+                await loadPools(j.company || '', j.pool_id || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
                 prDateEl.value = j.pr_date || '';
                 warehouseEl.value = j.warehouse || '';
+                if (poolEl) {
+                    poolEl.value = j.pool_id || '';
+                }
                 contactEl.value = j.contact_name || '';
                 remarksEl.value = j.remarks || '';
                 departmentEl.value = j.department || '';
@@ -1349,6 +1404,7 @@
         historyShell.style.display = '';
         loadCatalogForCompany(companyEl.value || '');
         loadDepartmentManagers(getCurrentCompanyCode());
+        loadPools(getCurrentCompanyCode());
     })();
     </script>
 </body>

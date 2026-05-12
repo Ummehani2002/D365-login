@@ -389,6 +389,36 @@ class PurchReqController extends Controller
         ]);
     }
 
+    public function lookupPools(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json([
+                'status' => true,
+                'message' => 'Pools fetched.',
+                'data' => [],
+            ]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = Pool::query()
+            ->where('company_id', $companyCode)
+            ->orderBy('pool_id')
+            ->get(['id', 'pool_id', 'name', 'company_id']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pools fetched.',
+            'data' => $rows,
+        ]);
+    }
+
     public function downloadAttachment(PurchReqJournal $journal, int $index): Response
     {
         $this->assertCompanyAccess((string) $journal->company);

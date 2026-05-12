@@ -471,14 +471,14 @@ class GrnController extends Controller
     }
 
     /**
-     * Next `{COMPANY}-GRNT-{YEAR}-{nnn}` Request ID. Uses a lock + max over journals and a cache ceiling so IDs
+     * Next `{COMPANY}-GRN-{YEAR}-{nnn}` Request ID. Uses a lock + max over journals and a cache ceiling so IDs
      * consumed in D365 on failed posts still advance (fixes being stuck on …-001 for every GRN).
      */
     private function generatePackingRequestId(string $company): string
     {
         $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
         $year = now()->format('Y');
-        $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
+        $prefix = sprintf('%s-GRN-%s-', $companyCode, $year);
         $pad = 3;
 
         if (! Schema::hasTable('grn_journals')) {
@@ -514,7 +514,7 @@ class GrnController extends Controller
     /** Remember a Request ID we attempted so the next generate() skips past it (D365 may have it even with no local journal). */
     private function rememberConsumedGrnRequestId(string $company, string $requestId): void
     {
-        if (! preg_match('/^(.*-GRNT-\d{4}-)(\d+)$/', $requestId, $m)) {
+        if (! preg_match('/^(.*-GRN-\d{4}-)(\d+)$/', $requestId, $m)) {
             return;
         }
         $prefix = $m[1];
