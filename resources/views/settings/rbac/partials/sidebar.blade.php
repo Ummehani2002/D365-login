@@ -128,13 +128,13 @@
                                     <a
                                         class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}"
                                         href="{{ route('modules.procurement.purch-req', $companyQuery ?? []) }}"
-                                    >PR</a>
+                                    >Purchase Requisition</a>
                                 @endif
                                 @if(($authIsSuperAdmin ?? false) || ($canGrn ?? false))
                                     <a
                                         class="nav-link nested {{ request()->routeIs('modules.procurement.grn*') ? 'active' : '' }}"
                                         href="{{ route('modules.procurement.grn', $companyQuery ?? []) }}"
-                                    >GRN</a>
+                                    >Goods Receive Note</a>
                                 @endif
                             </div>
                         </div>
