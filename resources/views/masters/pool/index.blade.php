@@ -160,15 +160,16 @@
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>Pool ID</th>
+                    <th>Name</th>
+                    <th>Company ID</th>
                     <th title="From sync: uses_project">Project</th>
                     <th title="From sync: uses_warehouse">Warehouse</th>
                     <th title="Yes if warehouse_company_id is set">Wh. company ID</th>
                     <th title="From sync: has_attachment">Attachment Mandatory</th>
                     <th title="From sync: has_item_category">Item Category</th>
                     <th title="From sync: has_item_id">Item ID</th>
-                    <th>Pool ID</th>
-                    <th>Name</th>
-                    <th>Company ID</th>
+                   
                     <th>Created At</th>
                     <th>Action</th>
                 </tr>
