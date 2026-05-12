@@ -111,7 +111,7 @@
         <div id="form-status" class="status" style="display:none;"></div>
         <div id="form-errors" class="error" style="display:none;"></div>
         <form id="pool-form">
-            <p style="margin:0 0 10px;font-size:13px;color:#605e5c;">Tick <strong>Yes</strong> for each dimension that applies to this pool. Unticked = <strong>No</strong>. Your manager can send the same fields via the sync API (<code>true</code>/<code>false</code> or <code>yes</code>/<code>no</code>).</p>
+            <p style="margin:0 0 10px;font-size:13px;color:#605e5c;">Tick <strong>Yes</strong> for each field that applies to this pool. Unticked = <strong>No</strong>. Your manager can send the same fields via the sync API (<code>true</code>/<code>false</code> or <code>yes</code>/<code>no</code>).</p>
             <div class="form-row">
                 <div>
                     <label for="pool_id">Pool ID</label>
@@ -128,19 +128,19 @@
             </div>
             <div class="form-row" style="align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
-                    <input id="uses_project" type="checkbox" style="width:auto;"> Uses project
+                    <input id="project" type="checkbox" style="width:auto;"> Project
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
-                    <input id="uses_warehouse" type="checkbox" style="width:auto;"> Uses warehouse
+                    <input id="warehouse" type="checkbox" style="width:auto;"> Warehouse
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
-                    <input id="has_attachment" type="checkbox" style="width:auto;"> Has attachment
+                    <input id="attachment" type="checkbox" style="width:auto;"> Attachment Mandatory
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
-                    <input id="has_item_category" type="checkbox" style="width:auto;"> Has item category
+                    <input id="item_category" type="checkbox" style="width:auto;"> Item Category
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
-                    <input id="has_item_id" type="checkbox" style="width:auto;"> Has item ID
+                    <input id="item_id" type="checkbox" style="width:auto;"> Item ID
                 </label>
             </div>
             <div style="margin-top:8px;">
@@ -155,12 +155,12 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th title="From sync: uses_project">Uses project</th>
-                    <th title="From sync: uses_warehouse">Uses warehouse</th>
+                    <th title="From sync: uses_project">Project</th>
+                    <th title="From sync: uses_warehouse">Warehouse</th>
                     <th title="Yes if warehouse_company_id is set">Wh. company ID</th>
-                    <th title="From sync: has_attachment">Has attachment</th>
-                    <th title="From sync: has_item_category">Has item category</th>
-                    <th title="From sync: has_item_id">Has item ID</th>
+                    <th title="From sync: has_attachment">Attachment Mandatory</th>
+                    <th title="From sync: has_item_category">Item Category</th>
+                    <th title="From sync: has_item_id">Item ID</th>
                     <th>Pool ID</th>
                     <th>Name</th>
                     <th>Company ID</th>
@@ -283,11 +283,11 @@
 
             const poolId = document.getElementById('pool_id').value.trim();
             const poolName = document.getElementById('name').value.trim();
-            const usesProject = document.getElementById('uses_project').checked;
-            const usesWarehouse = document.getElementById('uses_warehouse').checked;
-            const hasAttachment = document.getElementById('has_attachment').checked;
-            const hasItemCategory = document.getElementById('has_item_category').checked;
-            const hasItemId = document.getElementById('has_item_id').checked;
+            const project = document.getElementById('project').checked;
+            const warehouse = document.getElementById('warehouse').checked;
+            const attachment = document.getElementById('attachment').checked;
+            const itemCategory = document.getElementById('item_category').checked;
+            const itemId = document.getElementById('item_id').checked;
             const companyId = currentCompanyId();
             if (!companyId) {
                 setFormMessage(errEl, 'Select a company before saving a pool.', true);
@@ -302,11 +302,11 @@
                         pool_id: poolId,
                         name: poolName,
                         company_id: companyId,
-                        uses_project: usesProject,
-                        uses_warehouse: usesWarehouse,
-                        has_attachment: hasAttachment,
-                        has_item_category: hasItemCategory,
-                        has_item_id: hasItemId,
+                        project: project,
+                        warehouse: warehouse,
+                        attachment: attachment,
+                        item_category: itemCategory,
+                        item_id: itemId,
                     }),
                 });
 
@@ -319,11 +319,11 @@
 
                 document.getElementById('pool_id').value = '';
                 document.getElementById('name').value = '';
-                document.getElementById('uses_project').checked = false;
-                document.getElementById('uses_warehouse').checked = false;
-                document.getElementById('has_attachment').checked = false;
-                document.getElementById('has_item_category').checked = false;
-                document.getElementById('has_item_id').checked = false;
+                document.getElementById('project').checked = false;
+                document.getElementById('warehouse').checked = false;
+                document.getElementById('attachment').checked = false;
+                document.getElementById('item_category').checked = false;
+                document.getElementById('item_id').checked = false;
                 setFormMessage(statusEl, payload.message || 'Pool created.', true);
                 await loadPools();
             } catch {

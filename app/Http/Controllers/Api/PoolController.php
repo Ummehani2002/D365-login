@@ -160,6 +160,25 @@ class PoolController extends Controller
      */
     private function normalizePoolBooleanInputs(Request $request): void
     {
+        // Accept friendly alias keys from manager payload and map them to DB flag columns.
+        $aliases = [
+            'project' => 'uses_project',
+            'warehouse' => 'uses_warehouse',
+            'attachment' => 'has_attachment',
+            'item_category' => 'has_item_category',
+            'item_id' => 'has_item_id',
+        ];
+
+        foreach ($aliases as $aliasKey => $targetKey) {
+            if (! $request->exists($aliasKey) || $request->exists($targetKey)) {
+                continue;
+            }
+            $parsedAlias = $this->parseYesNoToBool($request->input($aliasKey));
+            if ($parsedAlias !== null) {
+                $request->merge([$targetKey => $parsedAlias]);
+            }
+        }
+
         foreach ($this->poolBooleanFlagKeys() as $key) {
             if (! $request->exists($key)) {
                 continue;

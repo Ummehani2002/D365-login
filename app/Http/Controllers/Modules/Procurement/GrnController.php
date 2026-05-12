@@ -485,7 +485,7 @@ class GrnController extends Controller
             return $prefix.str_pad('1', $pad, '0', STR_PAD_LEFT);
         }
 
-        $lockKey = 'grn-grnt-req-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
+        $lockKey = 'grn-grn-req-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
 
         return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix, $pad) {
             $maxSeq = 0;
@@ -498,7 +498,7 @@ class GrnController extends Controller
                 }
             }
 
-            $maxSeq = max($maxSeq, (int) Cache::get($this->grnGrntSeqCeilingCacheKey($company, $prefix), 0));
+            $maxSeq = max($maxSeq, (int) Cache::get($this->grnGrnSeqCeilingCacheKey($company, $prefix), 0));
 
             $next = $maxSeq + 1;
 
@@ -508,7 +508,7 @@ class GrnController extends Controller
 
     private function grnGrntSeqCeilingCacheKey(string $company, string $requestIdPrefix): string
     {
-        return 'grn:grnt-seq-max:'.sha1(mb_strtoupper($company).'|'.$requestIdPrefix);
+        return 'grn:grn-seq-max:'.sha1(mb_strtoupper($company).'|'.$requestIdPrefix);
     }
 
     /** Remember a Request ID we attempted so the next generate() skips past it (D365 may have it even with no local journal). */
@@ -519,7 +519,7 @@ class GrnController extends Controller
         }
         $prefix = $m[1];
         $seq = (int) $m[2];
-        $key = $this->grnGrntSeqCeilingCacheKey($company, $prefix);
+        $key = $this->grnGrnSeqCeilingCacheKey($company, $prefix);
         $prev = (int) Cache::get($key, 0);
         if ($seq > $prev) {
             Cache::put($key, $seq, now()->addDays(90));
