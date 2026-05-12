@@ -5,7 +5,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pool Master</title>
     <style>
-        /* Layout (body flex) comes from settings.rbac.partials.styles — do not reset body here */
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f3f2f1;
+            color: #323130;
+            min-height: 100vh;
+        }
+        .main { padding: 12px 16px; overflow: auto; }
         .title { margin: 0 0 12px; font-size: 24px; font-weight: 600; }
         .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
         .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
@@ -89,7 +96,6 @@
             font-size: 13px;
         }
     </style>
-    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -97,7 +103,6 @@
         $companyCode = strtoupper((string) request()->query('company', ''));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
-    @include('settings.rbac.partials.sidebar')
     <main class="main">
         <div class="page-shell">
             <div class="command-bar">

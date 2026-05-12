@@ -4,8 +4,15 @@
     <meta charset="utf-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Department Manager Master</title>
-    @include('settings.rbac.partials.styles')
     <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f3f2f1;
+            color: #323130;
+            min-height: 100vh;
+        }
+        .main { padding: 12px 16px; overflow: auto; }
         .title { margin: 0 0 12px; font-size: 24px; font-weight: 600; }
         .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
         .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; padding: 0 12px; }
@@ -81,7 +88,6 @@
         $companyCode = strtoupper((string) request()->query('company', ''));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
-    @include('settings.rbac.partials.sidebar')
     <main class="main">
         <div class="page-shell">
             <div class="command-bar">

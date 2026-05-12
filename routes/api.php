@@ -25,6 +25,8 @@ Route::middleware('api.bearer')->group(function () {
      */
     Route::match(['get', 'head'], '/pool', [PoolController::class, 'index']);
     Route::post('/pool', [PoolController::class, 'store']);
+    Route::delete('/pool', [PoolController::class, 'destroyAlias'])
+        ->name('api.pool.destroy.alias');
     Route::post('/pool/sync-d365', [PoolController::class, 'syncFromD365'])
         ->name('api.pool.sync.alias');
     Route::match(['get', 'head'], '/pool/{pool}', [PoolController::class, 'show']);

@@ -103,6 +103,28 @@ class PoolController extends Controller
         ]);
     }
 
+    /**
+     * Back-compat: DELETE /api/pool (singular) with id in query or JSON body — same as DELETE /api/pool/{pool}.
+     */
+    public function destroyAlias(Request $request): JsonResponse
+    {
+        $this->normalizeLegacyPoolIdInput($request);
+
+        $poolKey = $request->input('pool_id')
+            ?? $request->input('id')
+            ?? $request->query('pool_id')
+            ?? $request->query('id');
+
+        if ($poolKey === null || trim((string) $poolKey) === '') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Provide which pool to delete: send `id` (numeric PK) or `pool_id` in the JSON body or query string; when deleting by `pool_id`, include `company_id` or `company` if the same pool_id exists for multiple companies.',
+            ], 422);
+        }
+
+        return $this->destroy($request, trim((string) $poolKey));
+    }
+
     public function syncFromD365(Request $request): JsonResponse
     {
         $this->normalizeLegacyPoolIdInput($request);
