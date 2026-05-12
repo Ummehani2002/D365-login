@@ -87,7 +87,17 @@
             padding-bottom: 220px;
         }
         .line-item-picker { position: relative; min-width: 220px; }
-        .line-item-picker-input { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 7px; font-size: 12px; background: #fff; }
+        .line-item-picker::after {
+            content: "▼";
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #605e5c;
+            font-size: 10px;
+            pointer-events: none;
+        }
+        .line-item-picker-input { width: calc(100% - 18px); border: 1px solid #8a8886; border-radius: 2px; padding: 5px 24px 5px 7px; font-size: 12px; background: #fff; }
         .line-item-menu {
             position: absolute;
             top: calc(100% + 4px);
