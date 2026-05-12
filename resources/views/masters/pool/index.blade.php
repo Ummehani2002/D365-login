@@ -5,21 +5,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pool Master</title>
     <style>
-        body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            margin: 0;
-            padding: 16px;
-            background: #f3f2f1;
-            color: #323130;
-        }
-        .header {
-            background: #fff;
-            color: #201f1e;
-            padding: 14px 16px;
-            border: 1px solid #edebe9;
-            border-radius: 2px;
-            margin-bottom: 12px;
-        }
+        /* Layout (body flex) comes from settings.rbac.partials.styles — do not reset body here */
+        .title { margin: 0 0 12px; font-size: 24px; font-weight: 600; }
+        .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
+        .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+        .crumb { font-size: 12px; color: #605e5c; }
         .card {
             background: #fff;
             border: 1px solid #edebe9;
@@ -99,14 +89,22 @@
             font-size: 13px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
-    <div class="header">
-        <h1>Pool Master</h1>
-    </div>
-
-   
+    @php
+        $companyCode = strtoupper((string) request()->query('company', ''));
+        $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
+    @endphp
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
+        <div class="page-shell">
+            <div class="command-bar">
+                <div class="crumb">Masters / Pools</div>
+            </div>
+            <div style="padding:12px;">
+                <h1 class="title">Pool Master</h1>
 
     <div class="card">
         <h2>Add pool</h2>
@@ -145,35 +143,6 @@
                     <input id="has_item_id" type="checkbox" style="width:auto;"> Has item ID
                 </label>
             </div>
-            <details style="margin:10px 0;font-size:13px;color:#323130;">
-                <summary style="cursor:pointer;font-weight:600;">Optional D365 reference text (advanced)</summary>
-                <div class="form-row" style="margin-top:10px;">
-                    <div>
-                        <label for="project">Project reference</label>
-                        <input id="project" name="project" type="text" maxlength="500" placeholder="D365 project id or name">
-                    </div>
-                    <div>
-                        <label for="warehouse">Warehouse reference</label>
-                        <input id="warehouse" name="warehouse" type="text" maxlength="500" placeholder="Warehouse id / name">
-                    </div>
-                    <div>
-                        <label for="warehouse_company_id">Warehouse company ID</label>
-                        <input id="warehouse_company_id" name="warehouse_company_id" type="text" maxlength="100" placeholder="DataAreaId (e.g. PS)">
-                    </div>
-                    <div>
-                        <label for="attachment">Attachment reference</label>
-                        <textarea id="attachment" name="attachment" rows="2" maxlength="60000" style="width:100%;padding:8px;border:1px solid #8a8886;border-radius:2px;box-sizing:border-box;resize:vertical;" placeholder="Attachment reference in D365"></textarea>
-                    </div>
-                    <div>
-                        <label for="item_category">Item category</label>
-                        <input id="item_category" name="item_category" type="text" maxlength="500" placeholder="Category from D365">
-                    </div>
-                    <div>
-                        <label for="item_id">Item ID</label>
-                        <input id="item_id" name="item_id" type="text" maxlength="200" placeholder="Item / product id">
-                    </div>
-                </div>
-            </details>
             <div style="margin-top:8px;">
                 <button type="submit">Save pool</button>
             </div>
@@ -205,8 +174,12 @@
                 </tr>
             </tbody>
         </table>
-        <a class="back-link" href="{{ route('dashboard') }}">Back to Dashboard</a>
+        <a class="back-link" href="{{ route('dashboard', $companyQuery) }}">Back to Dashboard</a>
     </div>
+
+            </div>
+        </div>
+    </main>
 
     <script>
         const poolsTbody = document.querySelector('tbody');
@@ -315,12 +288,6 @@
             const hasAttachment = document.getElementById('has_attachment').checked;
             const hasItemCategory = document.getElementById('has_item_category').checked;
             const hasItemId = document.getElementById('has_item_id').checked;
-            const project = document.getElementById('project').value.trim();
-            const warehouse = document.getElementById('warehouse').value.trim();
-            const warehouseCompanyId = document.getElementById('warehouse_company_id').value.trim();
-            const attachment = document.getElementById('attachment').value.trim();
-            const itemCategory = document.getElementById('item_category').value.trim();
-            const itemId = document.getElementById('item_id').value.trim();
             const companyId = currentCompanyId();
             if (!companyId) {
                 setFormMessage(errEl, 'Select a company before saving a pool.', true);
@@ -340,12 +307,6 @@
                         has_attachment: hasAttachment,
                         has_item_category: hasItemCategory,
                         has_item_id: hasItemId,
-                        ...(project !== '' ? { project } : {}),
-                        ...(warehouse !== '' ? { warehouse } : {}),
-                        ...(warehouseCompanyId !== '' ? { warehouse_company_id: warehouseCompanyId.toUpperCase() } : {}),
-                        ...(attachment !== '' ? { attachment } : {}),
-                        ...(itemCategory !== '' ? { item_category: itemCategory } : {}),
-                        ...(itemId !== '' ? { item_id: itemId } : {}),
                     }),
                 });
 
@@ -363,12 +324,6 @@
                 document.getElementById('has_attachment').checked = false;
                 document.getElementById('has_item_category').checked = false;
                 document.getElementById('has_item_id').checked = false;
-                document.getElementById('project').value = '';
-                document.getElementById('warehouse').value = '';
-                document.getElementById('warehouse_company_id').value = '';
-                document.getElementById('attachment').value = '';
-                document.getElementById('item_category').value = '';
-                document.getElementById('item_id').value = '';
                 setFormMessage(statusEl, payload.message || 'Pool created.', true);
                 await loadPools();
             } catch {
