@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\CurrencyMasterController;
+use App\Http\Controllers\DepartmentManagerMasterController;
 use App\Http\Controllers\ItemCategoryMasterController;
 use App\Http\Controllers\ItemMasterController;
 use App\Http\Controllers\ItemSalesTaxGroupMasterController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\SiteMasterController;
 use App\Http\Controllers\SizeMasterController;
 use App\Http\Controllers\WarehouseMasterController;
 use App\Http\Controllers\Api\CurrencyController as ApiCurrencyController;
+use App\Http\Controllers\Api\DepartmentManagerController as ApiDepartmentManagerController;
 use App\Http\Controllers\Api\ItemSalesTaxGroupController as ApiItemSalesTaxGroupController;
 use App\Http\Controllers\Api\ItemUnitController as ApiItemUnitController;
 use App\Http\Controllers\Api\PoolController as ApiPoolController;
@@ -53,8 +55,9 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
 
     Route::get('/masters/fd-locations', fn () => view('masters.placeholder', ['title' => 'FD Location Master']))->name('masters.fd-locations.index');
     Route::get('/masters/budget-resource-codes', fn () => view('masters.placeholder', ['title' => 'Budget Resource Code']))->name('masters.budget-resource-codes.index');
+    Route::get('/masters/department-managers', [DepartmentManagerMasterController::class, 'index'])->name('masters.department-managers.index');
 
-    foreach (['colors' => 'Colors', 'styles' => 'Styles', 'locations' => 'Locations', 'batches' => 'Batches', 'department-managers' => 'Department Managers'] as $slug => $title) {
+    foreach (['colors' => 'Colors', 'styles' => 'Styles', 'locations' => 'Locations', 'batches' => 'Batches'] as $slug => $title) {
         Route::get("/masters/{$slug}", fn () => view('masters.placeholder', ['title' => $title]))->name("masters.{$slug}.index");
     }
 
@@ -77,6 +80,10 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
         Route::put('/pools/{pool}', [ApiPoolController::class, 'update'])->name('pools.update');
         Route::patch('/pools/{pool}', [ApiPoolController::class, 'update'])->name('pools.patch');
         Route::delete('/pools/{pool}', [ApiPoolController::class, 'destroy'])->name('pools.destroy');
+
+        Route::get('/department-managers', [ApiDepartmentManagerController::class, 'index'])->name('department-managers.index');
+        Route::post('/department-managers', [ApiDepartmentManagerController::class, 'store'])->name('department-managers.store');
+        Route::delete('/department-managers/{department_manager}', [ApiDepartmentManagerController::class, 'destroy'])->name('department-managers.destroy');
 
         Route::get('/currencies', [ApiCurrencyController::class, 'index'])->name('currencies.index');
         Route::post('/currencies', [ApiCurrencyController::class, 'store'])->name('currencies.store');

@@ -184,6 +184,12 @@
                             <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
                         </div>
                         <div class="field">
+                            <label>Department Manager</label>
+                            <select id="department-manager">
+                                <option value="">— Select Department Manager —</option>
+                            </select>
+                        </div>
+                        <div class="field">
                             <label>Contact Name <span style="color:#a4262c">*</span></label>
                             <input id="contact-name" type="text" placeholder="e.g. Murugan">
                         </div>
@@ -352,6 +358,7 @@
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
         const warehouseEl   = document.getElementById('warehouse');
+        const departmentManagerEl = document.getElementById('department-manager');
         const contactEl     = document.getElementById('contact-name');
         const remarksEl     = document.getElementById('remarks');
         const departmentEl  = document.getElementById('department');
@@ -370,6 +377,7 @@
         let attachments = [];
         let currentDraftId = null;
         let currentViewOnly = false;
+        let departmentManagers = [];
 
         const showStatus = (msg, type) => {
             statusBox.textContent   = msg;
@@ -399,6 +407,57 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        function getCurrentCompanyCode() {
+            return String(buyingLegalEntityEl?.value || companyEl.value || '').trim().toUpperCase();
+        }
+
+        function renderDepartmentManagerOptions(selectedId = '') {
+            if (!departmentManagerEl) return;
+            const selectedKey = String(selectedId ?? '').trim();
+            const options = departmentManagers.map((manager) => {
+                const id = String(manager.id ?? '').trim();
+                const employee = String(manager.employee_name ?? '').trim();
+                const department = String(manager.department ?? '').trim();
+                const label = department ? `${employee} (${department})` : employee;
+                const selectedAttr = id === selectedKey ? ' selected' : '';
+                return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+
+            departmentManagerEl.innerHTML = `<option value="">— Select Department Manager —</option>${options}`;
+        }
+
+        function applyDepartmentManagerSelection() {
+            const selectedId = String(departmentManagerEl?.value ?? '').trim();
+            if (!selectedId) return;
+            const manager = departmentManagers.find((row) => String(row.id) === selectedId);
+            if (!manager) return;
+            contactEl.value = String(manager.employee_name ?? '').trim();
+            departmentEl.value = String(manager.department ?? '').trim();
+        }
+
+        async function loadDepartmentManagers(companyCode, selectedId = '') {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            departmentManagers = [];
+            renderDepartmentManagerOptions('');
+            if (!company) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.department-managers") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) {
+                    return;
+                }
+                departmentManagers = Array.isArray(payload.data) ? payload.data : [];
+                renderDepartmentManagerOptions(selectedId);
+            } catch {
+                // Keep PR form usable even if manager list is unavailable.
+            }
         }
 
         function getItemsByCategory(categoryId) {
@@ -614,7 +673,7 @@
             const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
             const unitSelect = tr.querySelector('.lf-unit');
             const unitNote = tr.querySelector('.lf-unit-note');
-            const company = (buyingLegalEntityEl?.value || companyEl.value || '').trim();
+            const company = getCurrentCompanyCode();
 
             if (!unitSelect || !unitNote) return;
 
@@ -798,6 +857,7 @@
                 buyingLegalEntityEl.value = companyCode;
             }
             loadCatalogForCompany(companyCode);
+            loadDepartmentManagers(companyCode);
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -814,6 +874,7 @@
             });
         });
         buyingLegalEntityEl.addEventListener('change', () => {
+            loadDepartmentManagers(getCurrentCompanyCode());
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -829,6 +890,7 @@
                 loadUnitsForRow(tr);
             });
         });
+        departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
 
         const attachZone = document.getElementById('attach-zone');
         attachZone.addEventListener('click', () => fileInput.click());
@@ -1064,8 +1126,8 @@
 
             const payload = {
                 _token: csrf,
-                company: companyEl.value.trim() || null,
-                buying_legal_entity: (buyingLegalEntityEl?.value || companyEl.value.trim() || null),
+                company: getCurrentCompanyCode() || null,
+                buying_legal_entity: (buyingLegalEntityEl?.value || getCurrentCompanyCode() || null),
                 pr_date: prDateEl.value || null,
                 warehouse: warehouseEl.value.trim() || null,
                 pool_id: DEFAULT_POOL_ID,
@@ -1158,6 +1220,9 @@
             contactEl.value     = '';
             remarksEl.value     = '';
             departmentEl.value  = '';
+            if (departmentManagerEl) {
+                departmentManagerEl.value = '';
+            }
             linesBody.querySelectorAll('tr[data-line]').forEach(r => r.remove());
             linesBody.querySelectorAll('tr[data-line-detail]').forEach(r => r.remove());
             lineCount    = 0;
@@ -1232,6 +1297,7 @@
                 companyEl.value = j.company || companyEl.value || '';
                 buyingLegalEntityEl.value = j.buying_legal_entity || '';
                 await loadCatalogForCompany(j.company || '');
+                await loadDepartmentManagers(j.company || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
                 prDateEl.value = j.pr_date || '';
@@ -1239,6 +1305,13 @@
                 contactEl.value = j.contact_name || '';
                 remarksEl.value = j.remarks || '';
                 departmentEl.value = j.department || '';
+                const matchedManager = departmentManagers.find((row) =>
+                    String(row.employee_name ?? '').trim().toLowerCase() === String(j.contact_name ?? '').trim().toLowerCase()
+                    && String(row.department ?? '').trim().toLowerCase() === String(j.department ?? '').trim().toLowerCase()
+                );
+                if (matchedManager && departmentManagerEl) {
+                    departmentManagerEl.value = String(matchedManager.id);
+                }
 
                 (Array.isArray(j.lines) ? j.lines : []).forEach((line) => addLine(line));
 
@@ -1275,6 +1348,7 @@
         formShell.style.display = 'none';
         historyShell.style.display = '';
         loadCatalogForCompany(companyEl.value || '');
+        loadDepartmentManagers(getCurrentCompanyCode());
     })();
     </script>
 </body>

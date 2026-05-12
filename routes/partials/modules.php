@@ -39,6 +39,7 @@ Route::middleware(['auth', 'permission:menu:modules.procurement.purch-req'])->gr
         Route::delete('/journals/{journal}',        [PurchReqController::class, 'destroyJournal'])->name('modules.procurement.purch-req.journals.destroy');
         Route::post('/units',                       [PurchReqController::class, 'lookupUnits'])->name('modules.procurement.purch-req.api.units');
         Route::post('/catalog',                     [PurchReqController::class, 'lookupCatalog'])->name('modules.procurement.purch-req.api.catalog');
+        Route::get('/department-managers',          [PurchReqController::class, 'lookupDepartmentManagers'])->name('modules.procurement.purch-req.api.department-managers');
     });
 
     Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}',

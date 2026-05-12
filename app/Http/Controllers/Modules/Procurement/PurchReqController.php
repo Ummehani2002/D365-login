@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Modules\Procurement;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\DepartmentManager;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Pool;
@@ -356,6 +357,36 @@ class PurchReqController extends Controller
         })->filter(fn ($i) => $i['id'] !== '')->values();
 
         return response()->json(['status' => true, 'message' => 'Catalog fetched.', 'categories' => $categories, 'items' => $items]);
+    }
+
+    public function lookupDepartmentManagers(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json([
+                'status' => true,
+                'message' => 'Department managers fetched.',
+                'data' => [],
+            ]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = DepartmentManager::query()
+            ->where('company_id', $companyCode)
+            ->orderBy('employee_name')
+            ->get(['id', 'employee_name', 'department', 'company_id']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Department managers fetched.',
+            'data' => $rows,
+        ]);
     }
 
     public function downloadAttachment(PurchReqJournal $journal, int $index): Response
