@@ -204,7 +204,7 @@ class GrnController extends Controller
         $validated = $request->validate([
             'company'                    => ['required', 'string', 'max:20'],
             'purchase_id'                => ['required', 'string', 'max:100'],
-            'packing_slip_id'            => ['required', 'string', 'max:100'],
+            'packing_slip_id'            => ['required', 'string', 'max:255'],
             'document_date'              => ['required', 'date'],
             'transaction_date'           => ['nullable', 'date'],
             'vendor_name'                => ['nullable', 'string', 'max:255'],
@@ -242,21 +242,6 @@ class GrnController extends Controller
             foreach ($lines as $line) {
                 if ((float) ($line['ReceiveNow'] ?? 0) < 0) {
                     return response()->json(['status' => false, 'message' => 'ReceiveNow cannot be negative.'], 422);
-                }
-            }
-
-            $packingSlipKey = mb_strtolower(trim($validated['packing_slip_id']));
-            if ($packingSlipKey !== '' && Schema::hasTable('grn_journals')) {
-                $alreadyPosted = GrnJournal::query()
-                    ->where('company', $company)
-                    ->where('purch_id', $purchaseId)
-                    ->whereRaw('LOWER(TRIM(packing_slip_id)) = ?', [$packingSlipKey])
-                    ->exists();
-                if ($alreadyPosted) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'This packing slip ID was already posted for this purchase order in this application. Open it from Recently Added GRN or use a different packing slip ID.',
-                    ], 422);
                 }
             }
 
@@ -464,22 +449,23 @@ class GrnController extends Controller
     }
 
     /**
-     * Next `{COMPANY}-GRNT-{YEAR}-{nnn}` Request ID for D365. Allocated only at post time (never the Packing Slip ID field).
+     * Next compact `{COMPANY}-G{YY}-{####}` Request ID for D365 (e.g. PS-G26-0001). Allocated only at post time (never the Packing Slip ID field).
      * Uses a cache lock so the next sequence is unique even when no prior journal rows exist for this prefix.
      */
     private function allocateNextPackingRequestId(string $company): string
     {
         $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
-        $year = now()->format('Y');
-        $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
+        $year2 = now()->format('y');
+        $prefix = sprintf('%s-G%s-', $companyCode, $year2);
+        $pad = 4;
 
         if (! Schema::hasTable('grn_journals')) {
-            return $prefix.'001';
+            return $prefix.str_pad('1', $pad, '0', STR_PAD_LEFT);
         }
 
         $lockKey = 'grn-request-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
 
-        return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix) {
+        return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix, $pad) {
             $maxSeq = 0;
             foreach (GrnJournal::query()
                 ->where('company', $company)
@@ -492,7 +478,7 @@ class GrnController extends Controller
 
             $next = $maxSeq + 1;
 
-            return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+            return $prefix.str_pad((string) $next, $pad, '0', STR_PAD_LEFT);
         });
     }
 

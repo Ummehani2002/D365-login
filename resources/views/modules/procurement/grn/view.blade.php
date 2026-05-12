@@ -78,7 +78,7 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label>PACKING SLIP ID <span style="font-weight:400;color:#8a8886;">(your slip reference for D365 — not the Request ID)</span></label><input id="packing-slip-id" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label for="packing-slip-id">PACKING SLIP ID</label><input id="packing-slip-id" type="text" maxlength="255" autocomplete="off" placeholder="Free text — any slip / delivery reference you use" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>TRANSACTION DATE</label><input id="transaction-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>PO DATE <span style="font-weight:400;color:#8a8886;">(from D365)</span></label><input id="po-date" type="text" readonly placeholder="—" title="Purchase order date returned from D365"></div>
@@ -279,7 +279,7 @@
         const packingSlipId = (els.packingSlipId.value || '').trim();
         const documentDate = (els.documentDate.value || '').trim();
         if (!packingSlipId) {
-            setStatus('error', 'Packing Slip ID is required.');
+            setStatus('error', 'Enter a Packing Slip ID (any text).');
             return;
         }
         if (!documentDate) {
@@ -348,8 +348,8 @@
         })
         .catch((err) => {
             let msg = err.message || 'Posting failed.';
-            if (/PS-GRNT-\d{4}-\d{3}|Request\s*ID.*PS-GRNT/i.test(msg)) {
-                msg += ' This refers to the system Request ID created when you post (format PS-GRNT-year-###). It is not your Packing Slip ID field. Try Post again for the next number, or ask an admin if D365 already has that Request ID.';
+            if (/[A-Za-z0-9]+-G\d{2}-\d{4}|[A-Za-z0-9]+-GRNT-\d{4}-\d{3}|Request\s*ID[^\n]*(?:PS-|ML-)/i.test(msg)) {
+                msg += ' This refers to the system Request ID assigned when you post (short format like PS-G26-0001). It is not your Packing Slip ID field. Try Post again for the next number, or ask an admin if D365 already has that Request ID.';
             } else if (/packing\s*slip/i.test(msg) && /already exists|duplicate/i.test(msg)) {
                 msg += ' Try a different Packing Slip ID, or open the existing GRN from Recently Added.';
             }

@@ -81,6 +81,7 @@
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border-bottom: 1px solid #edebe9; padding: 8px 10px; text-align: left; font-size: 13px; }
+        td.request-id-cell { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
         th { color: #605e5c; font-weight: 600; background: #faf9f8; white-space: nowrap; }
         .empty-note { text-align: center; color: #8a8886; padding: 22px 10px; font-size: 13px; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #deecf9; color: #005a9e; }
@@ -136,7 +137,7 @@
                                 <tbody>
                                     @forelse($journals as $j)
                                         <tr>
-                                            <td>{{ $j->request_id ?: '—' }}</td>
+                                            <td class="request-id-cell" title="{{ $j->request_id ? e($j->request_id) : '' }}">{{ $j->request_id ?: '—' }}</td>
                                             <td>{{ $j->purch_id ?: '—' }}</td>
                                             <td>{{ $j->company ?: '—' }}</td>
                                             <td>{{ $j->packing_slip_id ?: '—' }}</td>
