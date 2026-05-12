@@ -120,14 +120,15 @@
                 <div id="grn-history-shell">
                     <div class="card">
                         <div class="card-head">Recently Added GRN</div>
+                        <p class="card-hint" style="margin:0 14px 10px;font-size:12px;color:#605e5c;line-height:1.45;">System <strong>Request ID</strong> is generated only when you post (not from Packing Slip ID). Packing Slip ID is your own free-text reference.</p>
                         <div style="overflow:auto;">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Request ID</th>
+                                        <th title="Assigned by this app when you post — independent of Packing Slip ID">System request ID</th>
                                         <th>Purchase ID</th>
                                         <th>Company</th>
-                                        <th>Packing Slip ID</th>
+                                        <th title="What you typed — sent to D365 as packing slip reference">Packing Slip ID</th>
                                         <th>Lines</th>
                                         <th>Created By</th>
                                         <th>Created At</th>

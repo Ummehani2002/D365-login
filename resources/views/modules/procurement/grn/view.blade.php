@@ -20,7 +20,7 @@
         .crumb { font-size: 12px; color: #605e5c; }
         .content { padding: 14px; }
         .top-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .title { margin: 0; font-size: 28px; font-weight: 700; }
+        .title { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; word-break: break-word; }
         .vendor-sub { margin-top: 4px; font-size: 12px; color: #605e5c; }
         .btn { border: 1px solid #8a8886; background: #fff; color: #323130; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
         .btn-primary { border-color: #106ebe; background: #106ebe; color: #fff; }
@@ -78,7 +78,7 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label for="packing-slip-id">PACKING SLIP ID</label><input id="packing-slip-id" type="text" maxlength="255" autocomplete="off" placeholder="Free text — any slip / delivery reference you use" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label for="packing-slip-id">PACKING SLIP ID</label><input id="packing-slip-id" type="text" maxlength="255" autocomplete="off" placeholder="Free text — any slip / delivery reference you use" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}><div style="font-size:11px;color:#8a8886;margin-top:4px;">This field is only your reference text for D365. The system <strong>Request ID</strong> is created separately when you click Post.</div></div>
                 <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>TRANSACTION DATE</label><input id="transaction-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>PO DATE <span style="font-weight:400;color:#8a8886;">(from D365)</span></label><input id="po-date" type="text" readonly placeholder="—" title="Purchase order date returned from D365"></div>
@@ -344,12 +344,12 @@
             if (!resp.ok || data.status === false) {
                 throw new Error(data.error || data.message || 'Posting failed.');
             }
-            setStatus('success', `${data.message} Request ID (assigned on post): ${data.request_id}${data.packing_slip_id ? ` · Packing slip ID: ${data.packing_slip_id}` : ''}`);
+            setStatus('success', `${data.message} System request ID: ${data.request_id}. Your packing slip ref: ${data.packing_slip_id || '—'}.`);
         })
         .catch((err) => {
             let msg = err.message || 'Posting failed.';
             if (/[A-Za-z0-9]+-G\d{2}-\d{4}|[A-Za-z0-9]+-GRNT-\d{4}-\d{3}|Request\s*ID[^\n]*(?:PS-|ML-)/i.test(msg)) {
-                msg += ' This refers to the system Request ID assigned when you post (short format like PS-G26-0001). It is not your Packing Slip ID field. Try Post again for the next number, or ask an admin if D365 already has that Request ID.';
+                msg += ' That value is the system Request ID (not Packing Slip ID). Post again to use the next number, or ask an admin if D365 already has it.';
             } else if (/packing\s*slip/i.test(msg) && /already exists|duplicate/i.test(msg)) {
                 msg += ' Try a different Packing Slip ID, or open the existing GRN from Recently Added.';
             }
