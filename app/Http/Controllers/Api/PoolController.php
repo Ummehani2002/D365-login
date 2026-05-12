@@ -17,7 +17,7 @@ class PoolController extends Controller
         $query = Pool::query();
 
         if ($request->filled('company_id')) {
-            $query->where('company_id', trim((string) $request->input('company_id')));
+            $query->where('company_id', strtoupper(trim((string) $request->input('company_id'))));
         }
 
         if ($request->filled('pool_id')) {
@@ -44,9 +44,9 @@ class PoolController extends Controller
         ], 201);
     }
 
-    public function show(string $pool): JsonResponse
+    public function show(Request $request, string $pool): JsonResponse
     {
-        $resolved = $this->resolvePool($pool);
+        $resolved = $this->resolvePool($pool, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -65,7 +65,7 @@ class PoolController extends Controller
     public function update(Request $request, string $pool): JsonResponse
     {
         $this->normalizeLegacyPoolIdInput($request);
-        $resolved = $this->resolvePool($pool);
+        $resolved = $this->resolvePool($pool, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -84,9 +84,9 @@ class PoolController extends Controller
         ]);
     }
 
-    public function destroy(string $pool): JsonResponse
+    public function destroy(Request $request, string $pool): JsonResponse
     {
-        $resolved = $this->resolvePool($pool);
+        $resolved = $this->resolvePool($pool, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -113,11 +113,16 @@ class PoolController extends Controller
             'company_id' => ['required', 'string', 'max:100'],
         ]);
 
+        $companyId = strtoupper(trim($validated['company_id']));
+        $poolId = trim($validated['pool_id']);
+
         $pool = Pool::updateOrCreate(
-            ['pool_id' => trim($validated['pool_id'])],
+            [
+                'pool_id' => $poolId,
+                'company_id' => $companyId,
+            ],
             [
                 'name' => trim($validated['name']),
-                'company_id' => trim($validated['company_id']),
             ]
         );
 
@@ -145,7 +150,7 @@ class PoolController extends Controller
         }
     }
 
-    private function resolvePool(mixed $value): ?Pool
+    private function resolvePool(mixed $value, ?string $companyScope = null): ?Pool
     {
         if ($value === null || $value === '') {
             return null;
@@ -164,12 +169,41 @@ class PoolController extends Controller
             }
         }
 
-        return Pool::query()->where('pool_id', $needle)->first();
+        $query = Pool::query()->where('pool_id', $needle);
+        if ($companyScope !== null && $companyScope !== '') {
+            $query->where('company_id', strtoupper($companyScope));
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Scope lookups by company when resolving by pool_id (not numeric id).
+     * Accepts `company_id` or `company` from query or body.
+     */
+    private function companyScopeFromRequest(Request $request): ?string
+    {
+        foreach (['company_id', 'company'] as $key) {
+            $v = trim((string) $request->input($key, ''));
+            if ($v !== '') {
+                return strtoupper($v);
+            }
+            $vq = trim((string) $request->query($key, ''));
+            if ($vq !== '') {
+                return strtoupper($vq);
+            }
+        }
+
+        return null;
     }
 
     private function validatePayload(Request $request, ?Pool $pool = null): array
     {
-        $uniqueRule = Rule::unique('pools', 'pool_id');
+        $uniqueRule = Rule::unique('pools', 'pool_id')
+            ->where(fn ($query) => $query->where(
+                'company_id',
+                strtoupper(trim((string) $request->input('company_id', '')))
+            ));
 
         if ($pool) {
             $uniqueRule->ignore($pool->id);
@@ -184,7 +218,7 @@ class PoolController extends Controller
         return [
             'pool_id' => trim($validated['pool_id']),
             'name' => trim($validated['name']),
-            'company_id' => trim($validated['company_id']),
+            'company_id' => strtoupper(trim($validated['company_id'])),
         ];
     }
 }

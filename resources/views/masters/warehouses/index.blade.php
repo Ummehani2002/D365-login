@@ -98,7 +98,7 @@
 <body>
     @include('partials.global-company-selector')
     @php
-        $companyCode = strtoupper((string) request()->query('company', ''));
+        $companyCode = strtoupper((string) ($currentCompanyCode ?? ''));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
     @include('settings.rbac.partials.sidebar')
@@ -109,6 +109,10 @@
             </div>
             <div style="padding:12px;">
                 <h1 class="title">Warehouse Master</h1>
+
+                @if (!$companyCode)
+                    <div class="errors" style="margin-bottom:12px;">Select a company using the selector at the top right (or open this page with <code>?company=CODE</code> in the URL) to view and create warehouses for that company.</div>
+                @endif
 
                 @if (session('status'))
                     <div class="status">{{ session('status') }}</div>
@@ -130,14 +134,14 @@
                             <div class="form-row">
                                 <div>
                                     <label for="warehouse_id">Warehouse ID</label>
-                                    <input id="warehouse_id" name="warehouse_id" type="text" value="{{ old('warehouse_id') }}" required>
+                                    <input id="warehouse_id" name="warehouse_id" type="text" value="{{ old('warehouse_id') }}" required {{ $companyCode === '' ? 'disabled' : '' }}>
                                 </div>
                                 <div>
                                     <label for="warehouse_name">Warehouse Name</label>
-                                    <input id="warehouse_name" name="warehouse_name" type="text" value="{{ old('warehouse_name') }}" required>
+                                    <input id="warehouse_name" name="warehouse_name" type="text" value="{{ old('warehouse_name') }}" required {{ $companyCode === '' ? 'disabled' : '' }}>
                                 </div>
                             </div>
-                            <button class="btn-primary" type="submit">Save Warehouse</button>
+                            <button class="btn-primary" type="submit" {{ $companyCode === '' ? 'disabled' : '' }}>Save Warehouse</button>
                         </form>
                     </div>
                 </div>
@@ -148,6 +152,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
+                                <th>Company</th>
                                 <th>Warehouse ID</th>
                                 <th>Warehouse Name</th>
                                 <th>Created At</th>
@@ -158,6 +163,7 @@
                             @forelse ($warehouses as $index => $warehouse)
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
+                                    <td>{{ $warehouse->company_id }}</td>
                                     <td>{{ $warehouse->warehouse_id }}</td>
                                     <td>{{ $warehouse->warehouse_name }}</td>
                                     <td>{{ optional($warehouse->created_at)->format('d M Y H:i') }}</td>
@@ -165,13 +171,13 @@
                                         <form method="post" action="{{ route('masters.warehouses.destroy', array_merge($companyQuery, ['warehouse' => $warehouse->id])) }}" onsubmit="return confirm('Delete this warehouse?');" style="margin:0;">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="btn-delete" type="submit">Delete</button>
+                                            <button class="btn-delete" type="submit" {{ $companyCode === '' ? 'disabled' : '' }}>Delete</button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5">No warehouses found.</td>
+                                    <td colspan="6">{{ $companyCode === '' ? 'Select a company to see warehouses.' : 'No warehouses found for this company.' }}</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -92,6 +92,12 @@
             padding: 6px 10px;
             font-size: 12px;
         }
+        .empty-note {
+            text-align: center;
+            color: #8a8886;
+            padding: 16px 10px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -149,11 +155,28 @@
         const poolsTbody = document.querySelector('tbody');
         const poolsApiUrl = "{{ url('/masters/api/pools') }}";
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        const globalCompanySelect = document.getElementById('global-company-select');
+        const companyIdInput = document.getElementById('company_id');
 
         const defaultHeaders = {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
+        };
+
+        const currentCompanyId = () => {
+            const fromGlobal = (globalCompanySelect?.value || '').trim().toUpperCase();
+            if (fromGlobal) return fromGlobal;
+            const fromUrl = new URLSearchParams(window.location.search).get('company');
+            if (fromUrl) return fromUrl.trim().toUpperCase();
+            return (companyIdInput?.value || '').trim().toUpperCase();
+        };
+
+        const syncCompanyFieldFromGlobal = () => {
+            const code = currentCompanyId();
+            if (code && companyIdInput) {
+                companyIdInput.value = code;
+            }
         };
 
         const formatDate = (value) => {
@@ -173,9 +196,15 @@
         };
 
         const loadPools = async () => {
+            syncCompanyFieldFromGlobal();
+            const companyId = currentCompanyId();
+            if (!companyId) {
+                poolsTbody.innerHTML = '<tr><td colspan="6" class="empty-note">Select a company (top right) to view pools for that company.</td></tr>';
+                return;
+            }
             poolsTbody.innerHTML = '<tr><td colspan="6">Loading pools...</td></tr>';
             try {
-                const response = await fetch(poolsApiUrl, { headers: defaultHeaders });
+                const response = await fetch(`${poolsApiUrl}?company_id=${encodeURIComponent(companyId)}`, { headers: defaultHeaders });
                 if (!response.ok) throw new Error('Failed to load pools');
                 const payload = await response.json();
                 const pools = payload.data || [];
@@ -209,7 +238,11 @@
 
             const poolId = document.getElementById('pool_id').value.trim();
             const poolName = document.getElementById('name').value.trim();
-            const companyId = document.getElementById('company_id').value.trim();
+            const companyId = currentCompanyId();
+            if (!companyId) {
+                setFormMessage(errEl, 'Select a company before saving a pool.', true);
+                return;
+            }
 
             try {
                 const response = await fetch(poolsApiUrl, {
@@ -256,6 +289,14 @@
             }
         });
 
+        if (globalCompanySelect) {
+            globalCompanySelect.addEventListener('change', () => {
+                syncCompanyFieldFromGlobal();
+                loadPools();
+            });
+        }
+
+        syncCompanyFieldFromGlobal();
         loadPools();
     </script>
 </body>

@@ -14,6 +14,10 @@ class WarehouseController extends Controller
     {
         $query = Warehouse::query();
 
+        if ($request->filled('company_id')) {
+            $query->where('company_id', strtoupper(trim((string) $request->input('company_id'))));
+        }
+
         if ($request->filled('warehouse_id')) {
             $query->where('warehouse_id', trim((string) $request->input('warehouse_id')));
         }
@@ -27,16 +31,10 @@ class WarehouseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'warehouse_id' => ['required', 'string', 'max:100', 'unique:warehouses,warehouse_id'],
-            'warehouse_name' => ['required', 'string', 'max:255'],
-        ]);
+        $payload = $this->validatePayload($request);
+        $payload['created_by'] = auth()->id();
 
-        $warehouse = Warehouse::create([
-            'warehouse_id' => trim($validated['warehouse_id']),
-            'warehouse_name' => trim($validated['warehouse_name']),
-            'created_by' => auth()->id(),
-        ]);
+        $warehouse = Warehouse::create($payload);
 
         return response()->json([
             'status' => true,
@@ -45,9 +43,9 @@ class WarehouseController extends Controller
         ], 201);
     }
 
-    public function show(string $warehouse): JsonResponse
+    public function show(Request $request, string $warehouse): JsonResponse
     {
-        $resolved = $this->resolveWarehouse($warehouse);
+        $resolved = $this->resolveWarehouse($warehouse, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -65,7 +63,7 @@ class WarehouseController extends Controller
 
     public function update(Request $request, string $warehouse): JsonResponse
     {
-        $resolved = $this->resolveWarehouse($warehouse);
+        $resolved = $this->resolveWarehouse($warehouse, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -74,20 +72,9 @@ class WarehouseController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate([
-            'warehouse_id' => [
-                'required',
-                'string',
-                'max:100',
-                Rule::unique('warehouses', 'warehouse_id')->ignore($resolved->id),
-            ],
-            'warehouse_name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $resolved->update([
-            'warehouse_id' => trim($validated['warehouse_id']),
-            'warehouse_name' => trim($validated['warehouse_name']),
-        ]);
+        $payload = $this->validatePayload($request, $resolved);
+        unset($payload['created_by']);
+        $resolved->update($payload);
 
         return response()->json([
             'status' => true,
@@ -96,9 +83,9 @@ class WarehouseController extends Controller
         ]);
     }
 
-    public function destroy(string $warehouse): JsonResponse
+    public function destroy(Request $request, string $warehouse): JsonResponse
     {
-        $resolved = $this->resolveWarehouse($warehouse);
+        $resolved = $this->resolveWarehouse($warehouse, $this->companyScopeFromRequest($request));
 
         if (! $resolved) {
             return response()->json([
@@ -115,7 +102,7 @@ class WarehouseController extends Controller
         ]);
     }
 
-    private function resolveWarehouse(mixed $value): ?Warehouse
+    private function resolveWarehouse(mixed $value, ?string $companyScope = null): ?Warehouse
     {
         if ($value === null || $value === '') {
             return null;
@@ -133,6 +120,52 @@ class WarehouseController extends Controller
             }
         }
 
-        return Warehouse::query()->where('warehouse_id', $needle)->first();
+        $query = Warehouse::query()->where('warehouse_id', $needle);
+        if ($companyScope !== null && $companyScope !== '') {
+            $query->where('company_id', strtoupper($companyScope));
+        }
+
+        return $query->first();
+    }
+
+    private function companyScopeFromRequest(Request $request): ?string
+    {
+        foreach (['company_id', 'company'] as $key) {
+            $v = trim((string) $request->input($key, ''));
+            if ($v !== '') {
+                return strtoupper($v);
+            }
+            $vq = trim((string) $request->query($key, ''));
+            if ($vq !== '') {
+                return strtoupper($vq);
+            }
+        }
+
+        return null;
+    }
+
+    private function validatePayload(Request $request, ?Warehouse $existing = null): array
+    {
+        $uniqueRule = Rule::unique('warehouses', 'warehouse_id')
+            ->where(fn ($query) => $query->where(
+                'company_id',
+                strtoupper(trim((string) $request->input('company_id', '')))
+            ));
+
+        if ($existing) {
+            $uniqueRule->ignore($existing->id);
+        }
+
+        $validated = $request->validate([
+            'warehouse_id' => ['required', 'string', 'max:100', $uniqueRule],
+            'warehouse_name' => ['required', 'string', 'max:255'],
+            'company_id' => ['required', 'string', 'max:100'],
+        ]);
+
+        return [
+            'warehouse_id' => trim($validated['warehouse_id']),
+            'warehouse_name' => trim($validated['warehouse_name']),
+            'company_id' => strtoupper(trim($validated['company_id'])),
+        ];
     }
 }

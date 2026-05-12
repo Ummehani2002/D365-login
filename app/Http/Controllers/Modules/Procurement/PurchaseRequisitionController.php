@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Services\D365ItemIssueService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class PurchaseRequisitionController extends Controller
@@ -31,8 +32,24 @@ class PurchaseRequisitionController extends Controller
             'request_id'                        => ['required', 'string', 'max:50'],
             'pr_no'                             => ['required', 'string', 'max:50'],
             'pr_date'                           => ['required', 'date_format:Y-m-d'],
-            'warehouse'                         => ['required', 'string', 'max:100'],
-            'pool_id'                           => ['required', 'string', 'max:100'],
+            'warehouse'                         => [
+                'required',
+                'string',
+                'max:100',
+                Rule::exists('warehouses', 'warehouse_id')->where(fn ($q) => $q->where(
+                    'company_id',
+                    strtoupper(trim((string) $request->input('company')))
+                )),
+            ],
+            'pool_id'                           => [
+                'required',
+                'string',
+                'max:100',
+                Rule::exists('pools', 'pool_id')->where(fn ($q) => $q->where(
+                    'company_id',
+                    strtoupper(trim((string) $request->input('company')))
+                )),
+            ],
             'contact_name'                      => ['required', 'string', 'max:120'],
             'remarks'                           => ['nullable', 'string', 'max:500'],
             'department'                        => ['required', 'string', 'max:120'],
