@@ -32,15 +32,7 @@ class PurchaseRequisitionController extends Controller
             'request_id'                        => ['required', 'string', 'max:50'],
             'pr_no'                             => ['required', 'string', 'max:50'],
             'pr_date'                           => ['required', 'date_format:Y-m-d'],
-            'warehouse'                         => [
-                'required',
-                'string',
-                'max:100',
-                Rule::exists('warehouses', 'warehouse_id')->where(fn ($q) => $q->where(
-                    'company_id',
-                    strtoupper(trim((string) $request->input('company')))
-                )),
-            ],
+            'warehouse'                         => ['required', 'string', 'max:100'],
             'pool_id'                           => [
                 'required',
                 'string',

@@ -8,7 +8,6 @@ use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Pool;
 use App\Models\PurchReqJournal;
-use App\Models\Warehouse;
 use App\Services\D365PurchReqService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,15 +63,7 @@ class PurchReqController extends Controller
                 'company'                     => ['required', 'string', 'max:20'],
                 'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
                 'pr_date'                     => ['required', 'date'],
-                'warehouse'                   => [
-                    'required',
-                    'string',
-                    'max:100',
-                    Rule::exists('warehouses', 'warehouse_id')->where(fn ($q) => $q->where(
-                        'company_id',
-                        strtoupper(trim((string) $request->input('company')))
-                    )),
-                ],
+                'warehouse'                   => ['required', 'string', 'max:100'],
                 'pool_id'                     => [
                     'required',
                     'string',
@@ -191,7 +182,7 @@ class PurchReqController extends Controller
             'company'                     => ['nullable', 'string', 'max:20'],
             'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
             'pr_date'                     => ['nullable', 'date'],
-            'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseExistsForCompanyRule($request)],
+            'warehouse'                   => ['nullable', 'string', 'max:100'],
             'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
             'contact_name'                => ['nullable', 'string', 'max:255'],
             'remarks'                     => ['nullable', 'string', 'max:500'],
@@ -241,7 +232,7 @@ class PurchReqController extends Controller
             'company'                     => ['nullable', 'string', 'max:20'],
             'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
             'pr_date'                     => ['nullable', 'date'],
-            'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseExistsForCompanyRule($request)],
+            'warehouse'                   => ['nullable', 'string', 'max:100'],
             'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
             'contact_name'                => ['nullable', 'string', 'max:255'],
             'remarks'                     => ['nullable', 'string', 'max:500'],
@@ -459,26 +450,6 @@ class PurchReqController extends Controller
             if ($value !== '') $parts[] = $value;
         }
         return $parts !== [] ? implode(' ', array_unique($parts)) : 'D365 rejected the purchase requisition.';
-    }
-
-    private function warehouseExistsForCompanyRule(Request $request): \Closure
-    {
-        return function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-            if ($value === null || $value === '') {
-                return;
-            }
-            $company = strtoupper(trim((string) $request->input('company', '')));
-            if ($company === '') {
-                return;
-            }
-            $exists = Warehouse::query()
-                ->where('company_id', $company)
-                ->where('warehouse_id', trim((string) $value))
-                ->exists();
-            if (! $exists) {
-                $fail('The warehouse does not exist for the selected company.');
-            }
-        };
     }
 
     private function poolIdExistsForCompanyRule(Request $request): \Closure
