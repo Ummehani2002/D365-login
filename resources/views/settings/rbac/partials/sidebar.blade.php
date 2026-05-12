@@ -33,7 +33,7 @@
     $showProjectManagement = ($authIsSuperAdmin ?? false) || ($canItemIssue ?? false);
     $showProcurement = ($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false);
 @endphp
-<aside class="sidebar sidebar-collapsed" id="appSidebar">
+<aside class="sidebar" id="appSidebar">
     <div class="sidebar-rail" aria-label="Navigation rail">
         <button type="button" class="rail-toggle rail-menu-toggle" data-action="toggle-panel" title="Toggle menu" aria-label="Toggle menu">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -201,11 +201,13 @@
             showAllSections();
             return;
         }
-        setCollapsed(true);
+        // Keep panel fixed open across modules/masters/settings.
+        openPanel();
+        showAllSections();
     };
 
-    // Always start collapsed: icons only.
-    setCollapsed(true);
+    // Always start open for consistent navigation everywhere.
+    setCollapsed(false);
 
     const firstAvailableTarget = () => {
         for (const target of ['masters', 'modules', 'dashboard', 'settings']) {
