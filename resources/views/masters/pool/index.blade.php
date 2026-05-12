@@ -108,10 +108,18 @@
 
     <div class="card" style="font-size:13px;line-height:1.5;color:#323130;">
         <h2 style="margin-top:0;">D365 / manager sync API</h2>
-        <p style="margin:0 0 8px;color:#605e5c;">Each pool can include <strong>only the fields D365 has</strong> for that row. Send any subset in the JSON body; keys you omit are left unchanged on update/sync.</p>
-        <p style="margin:0 0 8px;color:#605e5c;"><strong>Optional keys:</strong> <code>project</code>, <code>warehouse</code>, <code>warehouse_company_id</code> (D365 data area / legal entity for that warehouse), <code>attachment</code>, <code>item_category</code>, <code>item_id</code> — plus legacy <code>project_warehouse</code> / <code>category_item</code>.</p>
+        <p style="margin:0 0 8px;color:#605e5c;">Each pool records <strong>whether</strong> it uses a project, warehouse, attachment, item category, and/or item id — as <strong>yes/no</strong> flags for your manager. Send <code>true</code>/<code>false</code>, <code>1</code>/<code>0</code>, or <code>yes</code>/<code>no</code> (case-insensitive). Omitted flag keys are left unchanged on update/sync.</p>
+        <p style="margin:0 0 8px;color:#605e5c;"><strong>Manager sync flags (optional on each request):</strong></p>
+        <ul style="margin:0 0 8px;padding-left:18px;">
+            <li><code>uses_project</code> — pool is tied to a project (yes/no)</li>
+            <li><code>uses_warehouse</code> — pool is tied to a warehouse (yes/no)</li>
+            <li><code>has_attachment</code> — pool has an attachment (yes/no)</li>
+            <li><code>has_item_category</code> — pool uses item category (yes/no)</li>
+            <li><code>has_item_id</code> — pool uses item id (yes/no)</li>
+        </ul>
+        <p style="margin:0 0 8px;color:#605e5c;"><strong>Optional D365 text fields</strong> (only if you store references: <code>project</code>, <code>warehouse</code>, <code>warehouse_company_id</code>, <code>attachment</code>, <code>item_category</code>, <code>item_id</code>, legacy <code>project_warehouse</code> / <code>category_item</code>) — same omit = no change rule.</p>
         <ul style="margin:0;padding-left:18px;">
-            <li><strong>Bearer token</strong>: <code>POST {{ url('/api/pools/sync-d365') }}</code> — required: <code>pool_id</code>, <code>name</code>, <code>company_id</code>; optional fields as above.</li>
+            <li><strong>Bearer token</strong>: <code>POST {{ url('/api/pools/sync-d365') }}</code> — required: <code>pool_id</code>, <code>name</code>, <code>company_id</code>; optional flags + text fields as above.</li>
             <li><strong>Super admin session</strong>: <code>POST {{ url('/masters/api/pools/sync-d365') }}</code> with the same JSON + CSRF.</li>
             <li><strong>Update one row</strong>: <code>PATCH {{ url('/masters/api/pools') }}/{id}</code> (send only keys you want to change).</li>
         </ul>
@@ -122,6 +130,7 @@
         <div id="form-status" class="status" style="display:none;"></div>
         <div id="form-errors" class="error" style="display:none;"></div>
         <form id="pool-form">
+            <p style="margin:0 0 10px;font-size:13px;color:#605e5c;">Tick <strong>Yes</strong> for each dimension that applies to this pool. Unticked = <strong>No</strong>. Your manager can send the same fields via the sync API (<code>true</code>/<code>false</code> or <code>yes</code>/<code>no</code>).</p>
             <div class="form-row">
                 <div>
                     <label for="pool_id">Pool ID</label>
@@ -135,30 +144,54 @@
                     <label for="company_id">Company ID</label>
                     <input id="company_id" name="company_id" type="text" maxlength="100" required value="{{ strtoupper((string) request('company', '')) }}" placeholder="e.g. USMF">
                 </div>
-                <div>
-                    <label for="project">Project <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <input id="project" name="project" type="text" maxlength="500" placeholder="Only if this pool has a project in D365">
+            </div>
+            <div class="form-row" style="align-items:center;">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="uses_project" type="checkbox" style="width:auto;"> Uses project
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="uses_warehouse" type="checkbox" style="width:auto;"> Uses warehouse
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="has_attachment" type="checkbox" style="width:auto;"> Has attachment
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="has_item_category" type="checkbox" style="width:auto;"> Has item category
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="has_item_id" type="checkbox" style="width:auto;"> Has item ID
+                </label>
+            </div>
+            <details style="margin:10px 0;font-size:13px;color:#323130;">
+                <summary style="cursor:pointer;font-weight:600;">Optional D365 reference text (advanced)</summary>
+                <div class="form-row" style="margin-top:10px;">
+                    <div>
+                        <label for="project">Project reference</label>
+                        <input id="project" name="project" type="text" maxlength="500" placeholder="D365 project id or name">
+                    </div>
+                    <div>
+                        <label for="warehouse">Warehouse reference</label>
+                        <input id="warehouse" name="warehouse" type="text" maxlength="500" placeholder="Warehouse id / name">
+                    </div>
+                    <div>
+                        <label for="warehouse_company_id">Warehouse company ID</label>
+                        <input id="warehouse_company_id" name="warehouse_company_id" type="text" maxlength="100" placeholder="DataAreaId (e.g. PS)">
+                    </div>
+                    <div>
+                        <label for="attachment">Attachment reference</label>
+                        <textarea id="attachment" name="attachment" rows="2" maxlength="60000" style="width:100%;padding:8px;border:1px solid #8a8886;border-radius:2px;box-sizing:border-box;resize:vertical;" placeholder="Attachment reference in D365"></textarea>
+                    </div>
+                    <div>
+                        <label for="item_category">Item category</label>
+                        <input id="item_category" name="item_category" type="text" maxlength="500" placeholder="Category from D365">
+                    </div>
+                    <div>
+                        <label for="item_id">Item ID</label>
+                        <input id="item_id" name="item_id" type="text" maxlength="200" placeholder="Item / product id">
+                    </div>
                 </div>
-                <div>
-                    <label for="warehouse">Warehouse <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <input id="warehouse" name="warehouse" type="text" maxlength="500" placeholder="Warehouse id / name from D365">
-                </div>
-                <div>
-                    <label for="warehouse_company_id">Warehouse company ID <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <input id="warehouse_company_id" name="warehouse_company_id" type="text" maxlength="100" placeholder="DataAreaId / company for that warehouse (e.g. PS)">
-                </div>
-                <div>
-                    <label for="attachment">Attachment <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <textarea id="attachment" name="attachment" rows="2" maxlength="60000" style="width:100%;padding:8px;border:1px solid #8a8886;border-radius:2px;box-sizing:border-box;resize:vertical;" placeholder="Only if this pool has an attachment reference in D365"></textarea>
-                </div>
-                <div>
-                    <label for="item_category">Item category <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <input id="item_category" name="item_category" type="text" maxlength="500" placeholder="Category from D365, if any">
-                </div>
-                <div>
-                    <label for="item_id">Item ID <span style="font-weight:400;color:#605e5c;">(optional)</span></label>
-                    <input id="item_id" name="item_id" type="text" maxlength="200" placeholder="Item / product id from D365, if any">
-                </div>
+            </details>
+            <div style="margin-top:8px;">
                 <button type="submit">Save pool</button>
             </div>
         </form>
@@ -236,19 +269,13 @@
             return d.innerHTML;
         };
 
-        const escapeAttr = (s) => escapeHtml(s).replace(/"/g, '&quot;');
+        const yn = (v) => (v === true || v === 1 || v === '1')
+            ? '<span style="color:#107c10;font-weight:600;">Yes</span>'
+            : '<span style="color:#605e5c;">No</span>';
 
-        const truncateCell = (value, maxLen) => {
-            const t = (value ?? '').trim();
-            if (!t) return '—';
-            if (t.length <= maxLen) return escapeHtml(t);
-            const short = t.slice(0, maxLen);
-            return `<span title="${escapeAttr(t)}">${escapeHtml(short)}…</span>`;
-        };
-
-        const cellOrLegacy = (primary, legacy) => {
-            const t = ((primary ?? '').trim() || (legacy ?? '').trim());
-            return t;
+        const whCompanyYn = (pool) => {
+            const t = (pool.warehouse_company_id ?? '').toString().trim();
+            return t !== '' ? '<span style="color:#107c10;font-weight:600;">Yes</span>' : '<span style="color:#605e5c;">No</span>';
         };
 
         const loadPools = async () => {
@@ -273,12 +300,12 @@
                 poolsTbody.innerHTML = pools.map((pool, index) => `
                     <tr>
                         <td>${index + 1}</td>
-                        <td>${truncateCell(cellOrLegacy(pool.project, pool.project_warehouse), 32)}</td>
-                        <td>${truncateCell(pool.warehouse ?? '', 28)}</td>
-                        <td>${truncateCell((pool.warehouse_company_id ?? '').toUpperCase(), 12)}</td>
-                        <td>${truncateCell(pool.attachment ?? '', 28)}</td>
-                        <td>${truncateCell(cellOrLegacy(pool.item_category, pool.category_item), 28)}</td>
-                        <td>${truncateCell(pool.item_id ?? '', 20)}</td>
+                        <td>${yn(pool.uses_project)}</td>
+                        <td>${yn(pool.uses_warehouse)}</td>
+                        <td>${whCompanyYn(pool)}</td>
+                        <td>${yn(pool.has_attachment)}</td>
+                        <td>${yn(pool.has_item_category)}</td>
+                        <td>${yn(pool.has_item_id)}</td>
                         <td>${escapeHtml(pool.pool_id ?? '-')}</td>
                         <td>${escapeHtml(pool.name ?? '-')}</td>
                         <td>${escapeHtml(pool.company_id ?? '-')}</td>
@@ -300,6 +327,11 @@
 
             const poolId = document.getElementById('pool_id').value.trim();
             const poolName = document.getElementById('name').value.trim();
+            const usesProject = document.getElementById('uses_project').checked;
+            const usesWarehouse = document.getElementById('uses_warehouse').checked;
+            const hasAttachment = document.getElementById('has_attachment').checked;
+            const hasItemCategory = document.getElementById('has_item_category').checked;
+            const hasItemId = document.getElementById('has_item_id').checked;
             const project = document.getElementById('project').value.trim();
             const warehouse = document.getElementById('warehouse').value.trim();
             const warehouseCompanyId = document.getElementById('warehouse_company_id').value.trim();
@@ -320,6 +352,11 @@
                         pool_id: poolId,
                         name: poolName,
                         company_id: companyId,
+                        uses_project: usesProject,
+                        uses_warehouse: usesWarehouse,
+                        has_attachment: hasAttachment,
+                        has_item_category: hasItemCategory,
+                        has_item_id: hasItemId,
                         ...(project !== '' ? { project } : {}),
                         ...(warehouse !== '' ? { warehouse } : {}),
                         ...(warehouseCompanyId !== '' ? { warehouse_company_id: warehouseCompanyId.toUpperCase() } : {}),
@@ -338,6 +375,11 @@
 
                 document.getElementById('pool_id').value = '';
                 document.getElementById('name').value = '';
+                document.getElementById('uses_project').checked = false;
+                document.getElementById('uses_warehouse').checked = false;
+                document.getElementById('has_attachment').checked = false;
+                document.getElementById('has_item_category').checked = false;
+                document.getElementById('has_item_id').checked = false;
                 document.getElementById('project').value = '';
                 document.getElementById('warehouse').value = '';
                 document.getElementById('warehouse_company_id').value = '';

@@ -13,6 +13,11 @@ class Pool extends Model
     protected $fillable = [
         'pool_id',
         'name',
+        'uses_project',
+        'uses_warehouse',
+        'has_attachment',
+        'has_item_category',
+        'has_item_id',
         'project',
         'warehouse',
         'warehouse_company_id',
@@ -23,6 +28,17 @@ class Pool extends Model
         'category_item',
         'company_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'uses_project' => 'boolean',
+            'uses_warehouse' => 'boolean',
+            'has_attachment' => 'boolean',
+            'has_item_category' => 'boolean',
+            'has_item_id' => 'boolean',
+        ];
+    }
 
     public function company(): BelongsTo
     {

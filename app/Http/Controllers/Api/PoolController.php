@@ -106,18 +106,20 @@ class PoolController extends Controller
     public function syncFromD365(Request $request): JsonResponse
     {
         $this->normalizeLegacyPoolIdInput($request);
+        $this->normalizePoolBooleanInputs($request);
 
         $validated = $request->validate(array_merge([
             'pool_id' => ['required', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:255'],
             'company_id' => ['required', 'string', 'max:100'],
-        ], $this->poolOptionalD365ValidationRules()));
+        ], $this->poolBooleanFlagRules(), $this->poolOptionalStringValidationRules()));
 
         $companyId = strtoupper(trim($validated['company_id']));
         $poolId = trim($validated['pool_id']);
 
         $upsert = array_merge(
             ['name' => trim($validated['name'])],
+            $this->mergeBooleanFlagsFromValidated($validated),
             $this->mergeOptionalPoolD365FieldsFromRequest($request, $validated)
         );
 
@@ -151,6 +153,88 @@ class PoolController extends Controller
         if (isset($queryBag['d365_pool_id']) && ! isset($queryBag['pool_id'])) {
             $request->query->set('pool_id', (string) $queryBag['d365_pool_id']);
         }
+    }
+
+    /**
+     * Manager sync: accept true/false, 1/0, yes/no, y/n, on/off (case-insensitive) then validate as boolean.
+     */
+    private function normalizePoolBooleanInputs(Request $request): void
+    {
+        foreach ($this->poolBooleanFlagKeys() as $key) {
+            if (! $request->exists($key)) {
+                continue;
+            }
+            $parsed = $this->parseYesNoToBool($request->input($key));
+            if ($parsed === null) {
+                $request->request->remove($key);
+
+                continue;
+            }
+            $request->merge([$key => $parsed]);
+        }
+    }
+
+    private function parseYesNoToBool(mixed $value): ?bool
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_int($value) || is_float($value)) {
+            if ((int) $value === 1) {
+                return true;
+            }
+            if ((int) $value === 0) {
+                return false;
+            }
+
+            return null;
+        }
+        $s = strtolower(trim((string) $value));
+        if ($s === '') {
+            return null;
+        }
+        if (in_array($s, ['1', 'true', 'yes', 'y', 'on'], true)) {
+            return true;
+        }
+        if (in_array($s, ['0', 'false', 'no', 'n', 'off'], true)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /** @return list<string> */
+    private function poolBooleanFlagKeys(): array
+    {
+        return ['uses_project', 'uses_warehouse', 'has_attachment', 'has_item_category', 'has_item_id'];
+    }
+
+    /** @return array<string, array<int, string>> */
+    private function poolBooleanFlagRules(): array
+    {
+        $rules = [];
+        foreach ($this->poolBooleanFlagKeys() as $key) {
+            $rules[$key] = ['sometimes', 'boolean'];
+        }
+
+        return $rules;
+    }
+
+    /** @return array<string, bool> */
+    private function mergeBooleanFlagsFromValidated(array $validated): array
+    {
+        $out = [];
+        foreach ($this->poolBooleanFlagKeys() as $key) {
+            if (! array_key_exists($key, $validated)) {
+                continue;
+            }
+            $out[$key] = (bool) $validated[$key];
+        }
+
+        return $out;
     }
 
     private function resolvePool(mixed $value, ?string $companyScope = null): ?Pool
@@ -202,6 +286,8 @@ class PoolController extends Controller
 
     private function validatePayload(Request $request, ?Pool $pool = null): array
     {
+        $this->normalizePoolBooleanInputs($request);
+
         $uniqueRule = Rule::unique('pools', 'pool_id')
             ->where(fn ($query) => $query->where(
                 'company_id',
@@ -216,7 +302,7 @@ class PoolController extends Controller
             'pool_id' => ['required', 'string', 'max:100', $uniqueRule],
             'name' => ['required', 'string', 'max:255'],
             'company_id' => ['required', 'string', 'max:100'],
-        ], $this->poolOptionalD365ValidationRules()));
+        ], $this->poolBooleanFlagRules(), $this->poolOptionalStringValidationRules()));
 
         $out = [
             'pool_id' => trim($validated['pool_id']),
@@ -224,15 +310,19 @@ class PoolController extends Controller
             'company_id' => strtoupper(trim($validated['company_id'])),
         ];
 
-        return array_merge($out, $this->mergeOptionalPoolD365FieldsFromValidated($validated));
+        return array_merge(
+            $out,
+            $this->mergeBooleanFlagsFromValidated($validated),
+            $this->mergeOptionalPoolD365FieldsFromValidated($validated)
+        );
     }
 
     /**
-     * Optional D365 fields — include only keys you have for that pool. Omitted keys are not changed on PATCH/sync.
+     * Optional D365 text fields — include only keys you have for that row. Omitted keys are not changed on PATCH/sync.
      *
      * @return array<string, array<int, string>>
      */
-    private function poolOptionalD365ValidationRules(): array
+    private function poolOptionalStringValidationRules(): array
     {
         return [
             'project' => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -250,7 +340,7 @@ class PoolController extends Controller
     private function mergeOptionalPoolD365FieldsFromRequest(Request $request, array $validated): array
     {
         $out = [];
-        foreach (array_keys($this->poolOptionalD365ValidationRules()) as $key) {
+        foreach (array_keys($this->poolOptionalStringValidationRules()) as $key) {
             if (! $request->has($key)) {
                 continue;
             }
@@ -266,7 +356,7 @@ class PoolController extends Controller
     private function mergeOptionalPoolD365FieldsFromValidated(array $validated): array
     {
         $out = [];
-        foreach (array_keys($this->poolOptionalD365ValidationRules()) as $key) {
+        foreach (array_keys($this->poolOptionalStringValidationRules()) as $key) {
             if (! array_key_exists($key, $validated)) {
                 continue;
             }
