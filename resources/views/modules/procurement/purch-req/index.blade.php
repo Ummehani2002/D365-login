@@ -184,7 +184,7 @@
                             <select id="pool-id">
                                 <option value="">— Select Pool —</option>
                             </select>
-                            <small style="display:block;margin-top:4px;color:#605e5c;font-size:11px;">Fields below follow your Pool Master flags (project / warehouse / lines / attachments).</small>
+                            
                         </div>
                         <div class="field hidden" id="field-project">
                             <label>Project <span style="color:#a4262c">*</span></label>

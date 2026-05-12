@@ -2,6 +2,7 @@
 
 namespace App\Models\Masters;
 
+use App\Support\DataAreaId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,11 @@ class Pool extends Model
             'has_item_category' => 'boolean',
             'has_item_id' => 'boolean',
         ];
+    }
+
+    public function setCompanyIdAttribute(mixed $value): void
+    {
+        $this->attributes['company_id'] = $value === null || $value === '' ? null : DataAreaId::normalize((string) $value);
     }
 
     public function company(): BelongsTo

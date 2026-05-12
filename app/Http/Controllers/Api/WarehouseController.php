@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\DataAreaId;
 use App\Models\Warehouse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class WarehouseController extends Controller
 
         $companyScope = $this->companyScopeFromRequest($request);
         if ($companyScope !== null && $companyScope !== '') {
-            $query->where('company_id', $companyScope);
+            DataAreaId::whereUpperTrimEquals($query, 'company_id', $companyScope);
         }
 
         return response()->json([
@@ -167,7 +168,7 @@ class WarehouseController extends Controller
 
         return Warehouse::query()
             ->where('warehouse_id', $needle)
-            ->where('company_id', $companyScope)
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyScope))
             ->first();
     }
 

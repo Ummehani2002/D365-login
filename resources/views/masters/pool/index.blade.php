@@ -166,7 +166,7 @@
                     <th scope="col"><span class="th-main">Pool ID</span></th>
                     <th scope="col"><span class="th-main">Name</span></th>
                     <th scope="col"><span class="th-main">Company ID</span</th>
-                    <th scope="col"><span class="th-main">Project</span><span class="th-sub">PR uses project field</span></th>
+                    <th scope="col"><span class="th-main">Project</span></th>
                     <th scope="col"><span class="th-main">Warehouse</span></th>
                     <th scope="col"><span class="th-main">Wh. company ID</span></th>
                     <th scope="col"><span class="th-main">Attachment</span></th>

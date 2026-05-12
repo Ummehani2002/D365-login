@@ -95,6 +95,8 @@
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
         .hidden { display: none; }
         .att-status { font-size: 11px; color: #605e5c; display: inline-block; padding-top: 6px; }
+        /* Legal entity codes always shown uppercase (payload may still normalize server-side). */
+        #company, #company option { text-transform: uppercase; font-variant-numeric: tabular-nums; }
     </style>
     @include('settings.rbac.partials.styles')
 </head>
@@ -405,7 +407,7 @@
         };
 
         async function loadCatalogForCompany() {
-            const company = document.getElementById('company')?.value?.trim() ?? '';
+            const company = (document.getElementById('company')?.value?.trim() ?? '').toUpperCase();
             itemCatalog = { categories: [], items: [] };
 
             if (!company) {
@@ -482,7 +484,7 @@
         };
 
         const buildPayload = () => {
-            const company = document.getElementById('company').value.trim();
+            const company = document.getElementById('company').value.trim().toUpperCase();
             const requestId = document.getElementById('request-id').value.trim();
             const prNo = document.getElementById('pr-no').value.trim();
             const prDate = document.getElementById('pr-date').value;

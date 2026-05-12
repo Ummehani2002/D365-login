@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Masters;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Support\DataAreaId;
 use App\Services\D365CompanyService;
 use Illuminate\Http\Request;
 use Throwable;
@@ -19,6 +20,10 @@ class CompanyMasterController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge([
+            'company_id' => DataAreaId::normalize((string) $request->input('company_id')),
+        ]);
+
         $validated = $request->validate([
             'company_id' => ['required', 'string', 'max:100', 'unique:companies,d365_id'],
             'name' => ['required', 'string', 'max:255'],
@@ -55,7 +60,7 @@ class CompanyMasterController extends Controller
                     $updated++;
                 } else {
                     Company::create([
-                        'company_id' => $company['d365_id'],
+                        'company_id' => DataAreaId::normalize((string) ($company['d365_id'] ?? '')),
                         'name' => $company['name'],
                         'created_by' => auth()->id(),
                     ]);

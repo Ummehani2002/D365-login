@@ -2,6 +2,7 @@
 
 namespace App\Models\Masters;
 
+use App\Support\DataAreaId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,7 +27,12 @@ class Company extends Model
 
     public function setCompanyIdAttribute(mixed $value): void
     {
-        $this->attributes['d365_id'] = $value === null ? null : trim((string) $value);
+        $this->attributes['d365_id'] = $value === null || $value === '' ? null : DataAreaId::normalize((string) $value);
+    }
+
+    public function setD365IdAttribute(mixed $value): void
+    {
+        $this->attributes['d365_id'] = $value === null || $value === '' ? null : DataAreaId::normalize((string) $value);
     }
 
     public static function resolveFromMixed(mixed $value): ?static

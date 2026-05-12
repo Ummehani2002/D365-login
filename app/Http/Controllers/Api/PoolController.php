@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\DataAreaId;
 use App\Models\Pool;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,7 +19,7 @@ class PoolController extends Controller
         $query = Pool::query();
 
         if ($request->filled('company_id')) {
-            $query->where('company_id', strtoupper(trim((string) $request->input('company_id'))));
+            DataAreaId::whereUpperTrimEquals($query, 'company_id', (string) $request->input('company_id'));
         }
 
         if ($request->filled('pool_id')) {
@@ -35,7 +37,19 @@ class PoolController extends Controller
     {
         $this->normalizeLegacyPoolIdInput($request);
         $payload = $this->validatePayload($request);
-        $pool = Pool::create($payload);
+
+        try {
+            $pool = Pool::create($payload);
+        } catch (QueryException $e) {
+            if ($this->isUniqueConstraintViolation($e)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'A pool with this Pool ID already exists for this company (or Pool ID is globally taken if your DB still uses the legacy unique index on pool_id only). Use PUT /api/pool/{pool} to update, or choose another Pool ID.',
+                    'error' => 'duplicate_pool',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'status' => true,
@@ -75,7 +89,19 @@ class PoolController extends Controller
         }
 
         $payload = $this->validatePayload($request, $resolved);
-        $resolved->update($payload);
+
+        try {
+            $resolved->update($payload);
+        } catch (QueryException $e) {
+            if ($this->isUniqueConstraintViolation($e)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Another pool already uses this Pool ID for this company (or Pool ID conflicts with the legacy global unique index). Choose a different Pool ID.',
+                    'error' => 'duplicate_pool',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'status' => true,
@@ -299,7 +325,7 @@ class PoolController extends Controller
 
         $query = Pool::query()->where('pool_id', $needle);
         if ($companyScope !== null && $companyScope !== '') {
-            $query->where('company_id', strtoupper($companyScope));
+            DataAreaId::whereUpperTrimEquals($query, 'company_id', $companyScope);
         }
 
         return $query->first();
@@ -330,10 +356,9 @@ class PoolController extends Controller
         $this->normalizePoolBooleanInputs($request);
 
         $uniqueRule = Rule::unique('pools', 'pool_id')
-            ->where(fn ($query) => $query->where(
-                'company_id',
-                strtoupper(trim((string) $request->input('company_id', '')))
-            ));
+            ->where(function ($query) use ($request) {
+                DataAreaId::whereUpperTrimEquals($query, 'company_id', (string) $request->input('company_id', ''));
+            });
 
         if ($pool) {
             $uniqueRule->ignore($pool->id);
@@ -356,6 +381,30 @@ class PoolController extends Controller
             $this->mergeBooleanFlagsFromValidated($validated),
             $this->mergeOptionalPoolD365FieldsFromValidated($validated)
         );
+    }
+
+    private function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        $msg = strtolower($e->getMessage());
+        if (str_contains($msg, 'duplicate') || str_contains($msg, 'unique constraint')) {
+            return true;
+        }
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        // PostgreSQL unique_violation
+        if ($sqlState === '23505') {
+            return true;
+        }
+        $driverCode = $e->errorInfo[1] ?? null;
+        // MySQL ER_DUP_ENTRY
+        if ($driverCode === 1062) {
+            return true;
+        }
+        // SQLite constraint
+        if ($driverCode === 19 && str_contains($msg, 'unique')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

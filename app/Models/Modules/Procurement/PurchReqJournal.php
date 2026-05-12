@@ -2,6 +2,7 @@
 
 namespace App\Models\Modules\Procurement;
 
+use App\Support\DataAreaId;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,16 @@ class PurchReqJournal extends Model
         'd365_response' => 'array',
         'pr_date'       => 'date',
     ];
+
+    public function setCompanyAttribute(mixed $value): void
+    {
+        $this->attributes['company'] = $value === null || $value === '' ? null : DataAreaId::normalize((string) $value);
+    }
+
+    public function setBuyingLegalEntityAttribute(mixed $value): void
+    {
+        $this->attributes['buying_legal_entity'] = $value === null || $value === '' ? null : DataAreaId::normalize((string) $value);
+    }
 
     public function postedBy(): BelongsTo
     {

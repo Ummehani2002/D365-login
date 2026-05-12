@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\PurchReqJournal;
 use App\Models\Warehouse;
 use App\Services\D365PurchReqService;
+use App\Support\DataAreaId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,7 +47,9 @@ class PurchReqController extends Controller
 
         $journals = PurchReqJournal::query()
             ->with('postedBy:id,name')
-            ->when($selectedCompany, fn ($q) => $q->where('company', $selectedCompany->d365_id))
+            ->when($selectedCompany, function ($q) use ($selectedCompany) {
+                DataAreaId::whereUpperTrimEquals($q, 'company', (string) $selectedCompany->d365_id);
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -73,10 +76,9 @@ class PurchReqController extends Controller
                     'required',
                     'string',
                     'max:100',
-                    Rule::exists('pools', 'pool_id')->where(fn ($q) => $q->where(
-                        'company_id',
-                        strtoupper(trim((string) $request->input('company')))
-                    )),
+                    Rule::exists('pools', 'pool_id')->where(function ($q) use ($request) {
+                        DataAreaId::whereUpperTrimEquals($q, 'company_id', (string) $request->input('company'));
+                    }),
                 ],
                 'contact_name'                => ['required', 'string', 'max:255'],
                 'remarks'                     => ['nullable', 'string', 'max:500'],
@@ -103,9 +105,14 @@ class PurchReqController extends Controller
             ]);
             $this->assertCompanyAccess((string) $validated['company']);
 
+            $validated['company'] = DataAreaId::normalize((string) $validated['company']);
+            if (! empty($validated['buying_legal_entity'])) {
+                $validated['buying_legal_entity'] = DataAreaId::normalize((string) $validated['buying_legal_entity']);
+            }
+
             $poolRow = Pool::query()
-                ->where('company_id', strtoupper(trim((string) $validated['company'])))
                 ->where('pool_id', trim((string) $validated['pool_id']))
+                ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $validated['company']))
                 ->first();
 
             if (! $poolRow) {
@@ -387,7 +394,7 @@ class PurchReqController extends Controller
         $this->assertCompanyAccess($companyCode);
 
         $rows = DepartmentManager::query()
-            ->where('company_id', $companyCode)
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
             ->orderBy('employee_name')
             ->get(['id', 'employee_name', 'department', 'company_id']);
 
@@ -417,7 +424,7 @@ class PurchReqController extends Controller
         $this->assertCompanyAccess($companyCode);
 
         $rows = Pool::query()
-            ->where('company_id', $companyCode)
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
             ->orderBy('pool_id')
             ->get([
                 'id',
@@ -606,7 +613,10 @@ class PurchReqController extends Controller
             $w = trim((string) ($validated['warehouse'] ?? ''));
             if ($w === '') {
                 $errors['warehouse'] = ['Warehouse is required for this pool.'];
-            } elseif (! Warehouse::query()->where('company_id', $company)->where('warehouse_id', $w)->exists()) {
+            } elseif (! Warehouse::query()
+                ->where('warehouse_id', $w)
+                ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $company))
+                ->exists()) {
                 $errors['warehouse'] = ['The warehouse does not exist for the selected company.'];
             }
         } else {
@@ -657,8 +667,8 @@ class PurchReqController extends Controller
                 return;
             }
             $exists = Warehouse::query()
-                ->where('company_id', $company)
                 ->where('warehouse_id', trim((string) $value))
+                ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $company))
                 ->exists();
             if (! $exists) {
                 $fail('The warehouse does not exist for the selected company.');
@@ -697,8 +707,8 @@ class PurchReqController extends Controller
                 return;
             }
             $exists = Pool::query()
-                ->where('company_id', $company)
                 ->where('pool_id', trim((string) $value))
+                ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $company))
                 ->exists();
             if (! $exists) {
                 $fail('The pool does not exist for the selected company.');

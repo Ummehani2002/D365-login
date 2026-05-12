@@ -148,6 +148,7 @@
         color: #323130;
         background: #fff;
         cursor: pointer;
+        text-transform: uppercase;
     }
     .global-company-select:focus {
         outline: none;
