@@ -8,6 +8,7 @@ use App\Models\GrnJournal;
 use App\Services\D365GrnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -218,10 +219,8 @@ class GrnController extends Controller
         try {
             $purchaseId = trim($validated['purchase_id']);
             $company    = trim((string) $validated['company']);
-            $requestId  = $this->generatePackingRequestId($company);
 
             $header = [
-                'RequestID'       => $requestId,
                 'PackingSlipDate' => $validated['document_date'],
                 'PurchId'         => $purchaseId,
                 'PackingSlipID'   => trim($validated['packing_slip_id']),
@@ -244,14 +243,38 @@ class GrnController extends Controller
                 }
             }
 
-            $raw           = $service->postPackingSlip($company, $header, $lines);
-            $success       = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
-            $errorMessage  = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
-            $infoMessage   = $this->pickValue($raw, ['InfoMessage', 'infoMessage']);
-            $packingSlipId = $this->pickValue($raw, ['PackingSlipId', 'packingSlipId']) ?: $header['PackingSlipID'];
+            $maxAttempts = 8;
+            $raw = null;
+            $success = false;
+            $errorMessage = null;
+            $infoMessage = null;
+            $requestId = '';
+            $packingSlipId = trim($validated['packing_slip_id']);
 
-            if (!$success) {
+            for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+                $requestId = $this->generatePackingRequestId($company);
+                $this->rememberConsumedGrnRequestId($company, $requestId);
+                $header['RequestID'] = $requestId;
+
+                $raw = $service->postPackingSlip($company, $header, $lines);
+                $success = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
+                $errorMessage = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
+                $infoMessage = $this->pickValue($raw, ['InfoMessage', 'infoMessage']);
+                $packingSlipId = $this->pickValue($raw, ['PackingSlipId', 'packingSlipId']) ?: $header['PackingSlipID'];
+
+                if ($success) {
+                    break;
+                }
+
+                if ($errorMessage !== null && $errorMessage !== '' && $this->shouldRetryGrnPostForDuplicateRequestId($errorMessage, $requestId)) {
+                    continue;
+                }
+
                 return response()->json(['status' => false, 'message' => $errorMessage ?: 'Posting failed in D365.', 'request_id' => $requestId, 'packing_slip_id' => $packingSlipId, 'data' => $raw], 422);
+            }
+
+            if (! $success) {
+                return response()->json(['status' => false, 'message' => $errorMessage ?: 'Posting failed in D365 after trying alternate Request IDs.', 'request_id' => $requestId, 'packing_slip_id' => $packingSlipId, 'data' => $raw], 422);
             }
 
             $journal = GrnJournal::query()->create([
@@ -447,23 +470,79 @@ class GrnController extends Controller
         return number_format((float) $value, 2, '.', '');
     }
 
+    /**
+     * Next `{COMPANY}-GRNT-{YEAR}-{nnn}` Request ID. Uses a lock + max over journals and a cache ceiling so IDs
+     * consumed in D365 on failed posts still advance (fixes being stuck on …-001 for every GRN).
+     */
     private function generatePackingRequestId(string $company): string
     {
         $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
         $year = now()->format('Y');
         $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
-        $latest = GrnJournal::query()
-            ->where('company', $company)
-            ->where('request_id', 'like', $prefix . '%')
-            ->orderByDesc('request_id')
-            ->value('request_id');
+        $pad = 3;
 
-        $next = 1;
-        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $latest, $m)) {
-            $next = ((int) $m[1]) + 1;
+        if (! Schema::hasTable('grn_journals')) {
+            return $prefix.str_pad('1', $pad, '0', STR_PAD_LEFT);
         }
 
-        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        $lockKey = 'grn-grnt-req-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
+
+        return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix, $pad) {
+            $maxSeq = 0;
+            foreach (GrnJournal::query()
+                ->where('company', $company)
+                ->where('request_id', 'like', $prefix.'%')
+                ->pluck('request_id') as $rid) {
+                if (preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $rid, $m)) {
+                    $maxSeq = max($maxSeq, (int) $m[1]);
+                }
+            }
+
+            $maxSeq = max($maxSeq, (int) Cache::get($this->grnGrntSeqCeilingCacheKey($company, $prefix), 0));
+
+            $next = $maxSeq + 1;
+
+            return $prefix.str_pad((string) $next, $pad, '0', STR_PAD_LEFT);
+        });
+    }
+
+    private function grnGrntSeqCeilingCacheKey(string $company, string $requestIdPrefix): string
+    {
+        return 'grn:grnt-seq-max:'.sha1(mb_strtoupper($company).'|'.$requestIdPrefix);
+    }
+
+    /** Remember a Request ID we attempted so the next generate() skips past it (D365 may have it even with no local journal). */
+    private function rememberConsumedGrnRequestId(string $company, string $requestId): void
+    {
+        if (! preg_match('/^(.*-GRNT-\d{4}-)(\d+)$/', $requestId, $m)) {
+            return;
+        }
+        $prefix = $m[1];
+        $seq = (int) $m[2];
+        $key = $this->grnGrntSeqCeilingCacheKey($company, $prefix);
+        $prev = (int) Cache::get($key, 0);
+        if ($seq > $prev) {
+            Cache::put($key, $seq, now()->addDays(90));
+        }
+    }
+
+    private function shouldRetryGrnPostForDuplicateRequestId(string $message, string $issuedRequestId): bool
+    {
+        $lower = mb_strtolower($message);
+        $idLower = mb_strtolower($issuedRequestId);
+        if ($idLower === '' || ! str_contains($lower, $idLower)) {
+            return false;
+        }
+
+        if (str_contains($lower, 'already exists') && str_contains($lower, 'request')) {
+            return true;
+        }
+
+        if (str_contains($lower, 'duplicate') && str_contains($lower, 'request')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
