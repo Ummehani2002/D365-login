@@ -5,11 +5,14 @@ namespace App\Providers;
 use App\Console\Commands\ServeCommand;
 use App\Models\Company;
 use App\Services\Rbac\MenuAccessService;
+use FilesystemIterator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Throwable;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->registerNestedMigrationPaths();
+
         Event::listen(
             \SocialiteProviders\Manager\SocialiteWasCalled::class,
             \SocialiteProviders\Microsoft\MicrosoftExtendSocialite::class.'@handle'
@@ -108,5 +113,38 @@ class AppServiceProvider extends ServiceProvider
             $view->with('canGrn', $canGrn);
             $view->with('canModulesGeneral', $canModulesGeneral);
         });
+    }
+
+    /**
+     * Laravel only loads PHP files directly under database/migrations by default.
+     * This project keeps migrations in subfolders (masters/, core/, modules/…); register each
+     * directory that actually contains migration files so deploys can run `php artisan migrate`
+     * without custom --path flags (fixes missing columns such as warehouses.company_id on Cloud).
+     */
+    private function registerNestedMigrationPaths(): void
+    {
+        $base = database_path('migrations');
+        if (! is_dir($base)) {
+            return;
+        }
+
+        $dirs = [];
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.php')) {
+                continue;
+            }
+            if (! preg_match('/^\d{4}_\d{2}_\d{2}_/', $file->getFilename())) {
+                continue;
+            }
+            $dirs[$file->getPath()] = true;
+        }
+
+        foreach (array_keys($dirs) as $dir) {
+            $this->loadMigrationsFrom($dir);
+        }
     }
 }
