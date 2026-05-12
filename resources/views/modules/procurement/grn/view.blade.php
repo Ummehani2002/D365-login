@@ -78,7 +78,7 @@
                 <div class="field"><label>PURCHASE ORDER</label><input id="purchase-order" value="{{ $purchaseId }}" readonly></div>
                 <div class="field"><label>VENDOR</label><input id="vendor-name" value="{{ $vendorName }}" readonly></div>
                 <div class="field"><label>PROJECT</label><input id="project-id" value="{{ $projectId }}" readonly></div>
-                <div class="field"><label>PACKING SLIP ID</label><input id="packing-slip-id" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
+                <div class="field"><label>PACKING SLIP ID <span style="font-weight:400;color:#8a8886;">(your slip reference for D365 — not the Request ID)</span></label><input id="packing-slip-id" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>DOCUMENT DATE</label><input id="document-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>TRANSACTION DATE</label><input id="transaction-date" type="date" {{ !empty($freezeGrnForm) ? 'readonly' : '' }}></div>
                 <div class="field"><label>PO DATE <span style="font-weight:400;color:#8a8886;">(from D365)</span></label><input id="po-date" type="text" readonly placeholder="—" title="Purchase order date returned from D365"></div>
@@ -344,12 +344,14 @@
             if (!resp.ok || data.status === false) {
                 throw new Error(data.error || data.message || 'Posting failed.');
             }
-            setStatus('success', `${data.message} Request ID: ${data.request_id}`);
+            setStatus('success', `${data.message} Request ID (assigned on post): ${data.request_id}${data.packing_slip_id ? ` · Packing slip ID: ${data.packing_slip_id}` : ''}`);
         })
         .catch((err) => {
             let msg = err.message || 'Posting failed.';
-            if (/already exists|duplicate|packing\s*slip/i.test(msg)) {
-                msg += ' Use a new Packing Slip ID (or open the existing GRN from Recently Added) and post again.';
+            if (/PS-GRNT-\d{4}-\d{3}|Request\s*ID.*PS-GRNT/i.test(msg)) {
+                msg += ' This refers to the system Request ID created when you post (format PS-GRNT-year-###). It is not your Packing Slip ID field. Try Post again for the next number, or ask an admin if D365 already has that Request ID.';
+            } else if (/packing\s*slip/i.test(msg) && /already exists|duplicate/i.test(msg)) {
+                msg += ' Try a different Packing Slip ID, or open the existing GRN from Recently Added.';
             }
             setStatus('error', msg);
         })

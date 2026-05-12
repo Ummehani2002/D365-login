@@ -8,6 +8,7 @@ use App\Models\GrnJournal;
 use App\Services\D365GrnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -218,7 +219,7 @@ class GrnController extends Controller
         try {
             $purchaseId = trim($validated['purchase_id']);
             $company    = trim((string) $validated['company']);
-            $requestId  = $this->generatePackingRequestId($company);
+            $requestId  = $this->allocateNextPackingRequestId($company);
 
             $header = [
                 'RequestID'       => $requestId,
@@ -462,23 +463,37 @@ class GrnController extends Controller
         return number_format((float) $value, 2, '.', '');
     }
 
-    private function generatePackingRequestId(string $company): string
+    /**
+     * Next `{COMPANY}-GRNT-{YEAR}-{nnn}` Request ID for D365. Allocated only at post time (never the Packing Slip ID field).
+     * Uses a cache lock so the next sequence is unique even when no prior journal rows exist for this prefix.
+     */
+    private function allocateNextPackingRequestId(string $company): string
     {
         $companyCode = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($company)) ?: 'COMPANY';
         $year = now()->format('Y');
         $prefix = sprintf('%s-GRNT-%s-', $companyCode, $year);
-        $latest = GrnJournal::query()
-            ->where('company', $company)
-            ->where('request_id', 'like', $prefix . '%')
-            ->orderByDesc('request_id')
-            ->value('request_id');
 
-        $next = 1;
-        if (is_string($latest) && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $latest, $m)) {
-            $next = ((int) $m[1]) + 1;
+        if (! Schema::hasTable('grn_journals')) {
+            return $prefix.'001';
         }
 
-        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        $lockKey = 'grn-request-seq:'.preg_replace('/[^A-Za-z0-9]+/', '_', $prefix);
+
+        return Cache::lock($lockKey, 30)->block(15, function () use ($company, $prefix) {
+            $maxSeq = 0;
+            foreach (GrnJournal::query()
+                ->where('company', $company)
+                ->where('request_id', 'like', $prefix.'%')
+                ->pluck('request_id') as $rid) {
+                if (preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $rid, $m)) {
+                    $maxSeq = max($maxSeq, (int) $m[1]);
+                }
+            }
+
+            $next = $maxSeq + 1;
+
+            return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        });
     }
 
     /**
