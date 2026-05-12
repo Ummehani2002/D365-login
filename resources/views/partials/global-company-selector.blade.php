@@ -118,29 +118,33 @@
         right: 66px;
         z-index: 2000;
         width: auto;
-        height: 40px;
+        min-width: 200px;
+        max-width: min(420px, calc(100vw - 120px));
+        height: 44px;
         background: #fff;
         border: 1px solid #d0d7de;
         border-radius: 999px;
-        padding: 4px 8px 4px 10px;
+        padding: 5px 10px 5px 12px;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
     .global-company-icon {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
         color: #0f6cbd;
         flex-shrink: 0;
     }
     .global-company-select {
-        width: 172px;
-        height: 30px;
+        width: min(340px, calc(100vw - 200px));
+        min-width: 220px;
+        height: 34px;
         border: 1px solid #8a8886;
         border-radius: 999px;
-        padding: 4px 28px 4px 10px;
-        font-size: 12px;
+        padding: 5px 32px 5px 12px;
+        font-size: 14px;
+        line-height: 1.2;
         color: #323130;
         background: #fff;
         cursor: pointer;

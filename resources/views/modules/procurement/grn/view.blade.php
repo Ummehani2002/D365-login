@@ -38,6 +38,13 @@
         .status-box { margin-bottom: 10px; padding: 8px 10px; border-radius: 2px; font-size: 13px; display: none; }
         .status-box.success { display: block; background: #e8f6ee; color: #1f7a48; }
         .status-box.error { display: block; background: #fde7e9; color: #a4262c; }
+        .line-name-cell {
+            max-width: min(360px, 40vw);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
     </style>
     @include('settings.rbac.partials.styles')
 </head>
@@ -197,7 +204,7 @@
             <tr data-line-number="${line.line_number || ''}" data-line-rec-id="${line.line_rec_id || ''}">
                 <td>${line.line_number || '-'}</td>
                 <td>${escapeHtml(line.item_id || '-')}</td>
-                <td title="${nameHtml}">${nameHtml}</td>
+                <td class="line-name-cell" title="${nameHtml}">${nameHtml}</td>
                 <td>${line.ordered_qty || '0.00'}</td>
                 <td>${line.remaining_qty || '0.00'}</td>
                 ${receiveCell}
@@ -340,7 +347,11 @@
             setStatus('success', `${data.message} Request ID: ${data.request_id}`);
         })
         .catch((err) => {
-            setStatus('error', err.message || 'Posting failed.');
+            let msg = err.message || 'Posting failed.';
+            if (/already exists|duplicate|packing\s*slip/i.test(msg)) {
+                msg += ' Use a new Packing Slip ID (or open the existing GRN from Recently Added) and post again.';
+            }
+            setStatus('error', msg);
         })
         .finally(() => {
             els.postBtn.disabled = false;
