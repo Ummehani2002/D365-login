@@ -146,6 +146,14 @@
         return Number.isFinite(n) ? n.toFixed(2) : String(val);
     }
 
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     function mergePostedReceiveQuantities(apiLines) {
         const posted = grnJournalPayload?.posted_lines;
         if (!Array.isArray(apiLines) || !Array.isArray(posted) || posted.length === 0) {
@@ -183,11 +191,13 @@
             const receiveCell = showReceiveReadonly
                 ? `<td>${(rq !== undefined && rq !== null && rq !== '') ? formatReceiveQty(rq) : '—'}</td>`
                 : `<td><input class="qty-input" type="number" step="0.01" min="0" value="${rq ?? ''}" oninput="if(Number(this.value)<0){this.value=0;}"></td>`;
+            const nameText = line.name != null && String(line.name).trim() !== '' ? String(line.name) : '—';
+            const nameHtml = escapeHtml(nameText);
             return `
             <tr data-line-number="${line.line_number || ''}" data-line-rec-id="${line.line_rec_id || ''}">
                 <td>${line.line_number || '-'}</td>
-                <td>${line.item_id || '-'}</td>
-                <td>${line.name || '-'}</td>
+                <td>${escapeHtml(line.item_id || '-')}</td>
+                <td title="${nameHtml}">${nameHtml}</td>
                 <td>${line.ordered_qty || '0.00'}</td>
                 <td>${line.remaining_qty || '0.00'}</td>
                 ${receiveCell}

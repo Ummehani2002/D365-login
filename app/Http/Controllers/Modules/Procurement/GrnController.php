@@ -244,6 +244,21 @@ class GrnController extends Controller
                 }
             }
 
+            $packingSlipKey = mb_strtolower(trim($validated['packing_slip_id']));
+            if ($packingSlipKey !== '' && Schema::hasTable('grn_journals')) {
+                $alreadyPosted = GrnJournal::query()
+                    ->where('company', $company)
+                    ->where('purch_id', $purchaseId)
+                    ->whereRaw('LOWER(TRIM(packing_slip_id)) = ?', [$packingSlipKey])
+                    ->exists();
+                if ($alreadyPosted) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'This packing slip ID was already posted for this purchase order in this application. Open it from Recently Added GRN or use a different packing slip ID.',
+                    ], 422);
+                }
+            }
+
             $raw           = $service->postPackingSlip($company, $header, $lines);
             $success       = (bool) ($this->pickValue($raw, ['Success', 'success']) ?? false);
             $errorMessage  = $this->pickValue($raw, ['ErrorMessage', 'errorMessage']);
