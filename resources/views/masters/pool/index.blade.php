@@ -66,6 +66,9 @@
             background: #faf9f8;
             font-weight: 600;
         }
+        .th-main { display: block; font-size: 12px; font-weight: 600; color: #323130; }
+        .th-sub { display: block; font-size: 10px; font-weight: 500; color: #8a8886; margin-top: 2px; line-height: 1.2; }
+        .cell-text { font-size: 13px; color: #323130; }
         .error {
             color: #a4262c;
             font-size: 13px;
@@ -159,19 +162,18 @@
         <table>
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Pool ID</th>
-                    <th>Name</th>
-                    <th>Company ID</th>
-                    <th title="From sync: uses_project">Project</th>
-                    <th title="From sync: uses_warehouse">Warehouse</th>
-                    <th title="Yes if warehouse_company_id is set">Wh. company ID</th>
-                    <th title="From sync: has_attachment">Attachment Mandatory</th>
-                    <th title="From sync: has_item_category">Item Category</th>
-                    <th title="From sync: has_item_id">Item ID</th>
-                   
-                    <th>Created At</th>
-                    <th>Action</th>
+                    <th scope="col">#</th>
+                    <th scope="col"><span class="th-main">Pool ID</span><span class="th-sub">Unique pool code</span></th>
+                    <th scope="col"><span class="th-main">Name</span><span class="th-sub">Description</span></th>
+                    <th scope="col"><span class="th-main">Company ID</span><span class="th-sub">DataArea / legal entity</span></th>
+                    <th scope="col"><span class="th-main">Project</span><span class="th-sub">PR uses project field</span></th>
+                    <th scope="col"><span class="th-main">Warehouse</span><span class="th-sub">PR uses warehouse</span></th>
+                    <th scope="col"><span class="th-main">Wh. company ID</span><span class="th-sub">Separate warehouse company</span></th>
+                    <th scope="col"><span class="th-main">Attachment</span><span class="th-sub">Mandatory on PR</span></th>
+                    <th scope="col"><span class="th-main">Item category</span><span class="th-sub">Line column</span></th>
+                    <th scope="col"><span class="th-main">Item ID</span><span class="th-sub">Line column</span></th>
+                    <th scope="col"><span class="th-main">Created at</span><span class="th-sub">Saved / synced</span></th>
+                    <th scope="col">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -262,17 +264,17 @@
                 poolsTbody.innerHTML = pools.map((pool, index) => `
                     <tr>
                         <td>${index + 1}</td>
+                        <td class="cell-text">${escapeHtml(pool.pool_id ?? '—')}</td>
+                        <td class="cell-text">${escapeHtml(pool.name ?? '—')}</td>
+                        <td class="cell-text">${escapeHtml(pool.company_id ?? '—')}</td>
                         <td>${yn(pool.uses_project)}</td>
                         <td>${yn(pool.uses_warehouse)}</td>
                         <td>${whCompanyYn(pool)}</td>
                         <td>${yn(pool.has_attachment)}</td>
                         <td>${yn(pool.has_item_category)}</td>
                         <td>${yn(pool.has_item_id)}</td>
-                        <td>${escapeHtml(pool.pool_id ?? '-')}</td>
-                        <td>${escapeHtml(pool.name ?? '-')}</td>
-                        <td>${escapeHtml(pool.company_id ?? '-')}</td>
-                        <td>${formatDate(pool.created_at)}</td>
-                        <td><button class="danger" data-id="${pool.id}">Delete</button></td>
+                        <td class="cell-text">${formatDate(pool.created_at)}</td>
+                        <td><button type="button" class="danger" data-id="${pool.id}">Delete</button></td>
                     </tr>
                 `).join('');
             } catch {
