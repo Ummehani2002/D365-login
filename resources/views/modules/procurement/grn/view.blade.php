@@ -16,7 +16,8 @@
         .sub { margin-left: 16px; padding-left: 8px; border-left: 2px solid #edebe9; }
         .main { flex: 1; padding: 12px 16px; overflow: auto; }
         .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
-        .command-bar { height: 44px; border-bottom: 1px solid #edebe9; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+        .command-bar { height: 44px; border-bottom: 1px solid #edebe9; display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 0 12px; }
+        .command-bar-start { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
         .crumb { font-size: 12px; color: #605e5c; }
         .content { padding: 14px; }
         .top-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -52,8 +53,10 @@
 <main class="main">
     <div class="page-shell">
         <div class="command-bar">
-            <div class="crumb">Modules / Procurement &amp; Sourcing / Goods Receive Note / View</div>
-            <button id="back-btn" class="btn" type="button">Back</button>
+            <div class="command-bar-start">
+                <button id="back-btn" class="btn" type="button">Back</button>
+                <div class="crumb">Modules / Procurement &amp; Sourcing / Goods Receive Note / View</div>
+            </div>
         </div>
         <div class="content">
             <div class="top-head">
