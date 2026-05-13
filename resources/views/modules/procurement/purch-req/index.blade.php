@@ -582,7 +582,7 @@
             fieldProject?.classList.toggle('hidden', !p?.uses_project);
             fieldWarehouse?.classList.toggle('hidden', !p?.uses_warehouse);
             poolDetailFields?.classList.remove('hidden');
-            attBlock?.classList.toggle('hidden', !p?.has_attachment);
+            attBlock?.classList.remove('hidden');
             applyPoolLineColumns(p);
         }
 
