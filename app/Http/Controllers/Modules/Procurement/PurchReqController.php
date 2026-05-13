@@ -609,7 +609,9 @@ class PurchReqController extends Controller
                 $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
             }
 
-            if ($itemId === '') {
+            if ($pool->has_item_category && ! $pool->has_item_id) {
+                $line['unit'] = 'NOS';
+            } elseif ($itemId === '') {
                 $line['unit'] = '';
             }
 

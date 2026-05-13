@@ -665,6 +665,45 @@
             return poolRows.find((row) => String(row.pool_id ?? '').trim().toUpperCase() === key) ?? null;
         }
 
+        function isCategoryOnlyPool(p) {
+            return Boolean(p && p.has_item_category && !p.has_item_id);
+        }
+
+        function syncLineUnitForPoolMode(tr) {
+            const p = getSelectedPool();
+            const unitSelect = tr.querySelector('.lf-unit');
+            const unitNote = tr.querySelector('.lf-unit-note');
+            if (!unitSelect || !unitNote) return;
+
+            const companyOk = Boolean(getCurrentCompanyCode());
+            const poolOk = Boolean((poolEl?.value ?? '').trim());
+            if (companyOk && poolOk && isCategoryOnlyPool(p)) {
+                unitSelect.innerHTML = '<option value="NOS" selected>NOS</option>';
+                unitSelect.value = 'NOS';
+                unitSelect.disabled = true;
+                unitNote.textContent = 'Unit fixed to NOS for category-only pools.';
+                return;
+            }
+
+            unitSelect.disabled = false;
+            if (!companyOk) {
+                unitSelect.innerHTML = '<option value="">Select company first</option>';
+                unitNote.textContent = '';
+                return;
+            }
+            const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
+            if (!itemId) {
+                unitSelect.innerHTML = '<option value="">Optional until item is selected</option>';
+                unitNote.textContent = '';
+            } else {
+                void loadUnitsForRow(tr);
+            }
+        }
+
+        function syncAllLineUnitsForPoolMode() {
+            linesBody.querySelectorAll('tr[data-line]').forEach((tr) => syncLineUnitForPoolMode(tr));
+        }
+
         function applyPoolLineColumns(p) {
             const showCat = p == null ? true : !!p.has_item_category;
             const showItem = p == null ? true : !!p.has_item_id;
@@ -686,6 +725,7 @@
                 poolDetailFields?.classList.add('hidden');
                 attBlock?.classList.add('hidden');
                 applyPoolLineColumns(null);
+                syncAllLineUnitsForPoolMode();
                 return;
             }
 
@@ -694,6 +734,7 @@
             poolDetailFields?.classList.remove('hidden');
             attBlock?.classList.remove('hidden');
             applyPoolLineColumns(p);
+            syncAllLineUnitsForPoolMode();
         }
 
         function getItemsByCategory(categoryId) {
@@ -877,6 +918,7 @@
             updateItemSelectForRow(row, line.item_id ?? '');
             renumberLines();
             applyPoolLineColumns(getSelectedPool());
+            syncLineUnitForPoolMode(row);
         }
 
         document.getElementById('add-line-btn').addEventListener('click', () => addLine());
@@ -913,6 +955,11 @@
             const company = getCurrentCompanyCode();
 
             if (!unitSelect || !unitNote) return;
+
+            if (isCategoryOnlyPool(getSelectedPool()) && company && (poolEl?.value ?? '').trim()) {
+                syncLineUnitForPoolMode(tr);
+                return;
+            }
 
             if (!company) {
                 unitSelect.innerHTML = '<option value="">Select company first</option>';
@@ -974,7 +1021,11 @@
                 unitSelect.innerHTML = '<option value="">Unit lookup failed</option>';
                 unitNote.textContent = err.message || 'Unit lookup failed.';
             } finally {
-                unitSelect.disabled = false;
+                if (isCategoryOnlyPool(getSelectedPool()) && getCurrentCompanyCode() && (poolEl?.value ?? '').trim()) {
+                    syncLineUnitForPoolMode(tr);
+                } else {
+                    unitSelect.disabled = false;
+                }
             }
         }
 
@@ -991,6 +1042,10 @@
                         itemSelect.value = '';
                     }
                     updateItemSelectForRow(tr, itemSelect?.value ?? '');
+                    if (isCategoryOnlyPool(getSelectedPool())) {
+                        syncLineUnitForPoolMode(tr);
+                        return;
+                    }
                     const unitSelect = tr.querySelector('.lf-unit');
                     const unitNote = tr.querySelector('.lf-unit-note');
                     if (unitSelect) {
@@ -998,6 +1053,9 @@
                     }
                     if (unitNote) {
                         unitNote.textContent = '';
+                    }
+                    if (itemSelect?.value?.trim()) {
+                        void loadUnitsForRow(tr);
                     }
                 }
                 return;
@@ -1046,6 +1104,7 @@
                     }
                     updateItemSelectForRow(tr);
                 });
+                syncAllLineUnitsForPoolMode();
                 return;
             }
 
@@ -1083,6 +1142,7 @@
                     updateLineCategoryFromItem(tr);
                     syncLineDescriptionFromItem(tr);
                 });
+                syncAllLineUnitsForPoolMode();
             } catch (err) {
                 showStatus('✗ ' + (err.message || 'Unable to load item catalog.'), 'error');
             }
@@ -1099,20 +1159,7 @@
             loadProjects(companyCode);
             loadWarehouses(companyCode);
             loadBudgetResourceCodes(companyCode);
-            linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
-                const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
-                const unitSelect = tr.querySelector('.lf-unit');
-                const unitNote = tr.querySelector('.lf-unit-note');
-                if (!unitSelect || !unitNote) return;
-
-                if (!itemId) {
-                    unitSelect.innerHTML = '<option value="">Optional until item is selected</option>';
-                    unitNote.textContent = '';
-                    return;
-                }
-
-                loadUnitsForRow(tr);
-            });
+            syncAllLineUnitsForPoolMode();
         });
         buyingLegalEntityEl.addEventListener('change', () => {
             loadDepartmentManagers(getCurrentCompanyCode());
@@ -1120,20 +1167,7 @@
             loadProjects(getCurrentCompanyCode());
             loadWarehouses(getCurrentCompanyCode());
             loadBudgetResourceCodes(getCurrentCompanyCode());
-            linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
-                const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
-                const unitSelect = tr.querySelector('.lf-unit');
-                const unitNote = tr.querySelector('.lf-unit-note');
-                if (!unitSelect || !unitNote) return;
-
-                if (!itemId) {
-                    unitSelect.innerHTML = '<option value="">Optional until item is selected</option>';
-                    unitNote.textContent = '';
-                    return;
-                }
-
-                loadUnitsForRow(tr);
-            });
+            syncAllLineUnitsForPoolMode();
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
 
@@ -1239,6 +1273,10 @@
                     warranty:           details?.querySelector('.lf-warranty')?.value?.trim() ?? 'N/A',
                 });
             }
+            const poolCfg = getSelectedPool();
+            if (isCategoryOnlyPool(poolCfg)) {
+                lines.forEach((ln) => { ln.unit = 'NOS'; });
+            }
             return lines;
         }
 
@@ -1263,6 +1301,9 @@
                     }
                 }
             });
+            if (!viewOnly) {
+                syncAllLineUnitsForPoolMode();
+            }
         };
 
         postBtn.addEventListener('click', async () => {
