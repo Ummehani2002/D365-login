@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PoolController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SalesTaxGroupController;
 use App\Http\Controllers\Api\SiteController;
+use App\Http\Controllers\Api\BudgetResourceCodeController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\ItemIssueController;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,7 @@ Route::middleware('api.bearer')->group(function () {
     Route::post('/pools/sync-d365', [PoolController::class, 'syncFromD365'])
         ->name('api.pools.sync');
     Route::apiResource('/warehouses', WarehouseController::class);
+    Route::apiResource('/budget-resource-codes', BudgetResourceCodeController::class);
     Route::get('/sites', [SiteController::class, 'index']);
     Route::post('/sites', [SiteController::class, 'store']);
     Route::delete('/sites/{site}', [SiteController::class, 'destroy']);
