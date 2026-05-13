@@ -25,6 +25,19 @@
         .btn-sm { padding: 4px 10px; font-size: 11px; }
         .btn:disabled { border-color: #edebe9; background: #f3f2f1; color: #a19f9d; cursor: not-allowed; }
         .hidden { display: none !important; }
+        /* Hiding pool columns: visibility:collapse keeps #lines-table header + body columns aligned. */
+        #lines-table thead th.line-col-collapsed,
+        #lines-table tbody tr[data-line] > td.line-col-collapsed {
+            visibility: collapse;
+            width: 0;
+            min-width: 0;
+            max-width: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+            font-size: 0;
+            line-height: 0;
+        }
         .card { background: #fff; border: 1px solid #edebe9; border-radius: 2px; }
         .card-head { padding: 12px 14px; border-bottom: 1px solid #edebe9; font-size: 20px; font-weight: 600; }
         .toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -655,8 +668,12 @@
         function applyPoolLineColumns(p) {
             const showCat = p == null ? true : !!p.has_item_category;
             const showItem = p == null ? true : !!p.has_item_id;
-            document.querySelectorAll('[data-col="category"]').forEach((el) => el.classList.toggle('hidden', !showCat));
-            document.querySelectorAll('[data-col="item-id"]').forEach((el) => el.classList.toggle('hidden', !showItem));
+            document.querySelectorAll('#lines-table [data-col="category"]').forEach((el) => {
+                el.classList.toggle('line-col-collapsed', !showCat);
+            });
+            document.querySelectorAll('#lines-table [data-col="item-id"]').forEach((el) => {
+                el.classList.toggle('line-col-collapsed', !showItem);
+            });
         }
 
         function applyPoolUi() {
@@ -859,6 +876,7 @@
             linesBody.appendChild(details);
             updateItemSelectForRow(row, line.item_id ?? '');
             renumberLines();
+            applyPoolLineColumns(getSelectedPool());
         }
 
         document.getElementById('add-line-btn').addEventListener('click', () => addLine());
