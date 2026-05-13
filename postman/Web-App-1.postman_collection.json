@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "d265-web-app-1",
 		"name": "WEB APP 1",
-		"description": "API calls for this Laravel app. Set collection variables: base_url, api_bearer_token (must match WEBAPP_API_BEARER_TOKEN in .env — if unset, add e.g. WEBAPP_API_BEARER_TOKEN=your-secret). Companies come first — create companies before projects that reference company_id. Masters (sales tax group, item sales tax group, item units, budget resource codes) are company-specific: send company_id in POST body and use ?company_id= in list requests. For GET/PUT/DELETE a single budget resource code by id, include ?company_id= matching that row.",
+		"description": "API calls for this Laravel app. Set collection variables: base_url, api_bearer_token (must match WEBAPP_API_BEARER_TOKEN in .env — if unset, add e.g. WEBAPP_API_BEARER_TOKEN=your-secret). Companies come first — create companies before projects that reference company_id. Masters (sales tax group, item sales tax group, item units, budget resource codes, FD locations) are company-specific: send company_id in POST body and use ?company_id= in list requests. For GET/PUT/DELETE a single budget resource code or FD location by id, include ?company_id= matching that row.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -444,6 +444,113 @@
 							"raw": "{{base_url}}/api/budget-resource-codes/1?company_id=C001",
 							"host": ["{{base_url}}"],
 							"path": ["api", "budget-resource-codes", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Masters — FD locations",
+			"item": [
+				{
+					"name": "List FD locations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/fd-locations?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "fd-locations"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Optional filter by legal entity (D365 company id)."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create FD location",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"company_id\": \"C001\",\n  \"fd_location_id\": \"FD-LOC-01\",\n  \"description\": \"Example FD location\"\n}"
+						},
+						"url": "{{base_url}}/api/fd-locations"
+					}
+				},
+				{
+					"name": "Get FD location by id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/fd-locations/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "fd-locations", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update FD location",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fd_location_id\": \"FD-LOC-01\",\n  \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/fd-locations/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "fd-locations", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete FD location",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/fd-locations/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "fd-locations", "1"],
 							"query": [
 								{
 									"key": "company_id",

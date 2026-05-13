@@ -1,16 +1,17 @@
 <?php
 
+use App\Http\Controllers\Api\BudgetResourceCodeController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\FdLocationController;
 use App\Http\Controllers\Api\ItemCategorySyncController;
 use App\Http\Controllers\Api\ItemSalesTaxGroupController;
-use App\Http\Controllers\Api\ItemUnitController;
 use App\Http\Controllers\Api\ItemSyncController;
+use App\Http\Controllers\Api\ItemUnitController;
 use App\Http\Controllers\Api\PoolController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SalesTaxGroupController;
 use App\Http\Controllers\Api\SiteController;
-use App\Http\Controllers\Api\BudgetResourceCodeController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\ItemIssueController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,7 @@ Route::middleware('api.bearer')->group(function () {
         ->name('api.pools.sync');
     Route::apiResource('/warehouses', WarehouseController::class);
     Route::apiResource('/budget-resource-codes', BudgetResourceCodeController::class);
+    Route::apiResource('/fd-locations', FdLocationController::class);
     /*
      * Alias: some clients call /api/budgetresourcecode (singular, no hyphens).
      * Canonical routes remain /api/budget-resource-codes.

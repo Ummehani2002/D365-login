@@ -1,8 +1,18 @@
 <?php
 
+use App\Http\Controllers\Api\CurrencyController as ApiCurrencyController;
+use App\Http\Controllers\Api\DepartmentManagerController as ApiDepartmentManagerController;
+use App\Http\Controllers\Api\ItemSalesTaxGroupController as ApiItemSalesTaxGroupController;
+use App\Http\Controllers\Api\ItemUnitController as ApiItemUnitController;
+use App\Http\Controllers\Api\PoolController as ApiPoolController;
+use App\Http\Controllers\Api\SalesTaxGroupController as ApiSalesTaxGroupController;
+use App\Http\Controllers\Api\SiteController;
+use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\BudgetResourceCodeMasterController;
 use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\CurrencyMasterController;
 use App\Http\Controllers\DepartmentManagerMasterController;
+use App\Http\Controllers\FdLocationMasterController;
 use App\Http\Controllers\ItemCategoryMasterController;
 use App\Http\Controllers\ItemMasterController;
 use App\Http\Controllers\ItemSalesTaxGroupMasterController;
@@ -12,16 +22,7 @@ use App\Http\Controllers\ProjectMasterController;
 use App\Http\Controllers\SalesTaxGroupMasterController;
 use App\Http\Controllers\SiteMasterController;
 use App\Http\Controllers\SizeMasterController;
-use App\Http\Controllers\BudgetResourceCodeMasterController;
 use App\Http\Controllers\WarehouseMasterController;
-use App\Http\Controllers\Api\CurrencyController as ApiCurrencyController;
-use App\Http\Controllers\Api\DepartmentManagerController as ApiDepartmentManagerController;
-use App\Http\Controllers\Api\ItemSalesTaxGroupController as ApiItemSalesTaxGroupController;
-use App\Http\Controllers\Api\ItemUnitController as ApiItemUnitController;
-use App\Http\Controllers\Api\PoolController as ApiPoolController;
-use App\Http\Controllers\Api\SalesTaxGroupController as ApiSalesTaxGroupController;
-use App\Http\Controllers\Api\SiteController;
-use App\Http\Controllers\Api\SizeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'super_admin'])->group(function () {
@@ -54,7 +55,9 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
     Route::post('/masters/warehouses', [WarehouseMasterController::class, 'store'])->name('masters.warehouses.store');
     Route::delete('/masters/warehouses/{warehouse}', [WarehouseMasterController::class, 'destroy'])->name('masters.warehouses.destroy');
 
-    Route::get('/masters/fd-locations', fn () => view('masters.placeholder', ['title' => 'FD Location Master']))->name('masters.fd-locations.index');
+    Route::get('/masters/fd-locations', [FdLocationMasterController::class, 'index'])->name('masters.fd-locations.index');
+    Route::post('/masters/fd-locations', [FdLocationMasterController::class, 'store'])->name('masters.fd-locations.store');
+    Route::delete('/masters/fd-locations/{fdLocation}', [FdLocationMasterController::class, 'destroy'])->name('masters.fd-locations.destroy');
     Route::get('/masters/budget-resource-codes', [BudgetResourceCodeMasterController::class, 'index'])->name('masters.budget-resource-codes.index');
     Route::post('/masters/budget-resource-codes', [BudgetResourceCodeMasterController::class, 'store'])->name('masters.budget-resource-codes.store');
     Route::delete('/masters/budget-resource-codes/{budgetResourceCode}', [BudgetResourceCodeMasterController::class, 'destroy'])->name('masters.budget-resource-codes.destroy');
