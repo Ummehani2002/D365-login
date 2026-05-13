@@ -1059,6 +1059,9 @@
         }
 
         linesBody.addEventListener('change', (e) => {
+            if (e.target.classList.contains('lf-category') || e.target.classList.contains('lf-item-id')) {
+                clearStatus();
+            }
             if (e.target.classList.contains('lf-category')) {
                 const tr = e.target.closest('tr');
                 if (tr) {
@@ -1101,6 +1104,7 @@
 
         linesBody.addEventListener('input', (e) => {
             if (!e.target.classList.contains('lf-item-id')) return;
+            clearStatus();
             const tr = e.target.closest('tr');
             if (!tr) return;
             updateLineCategoryFromItem(tr);
@@ -1178,6 +1182,7 @@
         }
 
         companyEl?.addEventListener('change', () => {
+            clearStatus();
             const companyCode = (companyEl.value || '').trim().toUpperCase();
             if (buyingLegalEntityEl && ['TM', 'PS'].includes(companyCode)) {
                 buyingLegalEntityEl.value = companyCode;
@@ -1191,6 +1196,7 @@
             syncAllLineUnitsForPoolMode();
         });
         buyingLegalEntityEl.addEventListener('change', () => {
+            clearStatus();
             const cc = getCurrentCompanyCode();
             if (companyEl && cc) {
                 companyEl.value = cc;
@@ -1205,7 +1211,10 @@
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
 
-        poolEl?.addEventListener('change', applyPoolUi);
+        poolEl?.addEventListener('change', () => {
+            clearStatus();
+            applyPoolUi();
+        });
 
         const attachZone = document.getElementById('attach-zone');
         attachZone.addEventListener('click', () => fileInput.click());
