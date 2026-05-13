@@ -40,6 +40,16 @@ Route::middleware('api.bearer')->group(function () {
         ->name('api.pools.sync');
     Route::apiResource('/warehouses', WarehouseController::class);
     Route::apiResource('/budget-resource-codes', BudgetResourceCodeController::class);
+    /*
+     * Alias: some clients call /api/budgetresourcecode (singular, no hyphens).
+     * Canonical routes remain /api/budget-resource-codes.
+     */
+    Route::match(['get', 'head'], '/budgetresourcecode', [BudgetResourceCodeController::class, 'index']);
+    Route::post('/budgetresourcecode', [BudgetResourceCodeController::class, 'store']);
+    Route::match(['get', 'head'], '/budgetresourcecode/{budget_resource_code}', [BudgetResourceCodeController::class, 'show']);
+    Route::put('/budgetresourcecode/{budget_resource_code}', [BudgetResourceCodeController::class, 'update']);
+    Route::patch('/budgetresourcecode/{budget_resource_code}', [BudgetResourceCodeController::class, 'update']);
+    Route::delete('/budgetresourcecode/{budget_resource_code}', [BudgetResourceCodeController::class, 'destroy']);
     Route::get('/sites', [SiteController::class, 'index']);
     Route::post('/sites', [SiteController::class, 'store']);
     Route::delete('/sites/{site}', [SiteController::class, 'destroy']);

@@ -93,7 +93,7 @@
             </div>
             <div style="padding:12px;">
                 <h1 class="title">Budget Resource Code Master</h1>
-                <p style="margin:0 0 12px;font-size:13px;color:#605e5c;">Company ID scopes resource codes (same code may exist per company). Aligns with D365 Budget Resources.</p>
+             
 
                 @if (session('status'))
                     <div class="status">{{ session('status') }}</div>

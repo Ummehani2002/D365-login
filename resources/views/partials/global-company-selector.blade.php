@@ -128,13 +128,7 @@
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-    }
-    .global-company-icon {
-        width: 20px;
-        height: 20px;
-        color: #0f6cbd;
-        flex-shrink: 0;
+        gap: 0;
     }
     .global-company-select {
         width: min(340px, calc(100vw - 200px));
@@ -224,11 +218,6 @@
 
 @if($hasCompanyOptions)
 <div class="global-company-box">
-    <svg class="global-company-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-        <path d="M3 9h18"></path>
-        <path d="M9 21V9"></path>
-    </svg>
     <select id="global-company-select" class="global-company-select" aria-label="Select company" title="Change company">
         @foreach($companyOptions as $company)
             @php($code = strtoupper((string) ($company->d365_id ?? $company->company_id ?? '')))
