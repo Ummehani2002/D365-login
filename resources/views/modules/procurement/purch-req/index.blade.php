@@ -432,6 +432,13 @@
         const todayStr = () => new Date().toISOString().slice(0, 10);
         prDateEl.value = todayStr();
 
+        if (buyingLegalEntityEl && companyEl?.value) {
+            const initCo = String(companyEl.value).trim().toUpperCase();
+            if (['TM', 'PS'].includes(initCo) && !String(buyingLegalEntityEl.value || '').trim()) {
+                buyingLegalEntityEl.value = initCo;
+            }
+        }
+
         let lineCount = 0;
 
         let itemCatalog = {
@@ -1160,11 +1167,16 @@
             syncAllLineUnitsForPoolMode();
         });
         buyingLegalEntityEl.addEventListener('change', () => {
-            loadDepartmentManagers(getCurrentCompanyCode());
-            loadPools(getCurrentCompanyCode());
-            loadProjects(getCurrentCompanyCode());
-            loadWarehouses(getCurrentCompanyCode());
-            loadBudgetResourceCodes(getCurrentCompanyCode());
+            const cc = getCurrentCompanyCode();
+            if (companyEl && cc) {
+                companyEl.value = cc;
+            }
+            loadCatalogForCompany(cc);
+            loadDepartmentManagers(cc);
+            loadPools(cc);
+            loadProjects(cc);
+            loadWarehouses(cc);
+            loadBudgetResourceCodes(cc);
             syncAllLineUnitsForPoolMode();
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
@@ -1568,6 +1580,7 @@
             historyShell.style.display = 'none';
             formShell.style.display = '';
             clearStatus();
+            void loadCatalogForCompany(getCurrentCompanyCode());
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
@@ -1679,7 +1692,7 @@
         historyShell.classList.remove('hidden');
         formShell.style.display = 'none';
         historyShell.style.display = '';
-        loadCatalogForCompany(companyEl.value || '');
+        void loadCatalogForCompany(getCurrentCompanyCode());
         loadDepartmentManagers(getCurrentCompanyCode());
         loadPools(getCurrentCompanyCode());
         loadProjects(getCurrentCompanyCode());

@@ -343,7 +343,7 @@ class PurchReqController extends Controller
         if ($company) $categoriesQuery->where('company_id', $company->id);
 
         $categories = $categoriesQuery->get()->map(function (ItemCategory $category) {
-            $code = trim((string) ($category->item_category_id ?? ''));
+            $code = trim((string) ($category->getAttribute('d365_id') ?? ''));
             $name = trim((string) ($category->name ?? ''));
             return ['id' => $code !== '' ? $code : $name, 'name' => $name !== '' ? $name : $code];
         })->filter(fn ($c) => $c['id'] !== '')->unique(fn ($c) => strtolower($c['id']))->values();
