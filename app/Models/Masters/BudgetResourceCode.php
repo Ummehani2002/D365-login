@@ -11,6 +11,7 @@ class BudgetResourceCode extends Model
     protected $fillable = [
         'company_id',
         'project',
+        'resource_type',
         'resource_code',
         'description',
         'unit',

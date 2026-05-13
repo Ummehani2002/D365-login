@@ -138,6 +138,10 @@
                                     <input id="project" name="project" type="text" value="{{ old('project') }}" maxlength="100" placeholder="D365 project">
                                 </div>
                                 <div>
+                                    <label for="resource_type">Resource Type</label>
+                                    <input id="resource_type" name="resource_type" type="text" value="{{ old('resource_type') }}" maxlength="100" placeholder="e.g. Labor, Material">
+                                </div>
+                                <div>
                                     <label for="quantity">Quantity</label>
                                     <input id="quantity" name="quantity" type="number" step="0.01" min="0" value="{{ old('quantity') }}" placeholder="0.00">
                                 </div>
@@ -163,6 +167,7 @@
                                 <th>#</th>
                                 <th>Company ID</th>
                                 <th>Project</th>
+                                <th>Resource Type</th>
                                 <th>Resource code</th>
                                 <th>Description</th>
                                 <th>Unit</th>
@@ -179,6 +184,7 @@
                                     <td>{{ $index + 1 }}</td>
                                     <td>{{ $row->company_id }}</td>
                                     <td>{{ $row->project ?? '—' }}</td>
+                                    <td>{{ $row->resource_type ?? '—' }}</td>
                                     <td>{{ $row->resource_code }}</td>
                                     <td>{{ $row->description ?? '—' }}</td>
                                     <td>{{ $row->unit ?? '—' }}</td>
@@ -196,7 +202,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10">No budget resource codes found.</td>
+                                    <td colspan="12">No budget resource codes found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
