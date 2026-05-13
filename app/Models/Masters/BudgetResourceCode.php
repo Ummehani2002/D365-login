@@ -10,11 +10,10 @@ class BudgetResourceCode extends Model
 {
     protected $fillable = [
         'company_id',
-        'project_id',
+        'project',
         'resource_code',
         'description',
         'unit',
-        'resource_category',
         'quantity',
         'rate',
         'amount',
@@ -40,9 +39,9 @@ class BudgetResourceCode extends Model
         $this->attributes['resource_code'] = $value === null || $value === '' ? null : trim((string) $value);
     }
 
-    public function setProjectIdAttribute(mixed $value): void
+    public function setProjectAttribute(mixed $value): void
     {
-        $this->attributes['project_id'] = $value === null || $value === '' ? null : trim((string) $value);
+        $this->attributes['project'] = $value === null || $value === '' ? null : trim((string) $value);
     }
 
     public function creator(): BelongsTo

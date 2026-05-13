@@ -14,7 +14,6 @@ return new class extends Migration
             $table->string('resource_code', 100);
             $table->string('description', 255)->nullable();
             $table->string('unit', 30)->nullable();
-            $table->string('resource_category', 50)->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 

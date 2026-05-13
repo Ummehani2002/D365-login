@@ -129,21 +129,11 @@
                                     <label for="unit">Unit</label>
                                     <input id="unit" name="unit" type="text" value="{{ old('unit') }}" maxlength="30">
                                 </div>
-                                <div>
-                                    <label for="resource_category">Category</label>
-                                    <select id="resource_category" name="resource_category">
-                                        <option value="">—</option>
-                                        <option value="Materials" @selected(old('resource_category') === 'Materials')>Materials</option>
-                                        <option value="Sub Contracts" @selected(old('resource_category') === 'Sub Contracts')>Sub Contracts</option>
-                                        <option value="Plants" @selected(old('resource_category') === 'Plants')>Plants</option>
-                                        <option value="Others" @selected(old('resource_category') === 'Others')>Others</option>
-                                    </select>
-                                </div>
                             </div>
                             <div class="form-row">
                                 <div>
-                                    <label for="project_id">Project ID (D365)</label>
-                                    <input id="project_id" name="project_id" type="text" value="{{ old('project_id') }}" maxlength="100" placeholder="Project / contract id">
+                                    <label for="project">Project</label>
+                                    <input id="project" name="project" type="text" value="{{ old('project') }}" maxlength="100" placeholder="D365 project">
                                 </div>
                                 <div>
                                     <label for="quantity">Quantity</label>
@@ -170,11 +160,10 @@
                             <tr>
                                 <th>#</th>
                                 <th>Company ID</th>
-                                <th>Project ID</th>
+                                <th>Project</th>
                                 <th>Resource code</th>
                                 <th>Description</th>
                                 <th>Unit</th>
-                                <th>Category</th>
                                 <th>Qty</th>
                                 <th>Rate</th>
                                 <th>Amount</th>
@@ -187,11 +176,10 @@
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
                                     <td>{{ $row->company_id }}</td>
-                                    <td>{{ $row->project_id ?? '—' }}</td>
+                                    <td>{{ $row->project ?? '—' }}</td>
                                     <td>{{ $row->resource_code }}</td>
                                     <td>{{ $row->description ?? '—' }}</td>
                                     <td>{{ $row->unit ?? '—' }}</td>
-                                    <td>{{ $row->resource_category ?? '—' }}</td>
                                     <td>{{ $row->quantity !== null ? number_format((float) $row->quantity, 2) : '—' }}</td>
                                     <td>{{ $row->rate !== null ? number_format((float) $row->rate, 2) : '—' }}</td>
                                     <td>{{ $row->amount !== null ? number_format((float) $row->amount, 2) : '—' }}</td>
@@ -206,7 +194,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="12">No budget resource codes found.</td>
+                                    <td colspan="10">No budget resource codes found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

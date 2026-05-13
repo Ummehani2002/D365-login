@@ -13,8 +13,8 @@ return new class extends Migration
         }
 
         Schema::table('budget_resource_codes', function (Blueprint $table) {
-            if (! Schema::hasColumn('budget_resource_codes', 'project_id')) {
-                $table->string('project_id', 100)->nullable()->after('company_id');
+            if (! Schema::hasColumn('budget_resource_codes', 'project')) {
+                $table->string('project', 100)->nullable()->after('company_id');
             }
             if (! Schema::hasColumn('budget_resource_codes', 'quantity')) {
                 $table->decimal('quantity', 18, 2)->nullable()->after('unit');
@@ -36,7 +36,7 @@ return new class extends Migration
 
         Schema::table('budget_resource_codes', function (Blueprint $table) {
             $drop = [];
-            foreach (['project_id', 'quantity', 'rate', 'amount'] as $col) {
+            foreach (['project', 'quantity', 'rate', 'amount'] as $col) {
                 if (Schema::hasColumn('budget_resource_codes', $col)) {
                     $drop[] = $col;
                 }
