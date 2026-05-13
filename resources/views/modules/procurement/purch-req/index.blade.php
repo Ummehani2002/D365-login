@@ -6,15 +6,10 @@
     <title>Purchase Requisition</title>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f3f2f1; color: #323130; display: flex; min-height: 100vh; }
-        .sidebar { width: 260px; background: #fff; border-right: 1px solid #edebe9; padding: 12px 0; flex-shrink: 0; }
-        .logo { padding: 10px 16px 18px; border-bottom: 1px solid #edebe9; margin-bottom: 8px; font-weight: 700; }
-        .label { padding: 10px 16px 4px; color: #8a8886; font-size: 11px; text-transform: uppercase; }
-        .menu-link { display: block; padding: 10px 16px; color: #323130; text-decoration: none; border-radius: 8px; margin: 2px 8px; font-size: 14px; }
-        .menu-link:hover { background: #f3f2f1; }
-        .menu-link.active { background: #deecf9; color: #005a9e; }
-        .sub { margin-left: 16px; padding-left: 8px; border-left: 2px solid #edebe9; }
-        .main { flex: 1; padding: 12px 16px; overflow: auto; }
+        body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f3f2f1; color: #323130; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; min-height: 100vh; }
+        /* Sidebar is #appSidebar from rbac partial — keep layout row here only */
+        .app-content-row { display: flex; flex: 1 1 auto; flex-direction: row; flex-wrap: nowrap; align-items: stretch; min-width: 0; min-height: 0; width: 100%; }
+        .main { flex: 1; min-width: 0; padding: 12px 16px; overflow: auto; }
         .pr-layout { display: flex; flex-direction: column; gap: 12px; }
         .page-shell { border: 1px solid #edebe9; background: #fff; border-radius: 2px; overflow: hidden; }
         .command-bar { height: 44px; border-bottom: 1px solid #edebe9; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
@@ -131,6 +126,7 @@
         .badge-count { background: #deecf9; color: #005a9e; }
         .att-link { display: inline-flex; align-items: center; gap: 3px; color: #106ebe; text-decoration: none; font-size: 11px; padding: 2px 6px; border-radius: 10px; background: #deecf9; margin: 1px; white-space: nowrap; }
         .att-link:hover { background: #c7e0f4; }
+        #appSidebar { flex-shrink: 0; }
     </style>
     @include('settings.rbac.partials.styles')
 </head>
@@ -145,6 +141,7 @@
             ->unique('code')
             ->values();
     @endphp
+    <div class="app-content-row">
     @include('settings.rbac.partials.sidebar')
 
     <main class="main pr-layout">
@@ -380,6 +377,7 @@
             </div>
         </div>
     </main>
+    </div>
 
     <script>
     (() => {
