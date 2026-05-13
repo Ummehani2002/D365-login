@@ -103,6 +103,7 @@
         .line-details-grid { display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 10px 12px; }
         .line-details-field label { display: block; font-size: 11px; color: #605e5c; margin-bottom: 3px; font-weight: 500; }
         .line-details-field input, .line-details-field select { width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 6px 8px; font-size: 12px; background: #fff; }
+        .line-details-field select.lf-budget-res { min-width: 220px; max-width: 100%; }
         .attach-zone { border: 2px dashed #c8c6c4; border-radius: 4px; padding: 20px 16px; text-align: center; cursor: pointer; color: #605e5c; font-size: 13px; margin-bottom: 10px; transition: border-color .2s, background .2s; }
         .attach-zone:hover, .attach-zone.drag-over { border-color: #106ebe; background: #f0f7ff; color: #106ebe; }
         .attach-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -194,7 +195,9 @@
                         </div>
                         <div class="field hidden" id="field-warehouse">
                             <label>Warehouse <span style="color:#a4262c">*</span></label>
-                            <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
+                            <select id="warehouse">
+                                <option value="">— Select Warehouse —</option>
+                            </select>
                         </div>
                     </div>
 
@@ -405,6 +408,8 @@
         let departmentManagers = [];
         let poolRows = [];
         let projectRows = [];
+        let warehouseRows = [];
+        let budgetResourceRows = [];
 
         const showStatus = (msg, type) => {
             statusBox.textContent   = msg;
@@ -551,6 +556,94 @@
             } catch {
                 // ignore
             }
+        }
+
+        function renderWarehouseOptions(selectedWarehouseId = '') {
+            if (!warehouseEl) return;
+            const selectedKey = String(selectedWarehouseId ?? '').trim().toUpperCase();
+            const options = warehouseRows.map((w) => {
+                const wid = String(w.warehouse_id ?? '').trim();
+                const name = String(w.warehouse_name ?? '').trim();
+                const label = name ? `${wid} (${name})` : wid;
+                const selectedAttr = wid.toUpperCase() === selectedKey ? ' selected' : '';
+                return `<option value="${escapeHtml(wid)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+            const inList = warehouseRows.some((w) => String(w.warehouse_id ?? '').trim().toUpperCase() === selectedKey);
+            let orphan = '';
+            if (selectedKey && !inList) {
+                const raw = String(selectedWarehouseId ?? '').trim();
+                orphan = `<option value="${escapeHtml(raw)}" selected>${escapeHtml(raw)} (saved)</option>`;
+            }
+            warehouseEl.innerHTML = `<option value="">— Select Warehouse —</option>${options}${orphan}`;
+        }
+
+        async function loadWarehouses(companyCode, selectedWarehouseId = '') {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            warehouseRows = [];
+            renderWarehouseOptions('');
+            if (!company) return;
+
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.warehouses") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) return;
+
+                warehouseRows = Array.isArray(payload.data) ? payload.data : [];
+                renderWarehouseOptions(selectedWarehouseId);
+            } catch {
+                // Keep PR form usable if warehouse list fails.
+            }
+        }
+
+        function renderBudgetResourceSelectHtml(selectedCode = '') {
+            const key = String(selectedCode ?? '').trim();
+            const keyU = key.toUpperCase();
+            const options = budgetResourceRows.map((row) => {
+                const code = String(row.resource_code ?? '').trim();
+                const desc = String(row.description ?? '').trim();
+                const label = desc ? `${code} — ${desc}` : code;
+                const selectedAttr = code.toUpperCase() === keyU ? ' selected' : '';
+                return `<option value="${escapeHtml(code)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+            const inList = budgetResourceRows.some((r) => String(r.resource_code ?? '').trim().toUpperCase() === keyU);
+            let orphan = '';
+            if (key && !inList) {
+                orphan = `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)} (saved)</option>`;
+            }
+            return `<option value="">— Select budget resource —</option>${options}${orphan}`;
+        }
+
+        async function loadBudgetResourceCodes(companyCode) {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            budgetResourceRows = [];
+            if (!company) {
+                refreshAllLineBudgetResourceSelects();
+                return;
+            }
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.budget-resource-codes") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) {
+                    refreshAllLineBudgetResourceSelects();
+                    return;
+                }
+                budgetResourceRows = Array.isArray(payload.data) ? payload.data : [];
+                refreshAllLineBudgetResourceSelects();
+            } catch {
+                refreshAllLineBudgetResourceSelects();
+            }
+        }
+
+        function refreshAllLineBudgetResourceSelects() {
+            linesBody.querySelectorAll('tr[data-line-detail] select.lf-budget-res').forEach((sel) => {
+                const prev = sel.value;
+                sel.innerHTML = renderBudgetResourceSelectHtml(prev);
+                sel.value = prev;
+            });
         }
 
         function getSelectedPool() {
@@ -751,7 +844,7 @@
                             </div>
                             <div class="line-details-field">
                                 <label>Budget Resource</label>
-                                <input class="lf-budget-res" type="text" placeholder="Budget resource code" value="${line.budget_resource_id ?? ''}">
+                                <select class="line-select lf-budget-res">${renderBudgetResourceSelectHtml(line.budget_resource_id ?? '')}</select>
                             </div>
                             <div class="line-details-field">
                                 <label>Warranty</label>
@@ -986,6 +1079,8 @@
             loadDepartmentManagers(companyCode);
             loadPools(companyCode);
             loadProjects(companyCode);
+            loadWarehouses(companyCode);
+            loadBudgetResourceCodes(companyCode);
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -1005,6 +1100,8 @@
             loadDepartmentManagers(getCurrentCompanyCode());
             loadPools(getCurrentCompanyCode());
             loadProjects(getCurrentCompanyCode());
+            loadWarehouses(getCurrentCompanyCode());
+            loadBudgetResourceCodes(getCurrentCompanyCode());
             linesBody.querySelectorAll('tr[data-line]').forEach((tr) => {
                 const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
                 const unitSelect = tr.querySelector('.lf-unit');
@@ -1378,7 +1475,7 @@
                 buyingLegalEntityEl.value = ['TM', 'PS'].includes(companyCode) ? companyCode : '';
             }
             prDateEl.value      = todayStr();
-            warehouseEl.value   = '';
+            if (warehouseEl) warehouseEl.innerHTML = '<option value="">— Select Warehouse —</option>';
             if (projectEl) projectEl.value = '';
             if (poolEl) {
                 poolEl.value = '';
@@ -1397,6 +1494,8 @@
             renderAttachments();
             renumberLines();
             currentDraftId = null;
+            void loadWarehouses(getCurrentCompanyCode(), '');
+            void loadBudgetResourceCodes(getCurrentCompanyCode());
         }
 
         document.getElementById('reset-btn').addEventListener('click', () => {
@@ -1467,10 +1566,10 @@
                 await loadDepartmentManagers(j.company || '');
                 await loadPools(j.company || '', j.pool_id || '');
                 await loadProjects(j.company || '', j.project_id || '');
+                await loadWarehouses(j.company || '', j.warehouse || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
                 prDateEl.value = j.pr_date || '';
-                warehouseEl.value = j.warehouse || '';
                 if (poolEl) {
                     poolEl.value = j.pool_id || '';
                 }
@@ -1527,6 +1626,8 @@
         loadDepartmentManagers(getCurrentCompanyCode());
         loadPools(getCurrentCompanyCode());
         loadProjects(getCurrentCompanyCode());
+        loadWarehouses(getCurrentCompanyCode());
+        loadBudgetResourceCodes(getCurrentCompanyCode());
         applyPoolUi();
     })();
     </script>

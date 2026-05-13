@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Modules\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Models\BudgetResourceCode;
 use App\Models\Company;
 use App\Models\DepartmentManager;
 use App\Models\Item;
@@ -477,6 +478,66 @@ class PurchReqController extends Controller
             'status' => true,
             'message' => 'Projects fetched.',
             'data' => $data,
+        ]);
+    }
+
+    public function lookupWarehouses(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json([
+                'status' => true,
+                'message' => 'Warehouses fetched.',
+                'data' => [],
+            ]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = Warehouse::query()
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
+            ->orderBy('warehouse_id')
+            ->get(['warehouse_id', 'warehouse_name']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Warehouses fetched.',
+            'data' => $rows,
+        ]);
+    }
+
+    public function lookupBudgetResourceCodes(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json([
+                'status' => true,
+                'message' => 'Budget resource codes fetched.',
+                'data' => [],
+            ]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = BudgetResourceCode::query()
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
+            ->orderBy('resource_code')
+            ->get(['resource_code', 'description', 'project']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Budget resource codes fetched.',
+            'data' => $rows,
         ]);
     }
 
