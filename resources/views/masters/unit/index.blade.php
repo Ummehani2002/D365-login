@@ -59,12 +59,15 @@
         .danger { background: #a4262c; border-color: #a4262c; padding: 6px 10px; font-size: 12px; }
         .hint { font-size: 12px; color: #605e5c; margin-top: 4px; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
     @php
         $companyQuery = !empty($currentCompanyCode) ? ['company' => strtoupper((string) $currentCompanyCode)] : [];
     @endphp
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
     <div class="header">
         <h1>Unit Master</h1>
        
@@ -119,6 +122,7 @@
         </table>
         <a class="back-link" href="{{ route('dashboard', $companyQuery) }}">Back to Dashboard</a>
     </div>
+    </main>
 
     <script>
         const tbody = document.querySelector('tbody');

@@ -97,9 +97,12 @@
             font-size: 12px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
     <div class="header">
         <h1>Project Master</h1>
         <button type="button" id="sync-d365-btn">Sync all from D365</button>
@@ -167,6 +170,7 @@
         </table>
         <a class="back-link" href="{{ route('dashboard') }}">Back to Dashboard</a>
     </div>
+    </main>
     <script>
         const projectsTbody = document.querySelectorAll('tbody')[0];
         const companySelect = document.getElementById('company_id');

@@ -93,6 +93,7 @@
             font-size: 12px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -100,6 +101,8 @@
         $companyCode = strtoupper((string) ($currentCompanyCode ?? request()->query('company', '')));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
     <div class="header">
         <h1>Sales Tax Group Master</h1>
     </div>
@@ -143,6 +146,7 @@
         </table>
         <a class="back-link" href="{{ route('dashboard', $companyQuery) }}">Back to Dashboard</a>
     </div>
+    </main>
 
     <script>
         const tbody = document.querySelector('tbody');

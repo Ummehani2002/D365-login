@@ -92,9 +92,12 @@
             font-size: 12px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
     <div class="header">
         <h1>Site Master</h1>
     </div>
@@ -138,6 +141,7 @@
         </table>
         <a class="back-link" href="{{ route('dashboard') }}">Back to Dashboard</a>
     </div>
+    </main>
 
     <script>
         const sitesTbody = document.querySelector('tbody');

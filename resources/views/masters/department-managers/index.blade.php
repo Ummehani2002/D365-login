@@ -81,6 +81,7 @@
             font-size: 13px;
         }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
@@ -88,6 +89,7 @@
         $companyCode = strtoupper((string) request()->query('company', ''));
         $companyQuery = $companyCode !== '' ? ['company' => $companyCode] : [];
     @endphp
+    @include('settings.rbac.partials.sidebar')
     <main class="main">
         <div class="page-shell">
             <div class="command-bar">

@@ -27,12 +27,14 @@
         th { color: #605e5c; background: #faf9f8; font-weight: 600; }
         .empty { text-align: center; color: #8a8886; padding: 24px 8px; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
     @php
         $companyQuery = !empty($currentCompanyCode) ? ['company' => strtoupper((string) $currentCompanyCode)] : [];
     @endphp
+    @include('settings.rbac.partials.sidebar')
     <main class="main">
         <div class="page-shell">
             <div class="command-bar">

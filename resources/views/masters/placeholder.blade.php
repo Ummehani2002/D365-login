@@ -14,13 +14,17 @@
         }
         a { color: #2563eb; }
     </style>
+    @include('settings.rbac.partials.styles')
 </head>
 <body>
     @include('partials.global-company-selector')
+    @include('settings.rbac.partials.sidebar')
+    <main class="main">
     <div class="card">
         <h1 style="margin-top:0;color:#1e293b;">{{ $title }}</h1>
         <p>Master screen — scaffolding only. Add models, migrations, and forms when you are ready.</p>
         <p><a href="{{ route('dashboard') }}">← Back to Dashboard</a></p>
     </div>
+    </main>
 </body>
 </html>
