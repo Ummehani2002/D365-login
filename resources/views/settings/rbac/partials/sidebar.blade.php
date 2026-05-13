@@ -33,7 +33,7 @@
     $showProjectManagement = ($authIsSuperAdmin ?? false) || ($canItemIssue ?? false);
     $showProcurement = ($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false);
 @endphp
-<aside class="sidebar" id="appSidebar">
+<aside class="sidebar" id="appSidebar" data-start-collapsed="{{ request()->routeIs('dashboard') ? '1' : '0' }}">
     <div class="sidebar-rail" aria-label="Navigation rail">
         <button type="button" class="rail-toggle rail-menu-toggle" data-action="toggle-panel" title="Toggle menu" aria-label="Toggle menu">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -206,8 +206,10 @@
         showAllSections();
     };
 
-    // Always start open for consistent navigation everywhere.
-    setCollapsed(false);
+    // On Home (dashboard), start with the text panel hidden — only the icon rail shows.
+    // Hamburger or a section icon opens the full menu again.
+    const startCollapsed = sidebar.dataset.startCollapsed === '1';
+    setCollapsed(startCollapsed);
 
     const firstAvailableTarget = () => {
         for (const target of ['masters', 'modules', 'dashboard', 'settings']) {
