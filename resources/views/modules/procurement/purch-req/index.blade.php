@@ -674,6 +674,11 @@
             return Boolean(p && p.has_item_category && !p.has_item_id);
         }
 
+        /** Item-ID pools: show Item ID column, hide Item Category; units come from D365 for the selected item (not fixed NOS). */
+        function isItemIdOnlyPool(p) {
+            return Boolean(p && p.has_item_id && !p.has_item_category);
+        }
+
         function syncLineUnitForPoolMode(tr) {
             const p = getSelectedPool();
             const unitSelect = tr.querySelector('.lf-unit');
@@ -699,7 +704,9 @@
             const itemId = tr.querySelector('.lf-item-id')?.value?.trim() ?? '';
             if (!itemId) {
                 unitSelect.innerHTML = '<option value="">Optional until item is selected</option>';
-                unitNote.textContent = '';
+                unitNote.textContent = isItemIdOnlyPool(p)
+                    ? 'Units load from D365 after Item ID is selected (e.g. NOS, EA).'
+                    : '';
             } else {
                 void loadUnitsForRow(tr);
             }
@@ -710,8 +717,25 @@
         }
 
         function applyPoolLineColumns(p) {
-            const showCat = p == null ? true : !!p.has_item_category;
-            const showItem = p == null ? true : !!p.has_item_id;
+            let showCat = true;
+            let showItem = true;
+            if (p != null) {
+                const hasCat = !!p.has_item_category;
+                const hasItem = !!p.has_item_id;
+                if (hasCat && hasItem) {
+                    showCat = true;
+                    showItem = true;
+                } else if (hasCat && !hasItem) {
+                    showCat = true;
+                    showItem = false;
+                } else if (!hasCat && hasItem) {
+                    showCat = false;
+                    showItem = true;
+                } else {
+                    showCat = false;
+                    showItem = false;
+                }
+            }
             document.querySelectorAll('#lines-table [data-col="category"]').forEach((el) => {
                 el.classList.toggle('line-col-collapsed', !showCat);
             });
