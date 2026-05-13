@@ -48,6 +48,10 @@ class BudgetResourceCodeController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'unit' => ['nullable', 'string', 'max:30'],
             'resource_category' => ['nullable', 'string', 'max:50'],
+            'project_id' => ['nullable', 'string', 'max:100'],
+            'quantity' => ['nullable', 'numeric', 'min:0'],
+            'rate' => ['nullable', 'numeric', 'min:0'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $companyId = DataAreaId::normalize($validated['company_id']);
@@ -58,6 +62,10 @@ class BudgetResourceCodeController extends Controller
             'description' => (isset($validated['description']) && trim((string) $validated['description']) !== '') ? trim((string) $validated['description']) : null,
             'unit' => (isset($validated['unit']) && trim((string) $validated['unit']) !== '') ? trim((string) $validated['unit']) : null,
             'resource_category' => (isset($validated['resource_category']) && trim((string) $validated['resource_category']) !== '') ? trim((string) $validated['resource_category']) : null,
+            'project_id' => (isset($validated['project_id']) && trim((string) $validated['project_id']) !== '') ? trim((string) $validated['project_id']) : null,
+            'quantity' => array_key_exists('quantity', $validated) ? $validated['quantity'] : null,
+            'rate' => array_key_exists('rate', $validated) ? $validated['rate'] : null,
+            'amount' => array_key_exists('amount', $validated) ? $validated['amount'] : null,
             'created_by' => auth()->id(),
         ]);
 
@@ -102,16 +110,26 @@ class BudgetResourceCodeController extends Controller
                     ->where(fn ($q) => $q->where('company_id', $budget_resource_code->company_id))
                     ->ignore($budget_resource_code->id),
             ],
-            'description' => ['nullable', 'string', 'max:255'],
-            'unit' => ['nullable', 'string', 'max:30'],
-            'resource_category' => ['nullable', 'string', 'max:50'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'unit' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'resource_category' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'project_id' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'quantity' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'rate' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
         ]);
 
         $data = ['resource_code' => trim($validated['resource_code'])];
-        foreach (['description', 'unit', 'resource_category'] as $field) {
+        foreach (['description', 'unit', 'resource_category', 'project_id'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $v = $validated[$field];
                 $data[$field] = $v === null || $v === '' ? null : trim((string) $v);
+            }
+        }
+        foreach (['quantity', 'rate', 'amount'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $v = $validated[$field];
+                $data[$field] = $v === null || $v === '' ? null : $v;
             }
         }
         $budget_resource_code->update($data);

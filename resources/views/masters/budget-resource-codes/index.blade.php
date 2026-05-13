@@ -140,6 +140,24 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="form-row">
+                                <div>
+                                    <label for="project_id">Project ID (D365)</label>
+                                    <input id="project_id" name="project_id" type="text" value="{{ old('project_id') }}" maxlength="100" placeholder="Project / contract id">
+                                </div>
+                                <div>
+                                    <label for="quantity">Quantity</label>
+                                    <input id="quantity" name="quantity" type="number" step="0.01" min="0" value="{{ old('quantity') }}" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label for="rate">Rate</label>
+                                    <input id="rate" name="rate" type="number" step="0.01" min="0" value="{{ old('rate') }}" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label for="amount">Amount</label>
+                                    <input id="amount" name="amount" type="number" step="0.01" min="0" value="{{ old('amount') }}" placeholder="0.00">
+                                </div>
+                            </div>
                             <button class="btn-primary" type="submit">Save</button>
                         </form>
                     </div>
@@ -152,10 +170,14 @@
                             <tr>
                                 <th>#</th>
                                 <th>Company ID</th>
+                                <th>Project ID</th>
                                 <th>Resource code</th>
                                 <th>Description</th>
                                 <th>Unit</th>
                                 <th>Category</th>
+                                <th>Qty</th>
+                                <th>Rate</th>
+                                <th>Amount</th>
                                 <th>Created</th>
                                 <th>Action</th>
                             </tr>
@@ -165,10 +187,14 @@
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
                                     <td>{{ $row->company_id }}</td>
+                                    <td>{{ $row->project_id ?? '—' }}</td>
                                     <td>{{ $row->resource_code }}</td>
                                     <td>{{ $row->description ?? '—' }}</td>
                                     <td>{{ $row->unit ?? '—' }}</td>
                                     <td>{{ $row->resource_category ?? '—' }}</td>
+                                    <td>{{ $row->quantity !== null ? number_format((float) $row->quantity, 2) : '—' }}</td>
+                                    <td>{{ $row->rate !== null ? number_format((float) $row->rate, 2) : '—' }}</td>
+                                    <td>{{ $row->amount !== null ? number_format((float) $row->amount, 2) : '—' }}</td>
                                     <td>{{ optional($row->created_at)->format('d M Y H:i') }}</td>
                                     <td>
                                         <form method="post" action="{{ route('masters.budget-resource-codes.destroy', array_merge($companyQuery, ['budgetResourceCode' => $row->id])) }}" onsubmit="return confirm('Delete this row?');" style="margin:0;">
@@ -180,7 +206,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8">No budget resource codes found.</td>
+                                    <td colspan="12">No budget resource codes found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

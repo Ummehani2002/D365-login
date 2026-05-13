@@ -383,7 +383,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"company_id\": \"C001\",\n  \"resource_code\": \"BR-MAT-001\",\n  \"description\": \"Example material budget line\",\n  \"unit\": \"EA\",\n  \"resource_category\": \"Materials\"\n}"
+							"raw": "{\n  \"company_id\": \"C001\",\n  \"resource_code\": \"BR-MAT-001\",\n  \"project_id\": \"PRJ-100\",\n  \"description\": \"Example material budget line\",\n  \"unit\": \"EA\",\n  \"resource_category\": \"Materials\",\n  \"quantity\": 10,\n  \"rate\": 25.5,\n  \"amount\": 255\n}"
 						},
 						"url": "{{base_url}}/api/budget-resource-codes"
 					}
@@ -419,7 +419,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"resource_code\": \"BR-MAT-001\",\n  \"description\": \"Updated description\",\n  \"unit\": \"KG\",\n  \"resource_category\": \"Materials\"\n}"
+							"raw": "{\n  \"resource_code\": \"BR-MAT-001\",\n  \"project_id\": \"PRJ-100\",\n  \"description\": \"Updated description\",\n  \"unit\": \"KG\",\n  \"resource_category\": \"Materials\",\n  \"quantity\": 12,\n  \"rate\": 30,\n  \"amount\": 360\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/budget-resource-codes/1?company_id=C001",

@@ -28,6 +28,9 @@ class BudgetResourceCodeMasterController extends Controller
     {
         $request->merge([
             'company_id' => DataAreaId::normalize((string) $request->input('company_id')),
+            'quantity' => $request->input('quantity') === '' || $request->input('quantity') === null ? null : $request->input('quantity'),
+            'rate' => $request->input('rate') === '' || $request->input('rate') === null ? null : $request->input('rate'),
+            'amount' => $request->input('amount') === '' || $request->input('amount') === null ? null : $request->input('amount'),
         ]);
 
         $validated = $request->validate([
@@ -43,14 +46,22 @@ class BudgetResourceCodeMasterController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'unit' => ['nullable', 'string', 'max:30'],
             'resource_category' => ['nullable', 'string', 'max:50'],
+            'project_id' => ['nullable', 'string', 'max:100'],
+            'quantity' => ['nullable', 'numeric', 'min:0'],
+            'rate' => ['nullable', 'numeric', 'min:0'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         BudgetResourceCode::create([
             'company_id' => $validated['company_id'],
             'resource_code' => trim($validated['resource_code']),
-            'description' => isset($validated['description']) ? trim((string) $validated['description']) : null,
-            'unit' => isset($validated['unit']) ? trim((string) $validated['unit']) : null,
-            'resource_category' => isset($validated['resource_category']) ? trim((string) $validated['resource_category']) : null,
+            'description' => isset($validated['description']) && trim((string) $validated['description']) !== '' ? trim((string) $validated['description']) : null,
+            'unit' => isset($validated['unit']) && trim((string) $validated['unit']) !== '' ? trim((string) $validated['unit']) : null,
+            'resource_category' => isset($validated['resource_category']) && trim((string) $validated['resource_category']) !== '' ? trim((string) $validated['resource_category']) : null,
+            'project_id' => isset($validated['project_id']) && trim((string) $validated['project_id']) !== '' ? trim((string) $validated['project_id']) : null,
+            'quantity' => $validated['quantity'] ?? null,
+            'rate' => $validated['rate'] ?? null,
+            'amount' => $validated['amount'] ?? null,
             'created_by' => auth()->id(),
         ]);
 

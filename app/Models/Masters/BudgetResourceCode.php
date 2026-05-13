@@ -10,12 +10,25 @@ class BudgetResourceCode extends Model
 {
     protected $fillable = [
         'company_id',
+        'project_id',
         'resource_code',
         'description',
         'unit',
         'resource_category',
+        'quantity',
+        'rate',
+        'amount',
         'created_by',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'quantity' => 'decimal:2',
+            'rate' => 'decimal:2',
+            'amount' => 'decimal:2',
+        ];
+    }
 
     public function setCompanyIdAttribute(mixed $value): void
     {
@@ -25,6 +38,11 @@ class BudgetResourceCode extends Model
     public function setResourceCodeAttribute(mixed $value): void
     {
         $this->attributes['resource_code'] = $value === null || $value === '' ? null : trim((string) $value);
+    }
+
+    public function setProjectIdAttribute(mixed $value): void
+    {
+        $this->attributes['project_id'] = $value === null || $value === '' ? null : trim((string) $value);
     }
 
     public function creator(): BelongsTo
