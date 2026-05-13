@@ -32,6 +32,16 @@
 
     $showProjectManagement = ($authIsSuperAdmin ?? false) || ($canItemIssue ?? false);
     $showProcurement = ($authIsSuperAdmin ?? false) || ($canPr ?? false) || ($canGrn ?? false);
+
+    // Expand the subgroup that contains the active route so sub-modules stay visible (e.g. PR under Procurement).
+    $expandNavMasters = request()->routeIs('masters.*');
+    $expandNavProjectMgmt = request()->routeIs('modules.project-management.*');
+    $expandNavProcurement = request()->routeIs('modules.procurement.*');
+    $expandNavSettingsApi = request()->routeIs('settings.token') || request()->routeIs('settings.credentials');
+    $expandNavSettingsSysAdmin = request()->routeIs('settings.users.*')
+        || request()->routeIs('settings.roles.*')
+        || request()->routeIs('settings.permissions.*')
+        || request()->routeIs('settings.menu-match.*');
 @endphp
 <aside class="sidebar" id="appSidebar" data-start-collapsed="{{ request()->routeIs('dashboard') ? '1' : '0' }}">
     <div class="sidebar-rail" aria-label="Navigation rail">
@@ -80,11 +90,11 @@
                 <section class="sidebar-section {{ $activeSection === 'masters' ? 'active' : '' }}" data-section="masters">
                     <div class="nav-section-label">Masters</div>
                     <div class="nav-subgroup">
-                        <button type="button" class="nav-subgroup-header" data-nav-target="masters-all" aria-expanded="false">
+                        <button type="button" class="nav-subgroup-header" data-nav-target="masters-all" aria-expanded="{{ $expandNavMasters ? 'true' : 'false' }}">
                             Masters
                             <span class="chevron-sm" aria-hidden="true">▲</span>
                         </button>
-                        <div class="nav-subgroup-body" id="masters-all" hidden>
+                        <div class="nav-subgroup-body" id="masters-all" @if(!$expandNavMasters) hidden @endif>
                             @foreach($mastersLinks as $item)
                                 @if(\Illuminate\Support\Facades\Route::has($item['route']))
                                     <a
@@ -102,11 +112,11 @@
                     <div class="nav-section-label">Modules</div>
                     @if($showProjectManagement)
                         <div class="nav-subgroup">
-                            <button type="button" class="nav-subgroup-header" data-nav-target="modules-project-management" aria-expanded="false">
+                            <button type="button" class="nav-subgroup-header" data-nav-target="modules-project-management" aria-expanded="{{ $expandNavProjectMgmt ? 'true' : 'false' }}">
                                 Project Management
                                 <span class="chevron-sm" aria-hidden="true">▲</span>
                             </button>
-                            <div class="nav-subgroup-body" id="modules-project-management" hidden>
+                            <div class="nav-subgroup-body" id="modules-project-management" @if(!$expandNavProjectMgmt) hidden @endif>
                                 @if(($authIsSuperAdmin ?? false) || ($canItemIssue ?? false))
                                     <a
                                         class="nav-link nested {{ request()->routeIs('modules.project-management.item-issue*') ? 'active' : '' }}"
@@ -119,11 +129,11 @@
 
                     @if($showProcurement)
                         <div class="nav-subgroup">
-                            <button type="button" class="nav-subgroup-header" data-nav-target="modules-procurement" aria-expanded="false">
+                            <button type="button" class="nav-subgroup-header" data-nav-target="modules-procurement" aria-expanded="{{ $expandNavProcurement ? 'true' : 'false' }}">
                                 Procurement &amp; Sourcing
                                 <span class="chevron-sm" aria-hidden="true">▲</span>
                             </button>
-                            <div class="nav-subgroup-body" id="modules-procurement" hidden>
+                            <div class="nav-subgroup-body" id="modules-procurement" @if(!$expandNavProcurement) hidden @endif>
                                 @if(($authIsSuperAdmin ?? false) || ($canPr ?? false))
                                     <a
                                         class="nav-link nested {{ request()->routeIs('modules.procurement.purch-req*') ? 'active' : '' }}"
@@ -146,22 +156,22 @@
                     <div class="nav-section-label">Settings</div>
                     @if($authIsSuperAdmin ?? false)
                         <div class="nav-subgroup">
-                            <button type="button" class="nav-subgroup-header" data-nav-target="settings-api-configuration" aria-expanded="false">
+                            <button type="button" class="nav-subgroup-header" data-nav-target="settings-api-configuration" aria-expanded="{{ $expandNavSettingsApi ? 'true' : 'false' }}">
                                 API Configuration
                                 <span class="chevron-sm" aria-hidden="true">▲</span>
                             </button>
-                            <div class="nav-subgroup-body" id="settings-api-configuration" hidden>
+                            <div class="nav-subgroup-body" id="settings-api-configuration" @if(!$expandNavSettingsApi) hidden @endif>
                                 <a class="nav-link nested {{ request()->routeIs('settings.token') ? 'active' : '' }}" href="{{ route('settings.token', $companyQuery ?? []) }}">API Token Timer</a>
                                 <a class="nav-link nested {{ request()->routeIs('settings.credentials') ? 'active' : '' }}" href="{{ route('settings.credentials', $companyQuery ?? []) }}">D365 Credentials</a>
                             </div>
                         </div>
                     @endif
                     <div class="nav-subgroup">
-                        <button type="button" class="nav-subgroup-header" data-nav-target="settings-system-administration" aria-expanded="false">
+                        <button type="button" class="nav-subgroup-header" data-nav-target="settings-system-administration" aria-expanded="{{ $expandNavSettingsSysAdmin ? 'true' : 'false' }}">
                             System Administration
                             <span class="chevron-sm" aria-hidden="true">▲</span>
                         </button>
-                        <div class="nav-subgroup-body" id="settings-system-administration" hidden>
+                        <div class="nav-subgroup-body" id="settings-system-administration" @if(!$expandNavSettingsSysAdmin) hidden @endif>
                             <a class="nav-link nested {{ request()->routeIs('settings.users.*') ? 'active' : '' }}" href="{{ route('settings.users.index', $companyQuery ?? []) }}">Users</a>
                             <a class="nav-link nested {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}" href="{{ route('settings.roles.index', $companyQuery ?? []) }}">Roles</a>
                             <a class="nav-link nested {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}" href="{{ route('settings.permissions.index', $companyQuery ?? []) }}">Permissions</a>

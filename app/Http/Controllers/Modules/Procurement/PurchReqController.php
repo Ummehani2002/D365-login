@@ -17,6 +17,7 @@ use App\Support\DataAreaId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -123,7 +124,7 @@ class PurchReqController extends Controller
             $this->assertPurchReqMatchesPool($validated, $poolRow);
             $validated['lines'] = $this->normalizeSubmittedLines($validated['lines'], $poolRow);
 
-            $requestId = $this->generatePRRequestId();
+            $requestId = $this->generatePRRequestId((string) $validated['company'], (string) ($validated['pr_date'] ?? ''));
             $prNo      = $this->generatePRNo();
 
             $d365Payload = [
@@ -622,15 +623,31 @@ class PurchReqController extends Controller
         }, $lines);
     }
 
-    private function generatePRRequestId(): string
+    /**
+     * Format: {COMPANY}-PR-{YEAR}-{SEQ} e.g. PS-PR-2026-001 (sequence per company + calendar year).
+     */
+    private function generatePRRequestId(string $company, string $prDate): string
     {
-        $next = \DB::transaction(function () {
-            $current = (int) \App\Models\AppSetting::get('purch_req_id_sequence', 0);
+        $companyKey = strtoupper(trim($company));
+        if ($companyKey === '') {
+            $companyKey = 'UNK';
+        }
+
+        $year = $prDate !== ''
+            ? (int) Carbon::parse($prDate)->format('Y')
+            : (int) now()->year;
+
+        $settingKey = 'purch_req_id_seq_' . preg_replace('/[^A-Za-z0-9_]/', '_', $companyKey) . '_' . $year;
+
+        $next = \DB::transaction(function () use ($settingKey) {
+            $current = (int) \App\Models\AppSetting::get($settingKey, 0);
             $next    = $current + 1;
-            \App\Models\AppSetting::set('purch_req_id_sequence', $next);
+            \App\Models\AppSetting::set($settingKey, $next);
+
             return $next;
         });
-        return 'REQ-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+
+        return sprintf('%s-PR-%d-%03d', $companyKey, $year, $next);
     }
 
     private function generatePRNo(): string
