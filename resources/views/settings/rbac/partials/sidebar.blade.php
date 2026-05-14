@@ -23,6 +23,7 @@
         ['label' => 'Projects', 'route' => 'masters.project.index', 'pattern' => 'masters.project.index'],
         ['label' => 'Pools', 'route' => 'masters.pools.index', 'pattern' => 'masters.pools.index'],
         ['label' => 'FD Locations', 'route' => 'masters.fd-locations.index', 'pattern' => 'masters.fd-locations.index'],
+        ['label' => 'Warranty', 'route' => 'masters.warranty.index', 'pattern' => 'masters.warranty.*'],
         ['label' => 'Budget Resource Codes', 'route' => 'masters.budget-resource-codes.index', 'pattern' => 'masters.budget-resource-codes.index'],
         ['label' => 'Batches', 'route' => 'masters.batches.index', 'pattern' => 'masters.batches.index'],
         ['label' => 'Sales Tax Groups', 'route' => 'masters.sales-tax-groups.index', 'pattern' => 'masters.sales-tax-groups.index'],

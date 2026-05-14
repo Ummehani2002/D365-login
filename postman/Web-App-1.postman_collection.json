@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "d265-web-app-1",
 		"name": "WEB APP 1",
-		"description": "API calls for this Laravel app. Set collection variables: base_url, api_bearer_token (must match WEBAPP_API_BEARER_TOKEN in .env — if unset, add e.g. WEBAPP_API_BEARER_TOKEN=your-secret). Companies come first — create companies before projects that reference company_id. Masters (sales tax group, item sales tax group, item units, budget resource codes, FD locations) are company-specific: send company_id in POST body and use ?company_id= in list requests. For GET/PUT/DELETE a single budget resource code or FD location by id, include ?company_id= matching that row.",
+		"description": "API calls for this Laravel app. Set collection variables: base_url, api_bearer_token (must match WEBAPP_API_BEARER_TOKEN in .env — if unset, add e.g. WEBAPP_API_BEARER_TOKEN=your-secret). Companies come first — create companies before projects that reference company_id. Masters (sales tax group, item sales tax group, item units, budget resource codes, FD locations, warranty) are company-specific: send company_id in POST body and use ?company_id= in list requests. Warranty: use `/api/warranty` (singular) or `/api/warranties` (plural). For GET/PUT/DELETE a single row by id, include ?company_id= matching that row.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -551,6 +551,113 @@
 							"raw": "{{base_url}}/api/fd-locations/1?company_id=C001",
 							"host": ["{{base_url}}"],
 							"path": ["api", "fd-locations", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Masters — Warranty",
+			"item": [
+				{
+					"name": "List warranty rows",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/warranty?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "warranty"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Optional filter by legal entity (D365 company id). Same as query param `company`."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create warranty row",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"company_id\": \"C001\",\n  \"warranty\": \"1D\",\n  \"description\": \"1 day\"\n}"
+						},
+						"url": "{{base_url}}/api/warranty"
+					}
+				},
+				{
+					"name": "Get warranty by id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/warranty/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "warranty", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update warranty",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"warranty\": \"24D\",\n  \"description\": \"24 days\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/warranty/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "warranty", "1"],
+							"query": [
+								{
+									"key": "company_id",
+									"value": "C001",
+									"description": "Required — must match the row's company_id."
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete warranty",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/warranty/1?company_id=C001",
+							"host": ["{{base_url}}"],
+							"path": ["api", "warranty", "1"],
 							"query": [
 								{
 									"key": "company_id",

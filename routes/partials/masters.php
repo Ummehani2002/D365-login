@@ -13,6 +13,7 @@ use App\Http\Controllers\CompanyMasterController;
 use App\Http\Controllers\CurrencyMasterController;
 use App\Http\Controllers\DepartmentManagerMasterController;
 use App\Http\Controllers\FdLocationMasterController;
+use App\Http\Controllers\WarrantyMasterController;
 use App\Http\Controllers\ItemCategoryMasterController;
 use App\Http\Controllers\ItemMasterController;
 use App\Http\Controllers\ItemSalesTaxGroupMasterController;
@@ -58,6 +59,10 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
     Route::get('/masters/fd-locations', [FdLocationMasterController::class, 'index'])->name('masters.fd-locations.index');
     Route::post('/masters/fd-locations', [FdLocationMasterController::class, 'store'])->name('masters.fd-locations.store');
     Route::delete('/masters/fd-locations/{fdLocation}', [FdLocationMasterController::class, 'destroy'])->name('masters.fd-locations.destroy');
+
+    Route::get('/masters/warranty', [WarrantyMasterController::class, 'index'])->name('masters.warranty.index');
+    Route::post('/masters/warranty', [WarrantyMasterController::class, 'store'])->name('masters.warranty.store');
+    Route::delete('/masters/warranty/{warranty}', [WarrantyMasterController::class, 'destroy'])->name('masters.warranty.destroy');
     Route::get('/masters/budget-resource-codes', [BudgetResourceCodeMasterController::class, 'index'])->name('masters.budget-resource-codes.index');
     Route::post('/masters/budget-resource-codes', [BudgetResourceCodeMasterController::class, 'store'])->name('masters.budget-resource-codes.store');
     Route::delete('/masters/budget-resource-codes/{budgetResourceCode}', [BudgetResourceCodeMasterController::class, 'destroy'])->name('masters.budget-resource-codes.destroy');

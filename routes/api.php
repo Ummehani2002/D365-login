@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BudgetResourceCodeController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\FdLocationController;
+use App\Http\Controllers\Api\WarrantyController;
 use App\Http\Controllers\Api\ItemCategorySyncController;
 use App\Http\Controllers\Api\ItemSalesTaxGroupController;
 use App\Http\Controllers\Api\ItemSyncController;
@@ -42,6 +43,16 @@ Route::middleware('api.bearer')->group(function () {
     Route::apiResource('/warehouses', WarehouseController::class);
     Route::apiResource('/budget-resource-codes', BudgetResourceCodeController::class);
     Route::apiResource('/fd-locations', FdLocationController::class);
+    Route::apiResource('/warranties', WarrantyController::class);
+    /*
+     * Singular alias: matches /masters/warranty; canonical routes remain /api/warranties.
+     */
+    Route::match(['get', 'head'], '/warranty', [WarrantyController::class, 'index']);
+    Route::post('/warranty', [WarrantyController::class, 'store']);
+    Route::match(['get', 'head'], '/warranty/{warranty}', [WarrantyController::class, 'show']);
+    Route::put('/warranty/{warranty}', [WarrantyController::class, 'update']);
+    Route::patch('/warranty/{warranty}', [WarrantyController::class, 'update']);
+    Route::delete('/warranty/{warranty}', [WarrantyController::class, 'destroy']);
     /*
      * Alias: some clients call /api/budgetresourcecode (singular, no hyphens).
      * Canonical routes remain /api/budget-resource-codes.
