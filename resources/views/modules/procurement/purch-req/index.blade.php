@@ -1335,11 +1335,11 @@
                 });
             }
             const poolCfg = getSelectedPool();
+            if (!requiresTypedItemIdClient(poolCfg)) {
+                lines.forEach((ln) => { ln.item_id = ''; });
+            }
             if (isCategoryOnlyPool(poolCfg)) {
-                lines.forEach((ln) => {
-                    ln.item_id = '';
-                    ln.unit = 'NOS';
-                });
+                lines.forEach((ln) => { ln.unit = 'NOS'; });
             }
             return lines;
         }

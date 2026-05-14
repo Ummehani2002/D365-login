@@ -126,6 +126,9 @@ class PurchReqController extends Controller
             $this->assertPurchReqMatchesPool($validated, $poolRow);
             $validated['lines'] = $this->normalizeSubmittedLines($validated['lines'], $poolRow);
 
+            $companyRow = Company::resolveFromMixed($validated['company']);
+            $categoryCodeMap = $companyRow ? $this->buildPurchReqCategoryCodeMap($companyRow) : [];
+
             $requestId = $this->generatePRRequestId((string) $validated['company'], (string) ($validated['pr_date'] ?? ''));
             $prNo = $this->generatePRNo();
 
@@ -143,12 +146,17 @@ class PurchReqController extends Controller
                         'Remarks' => $validated['remarks'] ?? '',
                         'Department' => $validated['department'],
                     ],
-                    'PurchReqLines' => array_map(function (array $line, int $idx) use ($poolRow) {
+                    'PurchReqLines' => array_map(function (array $line, int $idx) use ($poolRow, $categoryCodeMap) {
                         $itemId = trim((string) ($line['item_id'] ?? ''));
+                        $catIn = trim((string) ($line['item_category'] ?? ''));
+                        $catKey = strtolower($catIn);
+                        $itemCategoryForD365 = ($catKey !== '' && isset($categoryCodeMap[$catKey]))
+                            ? $categoryCodeMap[$catKey]
+                            : $catIn;
 
                         $row = [
                             'LineNo' => $idx + 1,
-                            'ItemCategory' => (string) ($line['item_category'] ?? ''),
+                            'ItemCategory' => $itemCategoryForD365,
                             'ItemDescription' => (string) ($line['item_description'] ?? ''),
                             'RequiredDate' => $line['required_date'],
                             'Unit' => (string) ($line['unit'] ?? ''),
@@ -724,6 +732,33 @@ class PurchReqController extends Controller
 
             return $line;
         }, $lines);
+    }
+
+    /**
+     * Map lowercase category id or display name → canonical D365 item category code (d365_id).
+     * Sending display names (e.g. "inventory items") in PurchReqLines can make D365 validate them as ItemId and fail.
+     *
+     * @return array<string, string>
+     */
+    private function buildPurchReqCategoryCodeMap(Company $company): array
+    {
+        $map = [];
+        foreach (ItemCategory::query()->where('company_id', $company->id)->get(['d365_id', 'name']) as $row) {
+            $code = trim((string) ($row->getAttribute('d365_id') ?? ''));
+            $name = trim((string) ($row->name ?? ''));
+            $canonical = $code !== '' ? $code : $name;
+            if ($code !== '') {
+                $map[strtolower($code)] = $canonical;
+            }
+            if ($name !== '') {
+                $nk = strtolower($name);
+                if (! isset($map[$nk])) {
+                    $map[$nk] = $canonical;
+                }
+            }
+        }
+
+        return $map;
     }
 
     /**
