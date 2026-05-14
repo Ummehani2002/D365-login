@@ -142,19 +142,22 @@ class PurchReqController extends Controller
                         'Department'  => $validated['department'],
                     ],
                     'PurchReqLines' => array_map(function (array $line, int $idx) {
+                        $itemId = trim((string) ($line['item_id'] ?? ''));
+
                         return [
                             'LineNo'           => $idx + 1,
-                            'ItemCategory'     => $line['item_category'],
-                            'ItemId'           => $line['item_id'],
-                            'ItemDescription'  => $line['item_description'] ?? '',
+                            'ItemCategory'     => (string) ($line['item_category'] ?? ''),
+                            // D365 expects the property; use null when category-only so no bogus item lookup runs.
+                            'ItemId'           => $itemId !== '' ? $itemId : null,
+                            'ItemDescription'  => (string) ($line['item_description'] ?? ''),
                             'RequiredDate'     => $line['required_date'],
-                            'Unit'             => $line['unit'],
+                            'Unit'             => (string) ($line['unit'] ?? ''),
                             'Qty'              => (float) $line['qty'],
-                            'Currency'         => $line['currency'],
+                            'Currency'         => (string) ($line['currency'] ?? ''),
                             'Rate'             => (float) $line['rate'],
                             'CandyBudget'      => (float) ($line['candy_budget'] ?? 0),
-                            'BudgetResourceId' => $line['budget_resource_id'] ?? '',
-                            'Warranty'         => $line['warranty'] ?? 'N/A',
+                            'BudgetResourceId' => (string) ($line['budget_resource_id'] ?? ''),
+                            'Warranty'         => (string) ($line['warranty'] ?? 'N/A'),
                         ];
                     }, $validated['lines'], array_keys($validated['lines'])),
                     'PurchReqAttachments' => array_map(fn ($att) => [

@@ -78,20 +78,24 @@ class PurchaseRequisitionController extends Controller
                     'Remarks'     => $validated['remarks'] ?? '',
                     'Department'  => $validated['department'],
                 ],
-                'PurchReqLines' => array_map(fn (array $line) => [
-                    'LineNo'           => $line['line_no'],
-                    'ItemCategory'     => $line['item_category'],
-                    'ItemId'           => $line['item_id'],
-                    'ItemDescription'  => $line['item_description'],
-                    'RequiredDate'     => $line['required_date'],
-                    'Unit'             => $line['unit'],
-                    'Qty'              => $line['qty'],
-                    'Currency'         => $line['currency'],
-                    'Rate'             => $line['rate'],
-                    'CandyBudget'      => $line['candy_budget'],
-                    'BudgetResourceId' => $line['budget_resource_id'] ?? '',
-                    'Warranty'         => $line['warranty'] ?? 'N/A',
-                ], $validated['lines']),
+                'PurchReqLines' => array_map(function (array $line) {
+                    $itemId = trim((string) ($line['item_id'] ?? ''));
+
+                    return [
+                        'LineNo'           => $line['line_no'],
+                        'ItemCategory'     => $line['item_category'],
+                        'ItemId'           => $itemId !== '' ? $itemId : null,
+                        'ItemDescription'  => $line['item_description'],
+                        'RequiredDate'     => $line['required_date'],
+                        'Unit'             => $line['unit'],
+                        'Qty'              => $line['qty'],
+                        'Currency'         => $line['currency'],
+                        'Rate'             => $line['rate'],
+                        'CandyBudget'      => $line['candy_budget'],
+                        'BudgetResourceId' => $line['budget_resource_id'] ?? '',
+                        'Warranty'         => $line['warranty'] ?? 'N/A',
+                    ];
+                }, $validated['lines']),
                 'PurchReqAttachments' => array_map(fn (array $att) => [
                     'purchId'           => $att['purch_id'] ?? '',
                     'fileName'          => $att['file_name'],

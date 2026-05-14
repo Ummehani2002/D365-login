@@ -766,6 +766,9 @@
             poolDetailFields?.classList.remove('hidden');
             attBlock?.classList.remove('hidden');
             applyPoolLineColumns(p);
+            if (isCategoryOnlyPool(p)) {
+                linesBody.querySelectorAll('tr[data-line] .lf-item-id').forEach((el) => { el.value = ''; });
+            }
             syncAllLineUnitsForPoolMode();
         }
 
@@ -1321,7 +1324,10 @@
             }
             const poolCfg = getSelectedPool();
             if (isCategoryOnlyPool(poolCfg)) {
-                lines.forEach((ln) => { ln.unit = 'NOS'; });
+                lines.forEach((ln) => {
+                    ln.item_id = '';
+                    ln.unit = 'NOS';
+                });
             }
             return lines;
         }
