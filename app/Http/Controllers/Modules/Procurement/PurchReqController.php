@@ -141,14 +141,12 @@ class PurchReqController extends Controller
                         'Remarks'     => $validated['remarks'] ?? '',
                         'Department'  => $validated['department'],
                     ],
-                    'PurchReqLines' => array_map(function (array $line, int $idx) {
+                    'PurchReqLines' => array_map(function (array $line, int $idx) use ($poolRow) {
                         $itemId = trim((string) ($line['item_id'] ?? ''));
 
-                        return [
+                        $row = [
                             'LineNo'           => $idx + 1,
                             'ItemCategory'     => (string) ($line['item_category'] ?? ''),
-                            // D365 expects the property; use null when category-only so no bogus item lookup runs.
-                            'ItemId'           => $itemId !== '' ? $itemId : null,
                             'ItemDescription'  => (string) ($line['item_description'] ?? ''),
                             'RequiredDate'     => $line['required_date'],
                             'Unit'             => (string) ($line['unit'] ?? ''),
@@ -159,6 +157,13 @@ class PurchReqController extends Controller
                             'BudgetResourceId' => (string) ($line['budget_resource_id'] ?? ''),
                             'Warranty'         => (string) ($line['warranty'] ?? 'N/A'),
                         ];
+
+                        // Category-only pools: do not send ItemId at all — D365 treats null/"" as an item lookup and fails.
+                        if ($poolRow->has_item_id && $itemId !== '') {
+                            $row['ItemId'] = $itemId;
+                        }
+
+                        return $row;
                     }, $validated['lines'], array_keys($validated['lines'])),
                     'PurchReqAttachments' => array_map(fn ($att) => [
                         'purchId'           => $att['purch_id'] ?? '',

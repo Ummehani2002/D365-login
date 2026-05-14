@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Modules\Procurement;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Pool;
 use App\Services\D365ItemIssueService;
+use App\Support\DataAreaId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -65,6 +67,11 @@ class PurchaseRequisitionController extends Controller
             'attachments.*.file_content_base64' => ['required_with:attachments', 'string'],
         ]);
 
+        $poolRow = Pool::query()
+            ->where('pool_id', trim((string) $validated['pool_id']))
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', DataAreaId::normalize($validated['company'])))
+            ->first();
+
         $d365Payload = [
             '_request' => [
                 'DataAreaId' => trim($validated['company']),
@@ -78,13 +85,12 @@ class PurchaseRequisitionController extends Controller
                     'Remarks'     => $validated['remarks'] ?? '',
                     'Department'  => $validated['department'],
                 ],
-                'PurchReqLines' => array_map(function (array $line) {
+                'PurchReqLines' => array_map(function (array $line) use ($poolRow) {
                     $itemId = trim((string) ($line['item_id'] ?? ''));
 
-                    return [
+                    $row = [
                         'LineNo'           => $line['line_no'],
                         'ItemCategory'     => $line['item_category'],
-                        'ItemId'           => $itemId !== '' ? $itemId : null,
                         'ItemDescription'  => $line['item_description'],
                         'RequiredDate'     => $line['required_date'],
                         'Unit'             => $line['unit'],
@@ -95,6 +101,12 @@ class PurchaseRequisitionController extends Controller
                         'BudgetResourceId' => $line['budget_resource_id'] ?? '',
                         'Warranty'         => $line['warranty'] ?? 'N/A',
                     ];
+
+                    if ($poolRow && $poolRow->has_item_id && $itemId !== '') {
+                        $row['ItemId'] = $itemId;
+                    }
+
+                    return $row;
                 }, $validated['lines']),
                 'PurchReqAttachments' => array_map(fn (array $att) => [
                     'purchId'           => $att['purch_id'] ?? '',
