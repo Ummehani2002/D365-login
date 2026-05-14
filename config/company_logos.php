@@ -14,6 +14,11 @@ return [
     */
     'logo_stem_aliases' => [
         'WM' => 'WIM',
+        // Acacia Garden Center: artwork is AGC.png; map common legal-entity codes here.
+        'AG' => 'AGC',
+        'AC' => 'AGC',
+        'ACA' => 'AGC',
+        'ACGC' => 'AGC',
     ],
 
 ];
