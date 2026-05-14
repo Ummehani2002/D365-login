@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Pool;
 use App\Services\D365ItemIssueService;
 use App\Support\DataAreaId;
+use App\Support\PoolPurchReqMode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -102,7 +103,7 @@ class PurchaseRequisitionController extends Controller
                         'Warranty'         => $line['warranty'] ?? 'N/A',
                     ];
 
-                    if ($poolRow && $poolRow->has_item_id && $itemId !== '') {
+                    if ($poolRow && PoolPurchReqMode::requiresTypedItemId($poolRow) && $itemId !== '') {
                         $row['ItemId'] = $itemId;
                     }
 

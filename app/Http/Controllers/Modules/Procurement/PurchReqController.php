@@ -14,6 +14,7 @@ use App\Models\PurchReqJournal;
 use App\Models\Warehouse;
 use App\Services\D365PurchReqService;
 use App\Support\DataAreaId;
+use App\Support\PoolPurchReqMode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -159,7 +160,7 @@ class PurchReqController extends Controller
                         ];
 
                         // Category-only pools: do not send ItemId at all — D365 treats null/"" as an item lookup and fails.
-                        if ($poolRow->has_item_id && $itemId !== '') {
+                        if (PoolPurchReqMode::requiresTypedItemId($poolRow) && $itemId !== '') {
                             $row['ItemId'] = $itemId;
                         }
 
@@ -446,7 +447,19 @@ class PurchReqController extends Controller
                 'has_attachment',
                 'has_item_category',
                 'has_item_id',
-            ]);
+            ])
+            ->map(fn (Pool $p) => [
+                'id' => $p->id,
+                'pool_id' => $p->pool_id,
+                'name' => $p->name,
+                'company_id' => $p->company_id,
+                'uses_project' => (bool) $p->uses_project,
+                'uses_warehouse' => (bool) $p->uses_warehouse,
+                'has_attachment' => (bool) $p->has_attachment,
+                'has_item_category' => (bool) $p->has_item_category,
+                'has_item_id' => (bool) $p->has_item_id,
+            ])
+            ->values();
 
         return response()->json([
             'status' => true,
@@ -607,7 +620,7 @@ class PurchReqController extends Controller
             $itemId       = trim((string) ($line['item_id'] ?? ''));
             $itemCategory = trim((string) ($line['item_category'] ?? ''));
 
-            if (! $pool->has_item_id) {
+            if (! PoolPurchReqMode::requiresTypedItemId($pool)) {
                 $itemId = '';
             }
             if (! $pool->has_item_category) {
@@ -618,7 +631,7 @@ class PurchReqController extends Controller
                 $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
             }
 
-            if ($pool->has_item_category && ! $pool->has_item_id) {
+            if ($pool->has_item_category && ! PoolPurchReqMode::requiresTypedItemId($pool)) {
                 $line['unit'] = 'NOS';
             } elseif ($itemId === '') {
                 $line['unit'] = '';
@@ -734,7 +747,7 @@ class PurchReqController extends Controller
             if ($pool->has_item_category && $cat === '') {
                 $errors["lines.$idx.item_category"] = ["Line {$i}: Item category is required for this pool."];
             }
-            if ($pool->has_item_id && $iid === '') {
+            if (PoolPurchReqMode::requiresTypedItemId($pool) && $iid === '') {
                 $errors["lines.$idx.item_id"] = ["Line {$i}: Item ID is required for this pool."];
             }
         }
