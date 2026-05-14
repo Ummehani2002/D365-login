@@ -8,17 +8,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | Dashboard loads public/images/companies/{stem}.png (also .jpg, .webp, …).
-    | If your D365 legal entity code differs from the logo filename stem, map it here.
-    | Example: company id WM uses the same artwork as WIM.png → set 'WM' => 'WIM'.
+    | If the D365 legal entity code differs from the logo filename, map it here.
+    |
+    | Water in Motion: canonical file WM.png (not WIM.png).
+    | Acacia Garden Center: canonical file GC.png (not AGC.png).
     |
     */
     'logo_stem_aliases' => [
-        'WM' => 'WIM',
-        // Acacia Garden Center: artwork is AGC.png; map common legal-entity codes here.
-        'AG' => 'AGC',
-        'AC' => 'AGC',
-        'ACA' => 'AGC',
-        'ACGC' => 'AGC',
+        'WIM' => 'WM',
+        'AGC' => 'GC',
     ],
 
 ];
