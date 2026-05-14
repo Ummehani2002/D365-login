@@ -282,17 +282,24 @@
             $companyLogoUrl = null;
             $companyHeroBgUrl = null;
             if ($companyCode !== '') {
+                $logoStem = $companyCode;
+                $logoAliases = config('company_logos.logo_stem_aliases', []);
+                if (is_array($logoAliases) && isset($logoAliases[$companyCode])) {
+                    $logoStem = strtoupper((string) $logoAliases[$companyCode]);
+                }
                 foreach (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'] as $ext) {
-                    $relPath = 'images/companies/' . $companyCode . '.' . $ext;
-                    if (file_exists(public_path($relPath))) {
-                        $companyLogoUrl = asset($relPath);
+                    $relPath = 'images/companies/' . $logoStem . '.' . $ext;
+                    $absPath = public_path($relPath);
+                    if (file_exists($absPath)) {
+                        $companyLogoUrl = asset($relPath) . '?v=' . (string) filemtime($absPath);
                         break;
                     }
                 }
                 foreach (['gif', 'webp', 'png', 'jpg', 'jpeg'] as $ext) {
                     $heroPath = 'images/companies/' . $companyCode . '_bg.' . $ext;
-                    if (file_exists(public_path($heroPath))) {
-                        $companyHeroBgUrl = asset($heroPath);
+                    $heroAbs = public_path($heroPath);
+                    if (file_exists($heroAbs)) {
+                        $companyHeroBgUrl = asset($heroPath) . '?v=' . (string) filemtime($heroAbs);
                         break;
                     }
                 }
