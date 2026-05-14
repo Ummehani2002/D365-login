@@ -673,13 +673,22 @@
             return poolRows.find((row) => String(row.pool_id ?? '').trim().toUpperCase() === key) ?? null;
         }
 
+        /** Mirrors server {@see PoolPurchReqMode::requiresTypedItemId} (legacy pools with category_item only). */
+        function requiresTypedItemIdClient(p) {
+            if (!p) return false;
+            if (typeof p.requires_typed_item_id === 'boolean') {
+                return p.requires_typed_item_id;
+            }
+            return Boolean(p.has_item_id);
+        }
+
         function isCategoryOnlyPool(p) {
-            return Boolean(p && p.has_item_category && !p.has_item_id);
+            return Boolean(p && p.has_item_category && !requiresTypedItemIdClient(p));
         }
 
         /** Item-ID pools: show Item ID column, hide Item Category; units come from D365 for the selected item (not fixed NOS). */
         function isItemIdOnlyPool(p) {
-            return Boolean(p && p.has_item_id && !p.has_item_category);
+            return Boolean(p && requiresTypedItemIdClient(p) && !p.has_item_category);
         }
 
         function syncLineUnitForPoolMode(tr) {
@@ -724,14 +733,14 @@
             let showItem = true;
             if (p != null) {
                 const hasCat = !!p.has_item_category;
-                const hasItem = !!p.has_item_id;
-                if (hasCat && hasItem) {
+                const needsTypedItem = requiresTypedItemIdClient(p);
+                if (hasCat && needsTypedItem) {
                     showCat = true;
                     showItem = true;
-                } else if (hasCat && !hasItem) {
+                } else if (hasCat && !needsTypedItem) {
                     showCat = true;
                     showItem = false;
-                } else if (!hasCat && hasItem) {
+                } else if (!hasCat && needsTypedItem) {
                     showCat = false;
                     showItem = true;
                 } else {
@@ -1131,8 +1140,9 @@
             }
         }, true);
 
-        async function loadCatalogForCompany(companyCode) {
+        async function loadCatalogForCompany(companyCode, poolId = '') {
             const company = String(companyCode ?? '').trim();
+            const pool = String(poolId ?? '').trim();
             itemCatalog = { categories: [], items: [] };
 
             if (!company) {
@@ -1148,6 +1158,10 @@
             }
 
             try {
+                const body = { _token: csrf, company };
+                if (pool) {
+                    body.pool_id = pool;
+                }
                 const res = await fetch('{{ route("modules.procurement.purch-req.api.catalog") }}', {
                     method: 'POST',
                     headers: {
@@ -1155,10 +1169,7 @@
                         'X-CSRF-TOKEN': csrf,
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
-                        _token: csrf,
-                        company,
-                    }),
+                    body: JSON.stringify(body),
                 });
                 const payload = await res.json();
                 if (!res.ok || !payload.status) {
@@ -1187,29 +1198,29 @@
             }
         }
 
-        companyEl?.addEventListener('change', () => {
+        companyEl?.addEventListener('change', async () => {
             clearStatus();
             const companyCode = (companyEl.value || '').trim().toUpperCase();
             if (buyingLegalEntityEl && ['TM', 'PS'].includes(companyCode)) {
                 buyingLegalEntityEl.value = companyCode;
             }
-            loadCatalogForCompany(companyCode);
             loadDepartmentManagers(companyCode);
-            loadPools(companyCode);
+            await loadPools(companyCode);
+            await loadCatalogForCompany(companyCode, poolEl?.value?.trim() ?? '');
             loadProjects(companyCode);
             loadWarehouses(companyCode);
             loadBudgetResourceCodes(companyCode);
             syncAllLineUnitsForPoolMode();
         });
-        buyingLegalEntityEl.addEventListener('change', () => {
+        buyingLegalEntityEl.addEventListener('change', async () => {
             clearStatus();
             const cc = getCurrentCompanyCode();
             if (companyEl && cc) {
                 companyEl.value = cc;
             }
-            loadCatalogForCompany(cc);
             loadDepartmentManagers(cc);
-            loadPools(cc);
+            await loadPools(cc);
+            await loadCatalogForCompany(cc, poolEl?.value?.trim() ?? '');
             loadProjects(cc);
             loadWarehouses(cc);
             loadBudgetResourceCodes(cc);
@@ -1217,9 +1228,10 @@
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
 
-        poolEl?.addEventListener('change', () => {
+        poolEl?.addEventListener('change', async () => {
             clearStatus();
             applyPoolUi();
+            await loadCatalogForCompany(getCurrentCompanyCode(), poolEl.value.trim());
         });
 
         const attachZone = document.getElementById('attach-zone');
@@ -1398,19 +1410,19 @@
                     showStatus(`Line ${i + 1}: Item category is required for this pool.`, 'error');
                     return;
                 }
-                if (poolCfg.has_item_id && !hasItemId) {
+                if (requiresTypedItemIdClient(poolCfg) && !hasItemId) {
                     showStatus(`Line ${i + 1}: Item ID is required for this pool.`, 'error');
                     return;
                 }
 
-                if (poolCfg.has_item_id && hasItemId && !hasCategory) {
+                if (requiresTypedItemIdClient(poolCfg) && hasItemId && !hasCategory) {
                     const inferredItem = getItemById(ln.item_id);
                     if (inferredItem?.category) {
                         ln.item_category = inferredItem.category;
                     }
                 }
 
-                if (poolCfg.has_item_id && hasItemId && !ln.unit) {
+                if (requiresTypedItemIdClient(poolCfg) && hasItemId && !ln.unit) {
                     showStatus(`Line ${i + 1}: Unit is required when Item ID is used.`, 'error');
                     return;
                 }
@@ -1614,7 +1626,7 @@
             resetForm();
         });
 
-        createPrBtn.addEventListener('click', () => {
+        createPrBtn.addEventListener('click', async () => {
             resetForm();
             setFormViewMode(false);
             historyShell.classList.add('hidden');
@@ -1622,7 +1634,9 @@
             historyShell.style.display = 'none';
             formShell.style.display = '';
             clearStatus();
-            void loadCatalogForCompany(getCurrentCompanyCode());
+            const cc = getCurrentCompanyCode();
+            await loadPools(cc);
+            await loadCatalogForCompany(cc, poolEl?.value?.trim() ?? '');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
@@ -1674,9 +1688,9 @@
                 resetForm();
                 companyEl.value = j.company || companyEl.value || '';
                 buyingLegalEntityEl.value = j.buying_legal_entity || '';
-                await loadCatalogForCompany(j.company || '');
                 await loadDepartmentManagers(j.company || '');
                 await loadPools(j.company || '', j.pool_id || '');
+                await loadCatalogForCompany(j.company || '', String(j.pool_id || '').trim());
                 await loadProjects(j.company || '', j.project_id || '');
                 await loadWarehouses(j.company || '', j.warehouse || '');
                 requestIdEl.value = j.request_id || '';
@@ -1734,13 +1748,16 @@
         historyShell.classList.remove('hidden');
         formShell.style.display = 'none';
         historyShell.style.display = '';
-        void loadCatalogForCompany(getCurrentCompanyCode());
-        loadDepartmentManagers(getCurrentCompanyCode());
-        loadPools(getCurrentCompanyCode());
-        loadProjects(getCurrentCompanyCode());
-        loadWarehouses(getCurrentCompanyCode());
-        loadBudgetResourceCodes(getCurrentCompanyCode());
-        applyPoolUi();
+        void (async () => {
+            const cc = getCurrentCompanyCode();
+            loadDepartmentManagers(cc);
+            await loadPools(cc);
+            await loadCatalogForCompany(cc, poolEl?.value?.trim() ?? '');
+            loadProjects(cc);
+            loadWarehouses(cc);
+            loadBudgetResourceCodes(cc);
+            applyPoolUi();
+        })();
     })();
     </script>
 </body>

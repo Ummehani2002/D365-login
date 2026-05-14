@@ -14,6 +14,7 @@ use App\Models\PurchReqJournal;
 use App\Models\Warehouse;
 use App\Services\D365PurchReqService;
 use App\Support\DataAreaId;
+use App\Support\PoolCategoryAllowlist;
 use App\Support\PoolPurchReqMode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,8 +58,8 @@ class PurchReqController extends Controller
             ->get();
 
         return view('modules.procurement.purch-req.index', [
-            'companies'          => $companies,
-            'journals'           => $journals,
+            'companies' => $companies,
+            'journals' => $journals,
             'currentCompanyCode' => $selectedCompany?->d365_id,
         ]);
     }
@@ -69,13 +70,13 @@ class PurchReqController extends Controller
             set_time_limit(60);
 
             $validated = $request->validate([
-                'draft_id'                    => ['nullable', 'integer', 'exists:purch_req_journals,id'],
-                'company'                     => ['required', 'string', 'max:20'],
-                'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
-                'pr_date'                     => ['required', 'date'],
-                'warehouse'                   => ['nullable', 'string', 'max:100'],
-                'project_id'                  => ['nullable', 'string', 'max:100'],
-                'pool_id'                     => [
+                'draft_id' => ['nullable', 'integer', 'exists:purch_req_journals,id'],
+                'company' => ['required', 'string', 'max:20'],
+                'buying_legal_entity' => ['nullable', 'string', 'max:20'],
+                'pr_date' => ['required', 'date'],
+                'warehouse' => ['nullable', 'string', 'max:100'],
+                'project_id' => ['nullable', 'string', 'max:100'],
+                'pool_id' => [
                     'required',
                     'string',
                     'max:100',
@@ -83,28 +84,28 @@ class PurchReqController extends Controller
                         DataAreaId::whereUpperTrimEquals($q, 'company_id', (string) $request->input('company'));
                     }),
                 ],
-                'contact_name'                => ['required', 'string', 'max:255'],
-                'remarks'                     => ['nullable', 'string', 'max:500'],
-                'department'                  => ['required', 'string', 'max:255'],
-                'lines'                       => ['required', 'array', 'min:1'],
-                'lines.*.item_category'       => ['nullable', 'string', 'max:100'],
-                'lines.*.item_id'             => ['nullable', 'string', 'max:100'],
-                'lines.*.item_description'    => ['nullable', 'string', 'max:255'],
-                'lines.*.required_date'       => ['required', 'date'],
-                'lines.*.unit'                => ['nullable', 'string', 'max:30'],
-                'lines.*.qty'                 => ['required', 'numeric', 'gt:0'],
-                'lines.*.currency'            => ['required', 'string', 'max:10'],
-                'lines.*.rate'                => ['required', 'numeric', 'min:0'],
-                'lines.*.candy_budget'        => ['nullable', 'numeric', 'min:0'],
-                'lines.*.budget_resource_id'  => ['nullable', 'string', 'max:100'],
-                'lines.*.warranty'            => ['nullable', 'string', 'max:100'],
-                'attachments'                 => ['nullable', 'array'],
-                'attachments.*.file_name'     => ['required', 'string', 'max:255'],
-                'attachments.*.file_type'     => ['required', 'string', 'max:20'],
-                'attachments.*.mime_type'     => ['nullable', 'string', 'max:100'],
-                'attachments.*.size_bytes'    => ['nullable', 'numeric', 'min:0'],
-                'attachments.*.file_content'  => ['required', 'string'],
-                'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
+                'contact_name' => ['required', 'string', 'max:255'],
+                'remarks' => ['nullable', 'string', 'max:500'],
+                'department' => ['required', 'string', 'max:255'],
+                'lines' => ['required', 'array', 'min:1'],
+                'lines.*.item_category' => ['nullable', 'string', 'max:100'],
+                'lines.*.item_id' => ['nullable', 'string', 'max:100'],
+                'lines.*.item_description' => ['nullable', 'string', 'max:255'],
+                'lines.*.required_date' => ['required', 'date'],
+                'lines.*.unit' => ['nullable', 'string', 'max:30'],
+                'lines.*.qty' => ['required', 'numeric', 'gt:0'],
+                'lines.*.currency' => ['required', 'string', 'max:10'],
+                'lines.*.rate' => ['required', 'numeric', 'min:0'],
+                'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
+                'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+                'lines.*.warranty' => ['nullable', 'string', 'max:100'],
+                'attachments' => ['nullable', 'array'],
+                'attachments.*.file_name' => ['required', 'string', 'max:255'],
+                'attachments.*.file_type' => ['required', 'string', 'max:20'],
+                'attachments.*.mime_type' => ['nullable', 'string', 'max:100'],
+                'attachments.*.size_bytes' => ['nullable', 'numeric', 'min:0'],
+                'attachments.*.file_content' => ['required', 'string'],
+                'attachments.*.purch_id' => ['nullable', 'string', 'max:100'],
             ]);
             $this->assertCompanyAccess((string) $validated['company']);
 
@@ -126,37 +127,37 @@ class PurchReqController extends Controller
             $validated['lines'] = $this->normalizeSubmittedLines($validated['lines'], $poolRow);
 
             $requestId = $this->generatePRRequestId((string) $validated['company'], (string) ($validated['pr_date'] ?? ''));
-            $prNo      = $this->generatePRNo();
+            $prNo = $this->generatePRNo();
 
             $d365Payload = [
                 '_request' => [
-                    'DataAreaId'     => trim($validated['company']),
+                    'DataAreaId' => trim($validated['company']),
                     'PurchReqHeader' => [
-                        'RequestID'   => $requestId,
-                        'PRNo'        => $prNo,
-                        'PRDate'      => $validated['pr_date'],
-                        'Warehouse'   => trim((string) ($validated['warehouse'] ?? '')),
-                        'ProjectId'   => trim((string) ($validated['project_id'] ?? '')),
-                        'PoolID'      => $validated['pool_id'],
+                        'RequestID' => $requestId,
+                        'PRNo' => $prNo,
+                        'PRDate' => $validated['pr_date'],
+                        'Warehouse' => trim((string) ($validated['warehouse'] ?? '')),
+                        'ProjectId' => trim((string) ($validated['project_id'] ?? '')),
+                        'PoolID' => $validated['pool_id'],
                         'ContactName' => $validated['contact_name'],
-                        'Remarks'     => $validated['remarks'] ?? '',
-                        'Department'  => $validated['department'],
+                        'Remarks' => $validated['remarks'] ?? '',
+                        'Department' => $validated['department'],
                     ],
                     'PurchReqLines' => array_map(function (array $line, int $idx) use ($poolRow) {
                         $itemId = trim((string) ($line['item_id'] ?? ''));
 
                         $row = [
-                            'LineNo'           => $idx + 1,
-                            'ItemCategory'     => (string) ($line['item_category'] ?? ''),
-                            'ItemDescription'  => (string) ($line['item_description'] ?? ''),
-                            'RequiredDate'     => $line['required_date'],
-                            'Unit'             => (string) ($line['unit'] ?? ''),
-                            'Qty'              => (float) $line['qty'],
-                            'Currency'         => (string) ($line['currency'] ?? ''),
-                            'Rate'             => (float) $line['rate'],
-                            'CandyBudget'      => (float) ($line['candy_budget'] ?? 0),
+                            'LineNo' => $idx + 1,
+                            'ItemCategory' => (string) ($line['item_category'] ?? ''),
+                            'ItemDescription' => (string) ($line['item_description'] ?? ''),
+                            'RequiredDate' => $line['required_date'],
+                            'Unit' => (string) ($line['unit'] ?? ''),
+                            'Qty' => (float) $line['qty'],
+                            'Currency' => (string) ($line['currency'] ?? ''),
+                            'Rate' => (float) $line['rate'],
+                            'CandyBudget' => (float) ($line['candy_budget'] ?? 0),
                             'BudgetResourceId' => (string) ($line['budget_resource_id'] ?? ''),
-                            'Warranty'         => (string) ($line['warranty'] ?? 'N/A'),
+                            'Warranty' => (string) ($line['warranty'] ?? 'N/A'),
                         ];
 
                         // Category-only pools: do not send ItemId at all — D365 treats null/"" as an item lookup and fails.
@@ -167,9 +168,9 @@ class PurchReqController extends Controller
                         return $row;
                     }, $validated['lines'], array_keys($validated['lines'])),
                     'PurchReqAttachments' => array_map(fn ($att) => [
-                        'purchId'           => $att['purch_id'] ?? '',
-                        'fileName'          => $att['file_name'],
-                        'fileType'          => $att['file_type'],
+                        'purchId' => $att['purch_id'] ?? '',
+                        'fileName' => $att['file_name'],
+                        'fileType' => $att['file_type'],
                         'FileContentBase64' => $att['file_content'],
                     ], $validated['attachments'] ?? []),
                 ],
@@ -182,18 +183,18 @@ class PurchReqController extends Controller
             }
 
             $attachmentsForDb = array_map(fn ($a) => [
-                'file_name'    => $a['file_name'],
-                'file_type'    => $a['file_type'],
-                'mime_type'    => $a['mime_type'] ?? null,
-                'size_bytes'   => $a['size_bytes'] ?? null,
+                'file_name' => $a['file_name'],
+                'file_type' => $a['file_type'],
+                'mime_type' => $a['mime_type'] ?? null,
+                'size_bytes' => $a['size_bytes'] ?? null,
                 'file_content' => $a['file_content'],
             ], $validated['attachments'] ?? []);
 
             $draftId = isset($validated['draft_id']) ? (int) $validated['draft_id'] : null;
-            $draft   = $draftId ? PurchReqJournal::query()->where('id', $draftId)->whereNull('request_id')->whereNull('pr_no')->first() : null;
+            $draft = $draftId ? PurchReqJournal::query()->where('id', $draftId)->whereNull('request_id')->whereNull('pr_no')->first() : null;
 
             if ($draft) {
-                if (!$draft->canBeManagedBy(auth()->user())) {
+                if (! $draft->canBeManagedBy(auth()->user())) {
                     return response()->json(['status' => false, 'message' => 'You do not have access to submit or modify this purchase requisition.'], 403);
                 }
                 $draft->update(['request_id' => $requestId, 'pr_no' => $prNo, 'company' => $validated['company'], 'buying_legal_entity' => $validated['buying_legal_entity'] ?? $validated['company'], 'pr_date' => $validated['pr_date'], 'warehouse' => $validated['warehouse'] ?? null, 'project_id' => $validated['project_id'] ?? null, 'pool_id' => $validated['pool_id'], 'contact_name' => $validated['contact_name'], 'remarks' => $validated['remarks'] ?? null, 'department' => $validated['department'], 'lines' => $validated['lines'], 'attachments' => $attachmentsForDb, 'd365_response' => $result, 'posted_by' => auth()->id()]);
@@ -207,6 +208,7 @@ class PurchReqController extends Controller
             throw $e;
         } catch (Throwable $e) {
             report($e);
+
             return response()->json(['status' => false, 'message' => 'PR submission failed.', 'error' => $e->getMessage()], 500);
         }
     }
@@ -214,37 +216,37 @@ class PurchReqController extends Controller
     public function saveDraft(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'company'                     => ['nullable', 'string', 'max:20'],
-            'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
-            'pr_date'                     => ['nullable', 'date'],
-            'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
-            'project_id'                  => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
-            'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
-            'contact_name'                => ['nullable', 'string', 'max:255'],
-            'remarks'                     => ['nullable', 'string', 'max:500'],
-            'department'                  => ['nullable', 'string', 'max:255'],
-            'lines'                       => ['nullable', 'array'],
-            'lines.*.item_category'       => ['nullable', 'string', 'max:100'],
-            'lines.*.item_id'             => ['nullable', 'string', 'max:100'],
-            'lines.*.item_description'    => ['nullable', 'string', 'max:255'],
-            'lines.*.required_date'       => ['nullable', 'date'],
-            'lines.*.unit'                => ['nullable', 'string', 'max:30'],
-            'lines.*.qty'                 => ['nullable', 'numeric', 'gt:0'],
-            'lines.*.currency'            => ['nullable', 'string', 'max:10'],
-            'lines.*.rate'                => ['nullable', 'numeric', 'min:0'],
-            'lines.*.candy_budget'        => ['nullable', 'numeric', 'min:0'],
-            'lines.*.budget_resource_id'  => ['nullable', 'string', 'max:100'],
-            'lines.*.warranty'            => ['nullable', 'string', 'max:100'],
-            'attachments'                 => ['nullable', 'array'],
-            'attachments.*.file_name'     => ['required', 'string', 'max:255'],
-            'attachments.*.file_type'     => ['required', 'string', 'max:20'],
-            'attachments.*.mime_type'     => ['nullable', 'string', 'max:100'],
-            'attachments.*.size_bytes'    => ['nullable', 'numeric', 'min:0'],
-            'attachments.*.file_content'  => ['required', 'string'],
-            'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
+            'company' => ['nullable', 'string', 'max:20'],
+            'buying_legal_entity' => ['nullable', 'string', 'max:20'],
+            'pr_date' => ['nullable', 'date'],
+            'warehouse' => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
+            'project_id' => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
+            'pool_id' => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.item_category' => ['nullable', 'string', 'max:100'],
+            'lines.*.item_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.item_description' => ['nullable', 'string', 'max:255'],
+            'lines.*.required_date' => ['nullable', 'date'],
+            'lines.*.unit' => ['nullable', 'string', 'max:30'],
+            'lines.*.qty' => ['nullable', 'numeric', 'gt:0'],
+            'lines.*.currency' => ['nullable', 'string', 'max:10'],
+            'lines.*.rate' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.warranty' => ['nullable', 'string', 'max:100'],
+            'attachments' => ['nullable', 'array'],
+            'attachments.*.file_name' => ['required', 'string', 'max:255'],
+            'attachments.*.file_type' => ['required', 'string', 'max:20'],
+            'attachments.*.mime_type' => ['nullable', 'string', 'max:100'],
+            'attachments.*.size_bytes' => ['nullable', 'numeric', 'min:0'],
+            'attachments.*.file_content' => ['required', 'string'],
+            'attachments.*.purch_id' => ['nullable', 'string', 'max:100'],
         ]);
 
-        if (!empty($validated['company'])) {
+        if (! empty($validated['company'])) {
             $this->assertCompanyAccess((string) $validated['company']);
         }
 
@@ -260,42 +262,42 @@ class PurchReqController extends Controller
         if ($journal->request_id || $journal->pr_no) {
             return response()->json(['status' => false, 'message' => 'Submitted PR cannot be edited.'], 422);
         }
-        if (!$journal->canBeManagedBy(auth()->user())) {
+        if (! $journal->canBeManagedBy(auth()->user())) {
             return response()->json(['status' => false, 'message' => 'You do not have access to edit this purchase requisition. You can view it only.'], 403);
         }
 
         $validated = $request->validate([
-            'company'                     => ['nullable', 'string', 'max:20'],
-            'buying_legal_entity'         => ['nullable', 'string', 'max:20'],
-            'pr_date'                     => ['nullable', 'date'],
-            'warehouse'                   => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
-            'project_id'                  => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
-            'pool_id'                     => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
-            'contact_name'                => ['nullable', 'string', 'max:255'],
-            'remarks'                     => ['nullable', 'string', 'max:500'],
-            'department'                  => ['nullable', 'string', 'max:255'],
-            'lines'                       => ['nullable', 'array'],
-            'lines.*.item_category'       => ['nullable', 'string', 'max:100'],
-            'lines.*.item_id'             => ['nullable', 'string', 'max:100'],
-            'lines.*.item_description'    => ['nullable', 'string', 'max:255'],
-            'lines.*.required_date'       => ['nullable', 'date'],
-            'lines.*.unit'                => ['nullable', 'string', 'max:30'],
-            'lines.*.qty'                 => ['nullable', 'numeric', 'gt:0'],
-            'lines.*.currency'            => ['nullable', 'string', 'max:10'],
-            'lines.*.rate'                => ['nullable', 'numeric', 'min:0'],
-            'lines.*.candy_budget'        => ['nullable', 'numeric', 'min:0'],
-            'lines.*.budget_resource_id'  => ['nullable', 'string', 'max:100'],
-            'lines.*.warranty'            => ['nullable', 'string', 'max:100'],
-            'attachments'                 => ['nullable', 'array'],
-            'attachments.*.file_name'     => ['required', 'string', 'max:255'],
-            'attachments.*.file_type'     => ['required', 'string', 'max:20'],
-            'attachments.*.mime_type'     => ['nullable', 'string', 'max:100'],
-            'attachments.*.size_bytes'    => ['nullable', 'numeric', 'min:0'],
-            'attachments.*.file_content'  => ['required', 'string'],
-            'attachments.*.purch_id'      => ['nullable', 'string', 'max:100'],
+            'company' => ['nullable', 'string', 'max:20'],
+            'buying_legal_entity' => ['nullable', 'string', 'max:20'],
+            'pr_date' => ['nullable', 'date'],
+            'warehouse' => ['nullable', 'string', 'max:100', $this->warehouseIdExistsForCompanyRule($request)],
+            'project_id' => ['nullable', 'string', 'max:100', $this->projectIdExistsForCompanyRule($request)],
+            'pool_id' => ['nullable', 'string', 'max:100', $this->poolIdExistsForCompanyRule($request)],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.item_category' => ['nullable', 'string', 'max:100'],
+            'lines.*.item_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.item_description' => ['nullable', 'string', 'max:255'],
+            'lines.*.required_date' => ['nullable', 'date'],
+            'lines.*.unit' => ['nullable', 'string', 'max:30'],
+            'lines.*.qty' => ['nullable', 'numeric', 'gt:0'],
+            'lines.*.currency' => ['nullable', 'string', 'max:10'],
+            'lines.*.rate' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.warranty' => ['nullable', 'string', 'max:100'],
+            'attachments' => ['nullable', 'array'],
+            'attachments.*.file_name' => ['required', 'string', 'max:255'],
+            'attachments.*.file_type' => ['required', 'string', 'max:20'],
+            'attachments.*.mime_type' => ['nullable', 'string', 'max:100'],
+            'attachments.*.size_bytes' => ['nullable', 'numeric', 'min:0'],
+            'attachments.*.file_content' => ['required', 'string'],
+            'attachments.*.purch_id' => ['nullable', 'string', 'max:100'],
         ]);
 
-        if (!empty($validated['company'])) {
+        if (! empty($validated['company'])) {
             $this->assertCompanyAccess((string) $validated['company']);
         }
 
@@ -309,16 +311,18 @@ class PurchReqController extends Controller
     public function showJournal(PurchReqJournal $journal): JsonResponse
     {
         $this->assertCompanyAccess((string) $journal->company);
-        return response()->json(['status' => true, 'data' => $journal, 'is_draft' => !$journal->request_id && !$journal->pr_no, 'can_manage' => $journal->canBeManagedBy(auth()->user())]);
+
+        return response()->json(['status' => true, 'data' => $journal, 'is_draft' => ! $journal->request_id && ! $journal->pr_no, 'can_manage' => $journal->canBeManagedBy(auth()->user())]);
     }
 
     public function destroyJournal(PurchReqJournal $journal): JsonResponse
     {
         $this->assertCompanyAccess((string) $journal->company);
-        if (!$journal->canBeManagedBy(auth()->user())) {
+        if (! $journal->canBeManagedBy(auth()->user())) {
             return response()->json(['status' => false, 'message' => 'You do not have access to delete this purchase requisition. You can view it only.'], 403);
         }
         $journal->delete();
+
         return response()->json(['status' => true, 'message' => 'PR deleted successfully.']);
     }
 
@@ -330,58 +334,126 @@ class PurchReqController extends Controller
 
         try {
             $data = $service->lookupUnits(trim($validated['company']), $validated['item_id'] ?? '');
+
             return response()->json(['status' => true, 'message' => 'Units fetched.', 'units' => $this->normalizeUnits($data), 'data' => $data]);
         } catch (Throwable $e) {
             report($e);
+
             return response()->json(['status' => false, 'message' => 'Unit lookup failed.', 'error' => $e->getMessage()], 500);
         }
     }
 
     public function lookupCatalog(Request $request): JsonResponse
     {
-        $validated = $request->validate(['company' => ['nullable', 'string', 'max:20']]);
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'pool_id' => ['nullable', 'string', 'max:100'],
+        ]);
         $companyCode = trim((string) ($validated['company'] ?? ''));
-        if ($companyCode !== '') $this->assertCompanyAccess($companyCode);
+        $poolId = trim((string) ($validated['pool_id'] ?? ''));
+
+        if ($poolId !== '' && $companyCode === '') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Company is required when filtering catalog by pool.',
+                'errors' => ['company' => ['Select a company before loading pool-scoped categories.']],
+            ], 422);
+        }
+
+        if ($companyCode !== '') {
+            $this->assertCompanyAccess($companyCode);
+        }
         $company = $companyCode !== '' ? Company::resolveFromMixed($companyCode) : null;
 
-        if ($companyCode !== '' && !$company) {
+        if ($companyCode !== '' && ! $company) {
             return response()->json(['status' => false, 'message' => 'Unknown company code.', 'errors' => ['company' => ['No company found for this DataAreaId.']]], 422);
         }
 
+        $pool = null;
+        if ($poolId !== '' && $company) {
+            $pool = Pool::query()
+                ->where('pool_id', $poolId)
+                ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
+                ->first();
+            if (! $pool) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Pool not found for this company.',
+                    'errors' => ['pool_id' => ['Unknown pool for the selected company.']],
+                ], 422);
+            }
+        }
+
+        $allowTokens = PoolCategoryAllowlist::tokensFromPool($pool);
+
         $categoriesQuery = ItemCategory::query()->select(['company_id', 'd365_id', 'name'])->orderBy('name');
-        if ($company) $categoriesQuery->where('company_id', $company->id);
+        if ($company) {
+            $categoriesQuery->where('company_id', $company->id);
+        }
 
         $categories = $categoriesQuery->get()->map(function (ItemCategory $category) {
             $code = trim((string) ($category->getAttribute('d365_id') ?? ''));
             $name = trim((string) ($category->name ?? ''));
+
             return ['id' => $code !== '' ? $code : $name, 'name' => $name !== '' ? $name : $code];
         })->filter(fn ($c) => $c['id'] !== '')->unique(fn ($c) => strtolower($c['id']))->values();
 
+        if ($allowTokens !== []) {
+            $categories = $categories->filter(function (array $c) use ($allowTokens) {
+                return PoolCategoryAllowlist::categoryMatchesAllowlist((string) $c['id'], (string) $c['name'], $allowTokens);
+            })->values();
+        }
+
         $categoryLookup = [];
         foreach ($categories as $cat) {
-            $idKey   = strtolower(trim((string) ($cat['id'] ?? '')));
+            $idKey = strtolower(trim((string) ($cat['id'] ?? '')));
             $nameKey = strtolower(trim((string) ($cat['name'] ?? '')));
-            if ($idKey !== '') $categoryLookup[$idKey] = $cat['id'];
-            if ($nameKey !== '') $categoryLookup[$nameKey] = $cat['id'];
+            if ($idKey !== '') {
+                $categoryLookup[$idKey] = $cat['id'];
+            }
+            if ($nameKey !== '') {
+                $categoryLookup[$nameKey] = $cat['id'];
+            }
         }
 
         $itemsQuery = Item::query()->select(['company_id', 'd365_id', 'd365_item_id', 'item_name', 'item_category_id']);
-        if ($company) $itemsQuery->where('company_id', $company->id);
+        if ($company) {
+            $itemsQuery->where('company_id', $company->id);
+        }
 
         if ($categories->isEmpty()) {
-            $categories = (clone $itemsQuery)->whereNotNull('item_category_id')->where('item_category_id', '!=', '')->select('item_category_id')->distinct()->orderBy('item_category_id')->pluck('item_category_id')->map(fn ($c) => ['id' => trim((string) $c), 'name' => trim((string) $c)])->values();
+            $distinctCats = (clone $itemsQuery)->whereNotNull('item_category_id')->where('item_category_id', '!=', '')->select('item_category_id')->distinct()->orderBy('item_category_id')->pluck('item_category_id');
+            $categories = $distinctCats->map(fn ($c) => ['id' => trim((string) $c), 'name' => trim((string) $c)])->values();
+            if ($allowTokens !== []) {
+                $categories = $categories->filter(function (array $c) use ($allowTokens) {
+                    return PoolCategoryAllowlist::categoryMatchesAllowlist((string) $c['id'], (string) $c['name'], $allowTokens);
+                })->values();
+            }
             foreach ($categories as $cat) {
                 $idKey = strtolower(trim((string) ($cat['id'] ?? '')));
-                if ($idKey !== '') $categoryLookup[$idKey] = $cat['id'];
+                if ($idKey !== '') {
+                    $categoryLookup[$idKey] = $cat['id'];
+                }
             }
         }
 
         $items = $itemsQuery->orderBy('item_name')->get()->map(function (Item $item) use ($categoryLookup) {
-            $itemId   = trim((string) ($item->item_id ?? ''));
+            $itemId = trim((string) ($item->item_id ?? ''));
             $itemName = trim((string) ($item->item_name ?? ''));
-            $rawCat   = trim((string) ($item->item_category_id ?? ''));
+            $rawCat = trim((string) ($item->item_category_id ?? ''));
+
             return ['id' => $itemId, 'name' => $itemName, 'category' => $categoryLookup[strtolower($rawCat)] ?? $rawCat];
-        })->filter(fn ($i) => $i['id'] !== '')->values();
+        })->filter(fn ($i) => $i['id'] !== '');
+
+        if ($allowTokens !== []) {
+            $items = $items->filter(function (array $i) use ($allowTokens) {
+                $cat = trim((string) ($i['category'] ?? ''));
+
+                return PoolCategoryAllowlist::categoryMatchesAllowlist($cat, $cat, $allowTokens);
+            });
+        }
+
+        $items = $items->values();
 
         return response()->json(['status' => true, 'message' => 'Catalog fetched.', 'categories' => $categories, 'items' => $items]);
     }
@@ -447,6 +519,8 @@ class PurchReqController extends Controller
                 'has_attachment',
                 'has_item_category',
                 'has_item_id',
+                'item_id',
+                'category_item',
             ])
             ->map(fn (Pool $p) => [
                 'id' => $p->id,
@@ -458,6 +532,7 @@ class PurchReqController extends Controller
                 'has_attachment' => (bool) $p->has_attachment,
                 'has_item_category' => (bool) $p->has_item_category,
                 'has_item_id' => (bool) $p->has_item_id,
+                'requires_typed_item_id' => PoolPurchReqMode::requiresTypedItemId($p),
             ])
             ->values();
 
@@ -566,35 +641,42 @@ class PurchReqController extends Controller
     public function downloadAttachment(PurchReqJournal $journal, int $index): Response
     {
         $this->assertCompanyAccess((string) $journal->company);
-        $att      = $this->resolveAttachment($journal, $index);
-        $content  = base64_decode($att['file_content'] ?? '');
-        $mime     = $att['mime_type'] ?? 'application/octet-stream';
+        $att = $this->resolveAttachment($journal, $index);
+        $content = base64_decode($att['file_content'] ?? '');
+        $mime = $att['mime_type'] ?? 'application/octet-stream';
         $fileName = $att['file_name'] ?? 'attachment';
-        return response($content, 200, ['Content-Type' => $mime, 'Content-Disposition' => 'inline; filename="' . $fileName . '"', 'Content-Length' => strlen($content)]);
+
+        return response($content, 200, ['Content-Type' => $mime, 'Content-Disposition' => 'inline; filename="'.$fileName.'"', 'Content-Length' => strlen($content)]);
     }
 
     public function viewBase64(PurchReqJournal $journal, int $index): Response
     {
         $this->assertCompanyAccess((string) $journal->company);
-        $att      = $this->resolveAttachment($journal, $index);
-        $b64      = $att['file_content'] ?? '';
+        $att = $this->resolveAttachment($journal, $index);
+        $b64 = $att['file_content'] ?? '';
         $fileName = $att['file_name'] ?? 'attachment';
-        return response($b64, 200, ['Content-Type' => 'text/plain; charset=utf-8', 'Content-Disposition' => 'inline; filename="' . $fileName . '.base64.txt"']);
+
+        return response($b64, 200, ['Content-Type' => 'text/plain; charset=utf-8', 'Content-Disposition' => 'inline; filename="'.$fileName.'.base64.txt"']);
     }
 
     private function resolveAttachment(PurchReqJournal $journal, int $index): array
     {
         $attachments = $journal->attachments ?? [];
-        if (!isset($attachments[$index])) abort(404, 'Attachment not found.');
+        if (! isset($attachments[$index])) {
+            abort(404, 'Attachment not found.');
+        }
+
         return $attachments[$index];
     }
 
     private function normalizeUnits(array $result): array
     {
         $rows = array_is_list($result) && count($result) > 0 && is_array($result[0]) ? $result : ($result['data'] ?? []);
+
         return array_values(array_filter(array_map(function ($row) {
-            $id   = $row['Unit Id'] ?? $row['d365_unit_id'] ?? $row['Symbol'] ?? $row['UnitId'] ?? '';
+            $id = $row['Unit Id'] ?? $row['d365_unit_id'] ?? $row['Symbol'] ?? $row['UnitId'] ?? '';
             $name = $row['unit_name'] ?? $row['Description'] ?? $row['UnitName'] ?? $id;
+
             return $id !== '' ? ['id' => $id, 'name' => $name] : null;
         }, $rows)));
     }
@@ -617,7 +699,7 @@ class PurchReqController extends Controller
         }
 
         return array_map(function (array $line) use ($itemCategoryMap, $pool) {
-            $itemId       = trim((string) ($line['item_id'] ?? ''));
+            $itemId = trim((string) ($line['item_id'] ?? ''));
             $itemCategory = trim((string) ($line['item_category'] ?? ''));
 
             if (! PoolPurchReqMode::requiresTypedItemId($pool)) {
@@ -637,7 +719,7 @@ class PurchReqController extends Controller
                 $line['unit'] = '';
             }
 
-            $line['item_id']       = $itemId;
+            $line['item_id'] = $itemId;
             $line['item_category'] = $itemCategory;
 
             return $line;
@@ -658,11 +740,11 @@ class PurchReqController extends Controller
             ? (int) Carbon::parse($prDate)->format('Y')
             : (int) now()->year;
 
-        $settingKey = 'purch_req_id_seq_' . preg_replace('/[^A-Za-z0-9_]/', '_', $companyKey) . '_' . $year;
+        $settingKey = 'purch_req_id_seq_'.preg_replace('/[^A-Za-z0-9_]/', '_', $companyKey).'_'.$year;
 
         $next = \DB::transaction(function () use ($settingKey) {
             $current = (int) \App\Models\AppSetting::get($settingKey, 0);
-            $next    = $current + 1;
+            $next = $current + 1;
             \App\Models\AppSetting::set($settingKey, $next);
 
             return $next;
@@ -675,11 +757,13 @@ class PurchReqController extends Controller
     {
         $next = \DB::transaction(function () {
             $current = (int) \App\Models\AppSetting::get('purch_req_no_sequence', 0);
-            $next    = $current + 1;
+            $next = $current + 1;
             \App\Models\AppSetting::set('purch_req_no_sequence', $next);
+
             return $next;
         });
-        return 'PR-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+
+        return 'PR-'.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     private function isFailedD365Response(array $result): bool
@@ -691,10 +775,15 @@ class PurchReqController extends Controller
     {
         $parts = [];
         foreach (['ErrorMessage', 'InfoMessage', 'Message', 'message'] as $key) {
-            if (!isset($result[$key]) || !is_scalar($result[$key])) continue;
+            if (! isset($result[$key]) || ! is_scalar($result[$key])) {
+                continue;
+            }
             $value = trim((string) $result[$key]);
-            if ($value !== '') $parts[] = $value;
+            if ($value !== '') {
+                $parts[] = $value;
+            }
         }
+
         return $parts !== [] ? implode(' ', array_unique($parts)) : 'D365 rejected the purchase requisition.';
     }
 
@@ -708,7 +797,7 @@ class PurchReqController extends Controller
         }
 
         $company = strtoupper(trim((string) $validated['company']));
-        $errors  = [];
+        $errors = [];
 
         if ($pool->uses_warehouse) {
             $w = trim((string) ($validated['warehouse'] ?? ''));
@@ -741,7 +830,7 @@ class PurchReqController extends Controller
         }
 
         foreach ($validated['lines'] as $idx => $line) {
-            $i   = $idx + 1;
+            $i = $idx + 1;
             $cat = trim((string) ($line['item_category'] ?? ''));
             $iid = trim((string) ($line['item_id'] ?? ''));
             if ($pool->has_item_category && $cat === '') {
