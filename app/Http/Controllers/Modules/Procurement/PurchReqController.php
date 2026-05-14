@@ -399,17 +399,24 @@ class PurchReqController extends Controller
             $categoriesQuery->where('company_id', $company->id);
         }
 
-        $categories = $categoriesQuery->get()->map(function (ItemCategory $category) {
+        $baseCategories = $categoriesQuery->get()->map(function (ItemCategory $category) {
             $code = trim((string) ($category->getAttribute('d365_id') ?? ''));
             $name = trim((string) ($category->name ?? ''));
 
             return ['id' => $code !== '' ? $code : $name, 'name' => $name !== '' ? $name : $code];
         })->filter(fn ($c) => $c['id'] !== '')->unique(fn ($c) => strtolower($c['id']))->values();
 
-        if ($allowTokens !== []) {
-            $categories = $categories->filter(function (array $c) use ($allowTokens) {
+        $categories = $baseCategories;
+        $applyPoolCategoryFilter = $allowTokens !== [];
+        if ($applyPoolCategoryFilter) {
+            $filtered = $baseCategories->filter(function (array $c) use ($allowTokens) {
                 return PoolCategoryAllowlist::categoryMatchesAllowlist((string) $c['id'], (string) $c['name'], $allowTokens);
             })->values();
+            if ($filtered->isNotEmpty()) {
+                $categories = $filtered;
+            } else {
+                $applyPoolCategoryFilter = false;
+            }
         }
 
         $categoryLookup = [];
@@ -431,11 +438,17 @@ class PurchReqController extends Controller
 
         if ($categories->isEmpty()) {
             $distinctCats = (clone $itemsQuery)->whereNotNull('item_category_id')->where('item_category_id', '!=', '')->select('item_category_id')->distinct()->orderBy('item_category_id')->pluck('item_category_id');
-            $categories = $distinctCats->map(fn ($c) => ['id' => trim((string) $c), 'name' => trim((string) $c)])->values();
-            if ($allowTokens !== []) {
-                $categories = $categories->filter(function (array $c) use ($allowTokens) {
+            $fromItems = $distinctCats->map(fn ($c) => ['id' => trim((string) $c), 'name' => trim((string) $c)])->values();
+            $categories = $fromItems;
+            if ($applyPoolCategoryFilter) {
+                $filtered = $fromItems->filter(function (array $c) use ($allowTokens) {
                     return PoolCategoryAllowlist::categoryMatchesAllowlist((string) $c['id'], (string) $c['name'], $allowTokens);
                 })->values();
+                if ($filtered->isNotEmpty()) {
+                    $categories = $filtered;
+                } else {
+                    $applyPoolCategoryFilter = false;
+                }
             }
             foreach ($categories as $cat) {
                 $idKey = strtolower(trim((string) ($cat['id'] ?? '')));
@@ -453,12 +466,15 @@ class PurchReqController extends Controller
             return ['id' => $itemId, 'name' => $itemName, 'category' => $categoryLookup[strtolower($rawCat)] ?? $rawCat];
         })->filter(fn ($i) => $i['id'] !== '');
 
-        if ($allowTokens !== []) {
-            $items = $items->filter(function (array $i) use ($allowTokens) {
+        if ($applyPoolCategoryFilter) {
+            $filteredItems = $items->filter(function (array $i) use ($allowTokens) {
                 $cat = trim((string) ($i['category'] ?? ''));
 
                 return PoolCategoryAllowlist::categoryMatchesAllowlist($cat, $cat, $allowTokens);
-            });
+            })->values();
+            if ($filteredItems->isNotEmpty()) {
+                $items = $filteredItems;
+            }
         }
 
         $items = $items->values();
