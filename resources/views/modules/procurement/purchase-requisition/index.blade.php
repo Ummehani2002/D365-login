@@ -180,8 +180,8 @@
                                     <input id="warehouse" type="text" placeholder="e.g. PSE20251008">
                                 </td>
                                 <td>
-                                    <label class="header-label">Contact Name</label>
-                                    <input id="contact-name" type="text">
+                                    <label class="header-label">Contact name / phone</label>
+                                    <input id="contact-name" type="text" maxlength="255" placeholder="e.g. Murugan — +60 12 345 6789" title="Free text: name and contact number.">
                                 </td>
                                 <td>
                                     <label class="header-label">Department</label>

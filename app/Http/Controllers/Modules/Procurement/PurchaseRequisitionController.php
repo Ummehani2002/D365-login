@@ -42,7 +42,7 @@ class PurchaseRequisitionController extends Controller
                     strtoupper(trim((string) $request->input('company')))
                 )),
             ],
-            'contact_name'                      => ['required', 'string', 'max:120'],
+            'contact_name'                      => ['required', 'string', 'max:255'],
             'remarks'                           => ['nullable', 'string', 'max:500'],
             'department'                        => ['required', 'string', 'max:120'],
             'lines'                             => ['required', 'array', 'min:1'],

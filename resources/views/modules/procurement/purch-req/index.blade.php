@@ -219,8 +219,8 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label>Contact Name <span style="color:#a4262c">*</span></label>
-                            <input id="contact-name" type="text" placeholder="e.g. Murugan">
+                            <label>Contact name / phone <span style="color:#a4262c">*</span></label>
+                            <input id="contact-name" type="text" maxlength="255" autocomplete="name" placeholder="e.g. Murugan — +60 12 345 6789" title="Free text: enter name and contact number as you need.">
                         </div>
                         <div class="field">
                             <label>Department <span style="color:#a4262c">*</span></label>
@@ -483,8 +483,11 @@
             if (!selectedId) return;
             const manager = departmentManagers.find((row) => String(row.id) === selectedId);
             if (!manager) return;
-            contactEl.value = String(manager.employee_name ?? '').trim();
             departmentEl.value = String(manager.department ?? '').trim();
+            // Contact stays free text (name + phone etc.); only suggest manager name if the field is still empty.
+            if (!String(contactEl.value ?? '').trim()) {
+                contactEl.value = String(manager.employee_name ?? '').trim();
+            }
         }
 
         async function loadDepartmentManagers(companyCode, selectedId = '') {
@@ -1374,7 +1377,7 @@
                 return;
             }
 
-            if (!contactEl.value.trim()) { showStatus('Contact Name is required.', 'error'); return; }
+            if (!contactEl.value.trim()) { showStatus('Contact name / phone is required.', 'error'); return; }
             if (!departmentEl.value.trim()) { showStatus('Department is required.', 'error'); return; }
 
             const lines = collectLines();
