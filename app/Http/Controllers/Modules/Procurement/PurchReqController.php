@@ -187,7 +187,14 @@ class PurchReqController extends Controller
             $result = $service->postPurchReq($d365Payload);
 
             if ($this->isFailedD365Response($result)) {
-                return response()->json(['status' => false, 'message' => 'PR submission failed.', 'error' => $this->extractD365ErrorMessage($result), 'data' => $result], 422);
+                $d365Msg = $this->extractD365ErrorMessage($result);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'PR submission failed.',
+                    'error' => 'D365 returned: '.$d365Msg,
+                    'data' => $result,
+                ], 422);
             }
 
             $attachmentsForDb = array_map(fn ($a) => [

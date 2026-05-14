@@ -81,10 +81,34 @@
             box-shadow: 0 14px 30px rgba(16, 24, 40, 0.24);
             z-index: 1;
         }
+        .company-hero.company-hero--custom-bg {
+            background: linear-gradient(128deg, #152028 0%, #1a2835 100%);
+        }
+        .company-hero-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            z-index: 0;
+            user-select: none;
+        }
+        .company-hero-bg-scrim {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(255, 197, 120, 0.12), transparent 46%),
+                radial-gradient(circle at 90% 18%, rgba(178, 227, 255, 0.1), transparent 42%),
+                linear-gradient(128deg, rgba(26, 42, 59, 0.82) 0%, rgba(35, 68, 90, 0.78) 42%, rgba(46, 74, 63, 0.8) 100%);
+        }
         .company-hero::after {
             content: "";
             position: absolute;
             inset: 0;
+            z-index: 2;
             background:
                 repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 28px),
                 repeating-linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 20px);
@@ -93,7 +117,7 @@
         .company-hero-content {
             position: absolute;
             inset: 0;
-            z-index: 1;
+            z-index: 3;
             padding: 28px;
             display: grid;
             grid-template-columns: 1fr 360px;
@@ -146,6 +170,31 @@
             border-radius: 8px;
             background: #fff;
             padding: 8px;
+        }
+        .company-hero-brand-placeholder {
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px 10px;
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.92);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .company-hero-brand-placeholder strong {
+            color: #fff;
+            font-size: 11px;
+            word-break: break-all;
+        }
+        .company-hero-brand-hint {
+            display: block;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.75);
         }
         .company-hero-user {
             width: 100%;
@@ -231,18 +280,30 @@
                 $selectedCompanyName = 'PROSCAPE LLC';
             }
             $companyLogoUrl = null;
+            $companyHeroBgUrl = null;
             if ($companyCode !== '') {
-                foreach (['png', 'jpg', 'jpeg', 'webp', 'svg'] as $ext) {
+                foreach (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'] as $ext) {
                     $relPath = 'images/companies/' . $companyCode . '.' . $ext;
                     if (file_exists(public_path($relPath))) {
                         $companyLogoUrl = asset($relPath);
                         break;
                     }
                 }
+                foreach (['gif', 'webp', 'png', 'jpg', 'jpeg'] as $ext) {
+                    $heroPath = 'images/companies/' . $companyCode . '_bg.' . $ext;
+                    if (file_exists(public_path($heroPath))) {
+                        $companyHeroBgUrl = asset($heroPath);
+                        break;
+                    }
+                }
             }
         @endphp
 
-        <section class="company-hero" aria-label="Selected company dashboard hero">
+        <section class="company-hero{{ $companyHeroBgUrl ? ' company-hero--custom-bg' : '' }}" aria-label="Selected company dashboard hero">
+            @if ($companyHeroBgUrl)
+                <img class="company-hero-bg" src="{{ $companyHeroBgUrl }}" alt="{{ $companyCode }} workspace background">
+                <div class="company-hero-bg-scrim" aria-hidden="true"></div>
+            @endif
             <div class="company-hero-content">
                 <div class="company-hero-top">
                     <h3 class="company-hero-title">{{ $selectedCompanyName }}</h3>
@@ -253,15 +314,20 @@
                 </div>
 
                 <div class="company-hero-right">
-                    @if ($companyLogoUrl)
-                        <div class="company-hero-brand">
+                    <div class="company-hero-brand">
+                        @if ($companyLogoUrl)
                             <img
                                 src="{{ $companyLogoUrl }}"
                                 alt="{{ $companyCode }} logo"
-                                onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;color:#fff;font-size:12px;&quot;>Add logo at public/images/companies/{{ $companyCode }}.(png/jpg/jpeg/webp/svg)</div>';"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                             >
+                        @endif
+                        <div class="company-hero-brand-placeholder" style="{{ $companyLogoUrl ? 'display:none;' : '' }}">
+                            Each company uses its own logo file (not shared with others).
+                            <strong>public/images/companies/{{ $companyCode ?: 'CODE' }}.png</strong>
+                            <span class="company-hero-brand-hint">Same pattern for other IDs, e.g. ML.jpg, TS.webp. Optional hero: {{ $companyCode ?: 'CODE' }}_bg.gif</span>
                         </div>
-                    @endif
+                    </div>
 
                     <div class="company-hero-user">
                         <h3>User Details</h3>
