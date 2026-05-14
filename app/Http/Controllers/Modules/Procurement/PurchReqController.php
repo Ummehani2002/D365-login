@@ -725,8 +725,9 @@ class PurchReqController extends Controller
         return array_map(function (array $line) use ($itemCategoryMap, $pool) {
             $itemId = trim((string) ($line['item_id'] ?? ''));
             $itemCategory = trim((string) ($line['item_category'] ?? ''));
+            $unit = trim((string) ($line['unit'] ?? ''));
 
-            if (! PoolPurchReqMode::requiresTypedItemId($pool)) {
+            if (! $pool->has_item_id) {
                 $itemId = '';
             }
             if (! $pool->has_item_category) {
@@ -737,14 +738,18 @@ class PurchReqController extends Controller
                 $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
             }
 
-            if ($pool->has_item_category && ! PoolPurchReqMode::requiresTypedItemId($pool)) {
-                $line['unit'] = 'NOS';
-            } elseif ($itemId === '') {
-                $line['unit'] = '';
+            $categoryDrivenLine = $pool->has_item_category
+                && ! PoolPurchReqMode::requiresTypedItemId($pool)
+                && $itemId === '';
+            if ($categoryDrivenLine) {
+                $unit = 'NOS';
+            } elseif ($itemId === '' && ! $pool->has_item_category) {
+                $unit = '';
             }
 
             $line['item_id'] = $itemId;
             $line['item_category'] = $itemCategory;
+            $line['unit'] = $unit;
 
             return $line;
         }, $lines);

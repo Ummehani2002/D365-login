@@ -673,7 +673,7 @@
             return poolRows.find((row) => String(row.pool_id ?? '').trim().toUpperCase() === key) ?? null;
         }
 
-        /** Mirrors server {@see PoolPurchReqMode::requiresTypedItemId} (legacy pools with category_item only). */
+        /** Mirrors server {@see PoolPurchReqMode::requiresTypedItemId} — line must carry a real D365 item id when true. */
         function requiresTypedItemIdClient(p) {
             if (!p) return false;
             if (typeof p.requires_typed_item_id === 'boolean') {
@@ -682,13 +682,16 @@
             return Boolean(p.has_item_id);
         }
 
-        function isCategoryOnlyPool(p) {
-            return Boolean(p && p.has_item_category && !requiresTypedItemIdClient(p));
+        /** Category column on line is used and no typed item id is required; line has no item id → D365 category path uses NOS. */
+        function usesFixedNosForLine(p, tr) {
+            if (!p?.has_item_category || requiresTypedItemIdClient(p)) return false;
+            const iid = tr?.querySelector?.('.lf-item-id')?.value?.trim() ?? '';
+            return !iid;
         }
 
-        /** Item-ID pools: show Item ID column, hide Item Category; units come from D365 for the selected item (not fixed NOS). */
+        /** Pool has category lines but no item-id column (D365 flags). */
         function isItemIdOnlyPool(p) {
-            return Boolean(p && requiresTypedItemIdClient(p) && !p.has_item_category);
+            return Boolean(p && p.has_item_id && !p.has_item_category);
         }
 
         function syncLineUnitForPoolMode(tr) {
@@ -699,11 +702,11 @@
 
             const companyOk = Boolean(getCurrentCompanyCode());
             const poolOk = Boolean((poolEl?.value ?? '').trim());
-            if (companyOk && poolOk && isCategoryOnlyPool(p)) {
+            if (companyOk && poolOk && usesFixedNosForLine(p, tr)) {
                 unitSelect.innerHTML = '<option value="NOS" selected>NOS</option>';
                 unitSelect.value = 'NOS';
                 unitSelect.disabled = true;
-                unitNote.textContent = 'Unit fixed to NOS for category-only pools.';
+                unitNote.textContent = 'Unit fixed to NOS when category is used without an item ID for this pool.';
                 return;
             }
 
@@ -732,21 +735,8 @@
             let showCat = true;
             let showItem = true;
             if (p != null) {
-                const hasCat = !!p.has_item_category;
-                const needsTypedItem = requiresTypedItemIdClient(p);
-                if (hasCat && needsTypedItem) {
-                    showCat = true;
-                    showItem = true;
-                } else if (hasCat && !needsTypedItem) {
-                    showCat = true;
-                    showItem = false;
-                } else if (!hasCat && needsTypedItem) {
-                    showCat = false;
-                    showItem = true;
-                } else {
-                    showCat = false;
-                    showItem = false;
-                }
+                showCat = Boolean(p.has_item_category);
+                showItem = Boolean(p.has_item_id);
             }
             document.querySelectorAll('#lines-table [data-col="category"]').forEach((el) => {
                 el.classList.toggle('line-col-collapsed', !showCat);
@@ -775,7 +765,7 @@
             poolDetailFields?.classList.remove('hidden');
             attBlock?.classList.remove('hidden');
             applyPoolLineColumns(p);
-            if (isCategoryOnlyPool(p)) {
+            if (p && !p.has_item_id) {
                 linesBody.querySelectorAll('tr[data-line] .lf-item-id').forEach((el) => { el.value = ''; });
             }
             syncAllLineUnitsForPoolMode();
@@ -1000,7 +990,7 @@
 
             if (!unitSelect || !unitNote) return;
 
-            if (isCategoryOnlyPool(getSelectedPool()) && company && (poolEl?.value ?? '').trim()) {
+            if (usesFixedNosForLine(getSelectedPool(), tr) && company && (poolEl?.value ?? '').trim()) {
                 syncLineUnitForPoolMode(tr);
                 return;
             }
@@ -1065,7 +1055,7 @@
                 unitSelect.innerHTML = '<option value="">Unit lookup failed</option>';
                 unitNote.textContent = err.message || 'Unit lookup failed.';
             } finally {
-                if (isCategoryOnlyPool(getSelectedPool()) && getCurrentCompanyCode() && (poolEl?.value ?? '').trim()) {
+                if (usesFixedNosForLine(getSelectedPool(), tr) && getCurrentCompanyCode() && (poolEl?.value ?? '').trim()) {
                     syncLineUnitForPoolMode(tr);
                 } else {
                     unitSelect.disabled = false;
@@ -1089,7 +1079,7 @@
                         itemSelect.value = '';
                     }
                     updateItemSelectForRow(tr, itemSelect?.value ?? '');
-                    if (isCategoryOnlyPool(getSelectedPool())) {
+                    if (usesFixedNosForLine(getSelectedPool(), tr)) {
                         syncLineUnitForPoolMode(tr);
                         return;
                     }
@@ -1335,11 +1325,15 @@
                 });
             }
             const poolCfg = getSelectedPool();
-            if (!requiresTypedItemIdClient(poolCfg)) {
+            if (!poolCfg?.has_item_id) {
                 lines.forEach((ln) => { ln.item_id = ''; });
             }
-            if (isCategoryOnlyPool(poolCfg)) {
-                lines.forEach((ln) => { ln.unit = 'NOS'; });
+            if (poolCfg?.has_item_category && !requiresTypedItemIdClient(poolCfg)) {
+                lines.forEach((ln) => {
+                    if (!String(ln.item_id ?? '').trim()) {
+                        ln.unit = 'NOS';
+                    }
+                });
             }
             return lines;
         }
@@ -1415,14 +1409,14 @@
                     return;
                 }
 
-                if (requiresTypedItemIdClient(poolCfg) && hasItemId && !hasCategory) {
+                if (poolCfg.has_item_category && hasItemId && !hasCategory) {
                     const inferredItem = getItemById(ln.item_id);
                     if (inferredItem?.category) {
                         ln.item_category = inferredItem.category;
                     }
                 }
 
-                if (requiresTypedItemIdClient(poolCfg) && hasItemId && !ln.unit) {
+                if (poolCfg.has_item_id && hasItemId && !ln.unit) {
                     showStatus(`Line ${i + 1}: Unit is required when Item ID is used.`, 'error');
                     return;
                 }
