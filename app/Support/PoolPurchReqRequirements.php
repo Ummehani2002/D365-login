@@ -33,6 +33,9 @@ final class PoolPurchReqRequirements
         'NPHEP' => [
             'requires_start_end_date' => true,
         ],
+        'NP_HEP' => [
+            'requires_start_end_date' => true,
+        ],
         'P_HEP' => [
             'requires_start_end_date' => true,
         ],

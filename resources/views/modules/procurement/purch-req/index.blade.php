@@ -203,14 +203,6 @@
                             <label>PR Date <span style="color:#a4262c">*</span></label>
                             <input id="pr-date" type="date">
                         </div>
-                        <div class="field hidden" id="field-start-date">
-                            <label>Start Date <span style="color:#a4262c">*</span></label>
-                            <input id="start-date" type="date">
-                        </div>
-                        <div class="field hidden" id="field-end-date">
-                            <label>End Date <span style="color:#a4262c">*</span></label>
-                            <input id="end-date" type="date">
-                        </div>
                         <div class="field span-2">
                             <label>Pool <span style="color:#a4262c">*</span></label>
                             <select id="pool-id">
@@ -269,6 +261,8 @@
                                     <th data-col="item-id">Item ID</th>
                                     <th>Description</th>
                                     <th>Required Date</th>
+                                    <th data-col="start-date">Start Date</th>
+                                    <th data-col="end-date">End Date</th>
                                     <th>Unit</th>
                                     <th>Qty</th>
                                     <th>Action</th>
@@ -276,7 +270,7 @@
                             </thead>
                             <tbody id="lines-body">
                                 <tr id="no-lines-row">
-                                    <td colspan="9" class="empty-note">No lines yet — click <strong>+ Add Line</strong></td>
+                                    <td colspan="11" class="empty-note">No lines yet — click <strong>+ Add Line</strong></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -401,11 +395,8 @@
         const requestIdEl   = document.getElementById('request-id');
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
-        const startDateEl   = document.getElementById('start-date');
-        const endDateEl     = document.getElementById('end-date');
-        const fieldStartDate = document.getElementById('field-start-date');
-        const fieldEndDate   = document.getElementById('field-end-date');
         const warehouseEl   = document.getElementById('warehouse');
+        const LINE_TABLE_COLSPAN = 11;
         const projectEl     = document.getElementById('project-id');
         const fieldProject  = document.getElementById('field-project');
         const fieldWarehouse = document.getElementById('field-warehouse');
@@ -649,18 +640,27 @@
             return Boolean(getSelectedPool()?.requires_budget_resource);
         }
 
+        const HEP_POOL_IDS = new Set(['NPHEP', 'NP_HEP', 'P_HEP', 'PHEP']);
+
         function poolRequiresStartEndDate() {
-            return Boolean(getSelectedPool()?.requires_start_end_date);
+            const p = getSelectedPool();
+            if (p?.requires_start_end_date) {
+                return true;
+            }
+            const poolId = String(poolEl?.value ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+            return HEP_POOL_IDS.has(poolId);
         }
 
-        function applyStartEndDateUi() {
-            const show = poolRequiresStartEndDate();
-            fieldStartDate?.classList.toggle('hidden', !show);
-            fieldEndDate?.classList.toggle('hidden', !show);
+        function applyLineStartEndColumns(p) {
+            const show = p != null && poolRequiresStartEndDate();
+            document.querySelectorAll('#lines-table [data-col="start-date"], #lines-table [data-col="end-date"]').forEach((el) => {
+                el.classList.toggle('line-col-collapsed', !show);
+            });
             if (!show) {
-                if (startDateEl) startDateEl.value = '';
-                if (endDateEl) endDateEl.value = '';
+                linesBody.querySelectorAll('tr[data-line] .lf-start-date, tr[data-line] .lf-end-date').forEach((el) => { el.value = ''; });
             }
+            const detailsRows = linesBody.querySelectorAll('tr[data-line-detail] td[colspan]');
+            detailsRows.forEach((td) => { td.colSpan = LINE_TABLE_COLSPAN; });
         }
 
         function poolNeedsFdLocation() {
@@ -886,6 +886,7 @@
             document.querySelectorAll('#lines-table [data-col="item-id"]').forEach((el) => {
                 el.classList.toggle('line-col-collapsed', !showItem);
             });
+            applyLineStartEndColumns(p);
         }
 
         function applyPoolUi() {
@@ -901,7 +902,6 @@
                 syncAllLineUnitsForPoolMode();
                 applyBudgetResourceUi();
                 applyFdLocationUi();
-                applyStartEndDateUi();
                 return;
             }
 
@@ -916,7 +916,6 @@
             syncAllLineUnitsForPoolMode();
             applyBudgetResourceUi();
             applyFdLocationUi();
-            applyStartEndDateUi();
         }
 
         function getItemsByCategory(categoryId) {
@@ -1048,6 +1047,8 @@
                 </td>
                 <td><input class="line-input wide lf-desc" type="text" maxlength="255" placeholder="Description (up to 255 characters)" value="${line.item_description ?? ''}"></td>
                 <td><input class="line-input req-date lf-req-date" type="date" value="${line.required_date ?? todayStr()}"></td>
+                <td data-col="start-date"><input class="line-input req-date lf-start-date" type="date" value="${line.start_date ?? ''}"></td>
+                <td data-col="end-date"><input class="line-input req-date lf-end-date" type="date" value="${line.end_date ?? ''}"></td>
                 <td>
                     <select class="line-select unit-select lf-unit">
                         <option value="${line.unit ?? ''}">${line.unit ? line.unit : 'Select item first'}</option>
@@ -1066,7 +1067,7 @@
             details.dataset.lineDetail = lineId;
             details.className = 'line-details-row hidden';
             details.innerHTML = `
-                <td colspan="9">
+                <td colspan="${LINE_TABLE_COLSPAN}">
                     <div class="line-details-shell">
                         <div class="line-details-title">Additional Details</div>
                         <div class="line-details-grid">
@@ -1497,6 +1498,8 @@
                     item_id:            tr.querySelector('.lf-item-id').value.trim(),
                     item_description:   tr.querySelector('.lf-desc').value.trim(),
                     required_date:      tr.querySelector('.lf-req-date').value,
+                    start_date:         poolRequiresStartEndDate() ? (tr.querySelector('.lf-start-date')?.value ?? '') : '',
+                    end_date:           poolRequiresStartEndDate() ? (tr.querySelector('.lf-end-date')?.value ?? '') : '',
                     unit:               tr.querySelector('.lf-unit').value.trim(),
                     qty:                tr.querySelector('.lf-qty').value,
                     currency:           details?.querySelector('.lf-currency')?.value?.trim() ?? 'AED',
@@ -1587,21 +1590,6 @@
                 showStatus('This pool requires at least one attachment.', 'error');
                 return;
             }
-            if (poolRequiresStartEndDate()) {
-                if (!startDateEl?.value) {
-                    showStatus('Start date is required for this pool.', 'error');
-                    return;
-                }
-                if (!endDateEl?.value) {
-                    showStatus('End date is required for this pool.', 'error');
-                    return;
-                }
-                if (endDateEl.value < startDateEl.value) {
-                    showStatus('End date must be on or after start date.', 'error');
-                    return;
-                }
-            }
-
             if (!contactEl.value.trim()) { showStatus('Contact name / phone is required.', 'error'); return; }
             if (!departmentEl.value.trim()) { showStatus('Department is required.', 'error'); return; }
 
@@ -1643,6 +1631,20 @@
                     showStatus(`Line ${i + 1}: Budget resource is required for this pool.`, 'error');
                     return;
                 }
+                if (poolRequiresStartEndDate()) {
+                    if (!String(ln.start_date ?? '').trim()) {
+                        showStatus(`Line ${i + 1}: Start date is required for this pool.`, 'error');
+                        return;
+                    }
+                    if (!String(ln.end_date ?? '').trim()) {
+                        showStatus(`Line ${i + 1}: End date is required for this pool.`, 'error');
+                        return;
+                    }
+                    if (ln.end_date < ln.start_date) {
+                        showStatus(`Line ${i + 1}: End date must be on or after start date.`, 'error');
+                        return;
+                    }
+                }
             }
 
             postBtn.disabled = true;
@@ -1653,8 +1655,6 @@
                 company:      company,
                 buying_legal_entity: (buyingLegalEntityEl?.value || company),
                 pr_date:      prDateEl.value,
-                start_date:   poolRequiresStartEndDate() ? (startDateEl?.value ?? '') : '',
-                end_date:     poolRequiresStartEndDate() ? (endDateEl?.value ?? '') : '',
                 warehouse:    warehouseEl.value.trim(),
                 project_id:   (projectEl?.value ?? '').trim(),
                 pool_id:      poolEl.value.trim(),
@@ -1726,8 +1726,6 @@
                 company: getCurrentCompanyCode() || null,
                 buying_legal_entity: (buyingLegalEntityEl?.value || getCurrentCompanyCode() || null),
                 pr_date: prDateEl.value || null,
-                start_date: poolRequiresStartEndDate() ? (startDateEl?.value || null) : null,
-                end_date: poolRequiresStartEndDate() ? (endDateEl?.value || null) : null,
                 warehouse: warehouseEl.value.trim() || null,
                 project_id: (projectEl?.value ?? '').trim() || null,
                 pool_id: poolEl.value.trim() || null,
@@ -1819,8 +1817,6 @@
                 buyingLegalEntityEl.value = ['TM', 'PS'].includes(companyCode) ? companyCode : '';
             }
             prDateEl.value      = todayStr();
-            if (startDateEl) startDateEl.value = '';
-            if (endDateEl) endDateEl.value = '';
             if (warehouseEl) warehouseEl.innerHTML = '<option value="">— Select Warehouse —</option>';
             if (projectEl) projectEl.value = '';
             if (poolEl) {
@@ -1947,12 +1943,6 @@
                     projectEl.value = j.project_id || '';
                 }
                 applyPoolUi();
-                if (startDateEl) {
-                    startDateEl.value = j.start_date ? String(j.start_date).slice(0, 10) : '';
-                }
-                if (endDateEl) {
-                    endDateEl.value = j.end_date ? String(j.end_date).slice(0, 10) : '';
-                }
                 if (poolNeedsFdLocation()) {
                     await loadFdLocations(j.company || '');
                 }
