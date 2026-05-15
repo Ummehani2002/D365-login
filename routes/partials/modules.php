@@ -44,6 +44,7 @@ Route::middleware(['auth', 'permission:menu:modules.procurement.purch-req'])->gr
         Route::get('/pools',                        [PurchReqController::class, 'lookupPools'])->name('modules.procurement.purch-req.api.pools');
         Route::get('/warehouses',                  [PurchReqController::class, 'lookupWarehouses'])->name('modules.procurement.purch-req.api.warehouses');
         Route::get('/budget-resource-codes',       [PurchReqController::class, 'lookupBudgetResourceCodes'])->name('modules.procurement.purch-req.api.budget-resource-codes');
+        Route::get('/fd-locations',                 [PurchReqController::class, 'lookupFdLocations'])->name('modules.procurement.purch-req.api.fd-locations');
     });
 
     Route::get('/modules/procurement/purch-req/{journal}/attachments/{index}',

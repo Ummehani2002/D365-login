@@ -152,6 +152,9 @@
                 <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
                     <input id="item_id" type="checkbox" style="width:auto;"> Item ID
                 </label>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input id="fd_location" type="checkbox" style="width:auto;"> FD Location
+                </label>
             </div>
             <div style="margin-top:8px;">
                 <button type="submit">Save pool</button>
@@ -174,13 +177,14 @@
                     <th scope="col"><span class="th-main">Attachment</span></th>
                     <th scope="col"><span class="th-main">Item category</span></th>
                     <th scope="col"><span class="th-main">Item ID</span></th>
+                    <th scope="col"><span class="th-main">FD location</span></th>
                     <th scope="col"><span class="th-main">Created at</span></th>
                     <th scope="col">Action</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="12">Loading pools...</td>
+                    <td colspan="13">Loading pools...</td>
                 </tr>
             </tbody>
         </table>
@@ -248,10 +252,10 @@
             syncCompanyFieldFromGlobal();
             const companyId = currentCompanyId();
             if (!companyId) {
-                poolsTbody.innerHTML = '<tr><td colspan="12" class="empty-note">Select a company (top right) to view pools for that company.</td></tr>';
+                poolsTbody.innerHTML = '<tr><td colspan="13" class="empty-note">Select a company (top right) to view pools for that company.</td></tr>';
                 return;
             }
-            poolsTbody.innerHTML = '<tr><td colspan="12">Loading pools...</td></tr>';
+            poolsTbody.innerHTML = '<tr><td colspan="13">Loading pools...</td></tr>';
             try {
                 const response = await fetch(`${poolsApiUrl}?company_id=${encodeURIComponent(companyId)}`, { headers: defaultHeaders });
                 if (!response.ok) throw new Error('Failed to load pools');
@@ -259,7 +263,7 @@
                 const pools = payload.data || [];
 
                 if (!pools.length) {
-                    poolsTbody.innerHTML = '<tr><td colspan="12">No pools found.</td></tr>';
+                    poolsTbody.innerHTML = '<tr><td colspan="13">No pools found.</td></tr>';
                     return;
                 }
 
@@ -275,12 +279,13 @@
                         <td>${yn(pool.has_attachment)}</td>
                         <td>${yn(pool.has_item_category)}</td>
                         <td>${yn(pool.has_item_id)}</td>
+                        <td>${yn(pool.has_fd_location)}</td>
                         <td class="cell-text">${formatDate(pool.created_at)}</td>
                         <td><button type="button" class="danger" data-id="${pool.id}">Delete</button></td>
                     </tr>
                 `).join('');
             } catch {
-                poolsTbody.innerHTML = '<tr><td colspan="12">Failed to load pools.</td></tr>';
+                poolsTbody.innerHTML = '<tr><td colspan="13">Failed to load pools.</td></tr>';
             }
         };
 
@@ -298,6 +303,7 @@
             const attachment = document.getElementById('attachment').checked;
             const itemCategory = document.getElementById('item_category').checked;
             const itemId = document.getElementById('item_id').checked;
+            const fdLocation = document.getElementById('fd_location').checked;
             const companyId = currentCompanyId();
             if (!companyId) {
                 setFormMessage(errEl, 'Select a company before saving a pool.', true);
@@ -317,6 +323,7 @@
                         attachment: attachment,
                         item_category: itemCategory,
                         item_id: itemId,
+                        fd_location: fdLocation,
                     }),
                 });
 
@@ -334,6 +341,7 @@
                 document.getElementById('attachment').checked = false;
                 document.getElementById('item_category').checked = false;
                 document.getElementById('item_id').checked = false;
+                document.getElementById('fd_location').checked = false;
                 setFormMessage(statusEl, payload.message || 'Pool created.', true);
                 await loadPools();
             } catch {

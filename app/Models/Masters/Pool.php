@@ -19,6 +19,7 @@ class Pool extends Model
         'has_attachment',
         'has_item_category',
         'has_item_id',
+        'has_fd_location',
         'project',
         'warehouse',
         'warehouse_company_id',
@@ -38,6 +39,7 @@ class Pool extends Model
             'has_attachment' => 'boolean',
             'has_item_category' => 'boolean',
             'has_item_id' => 'boolean',
+            'has_fd_location' => 'boolean',
         ];
     }
 

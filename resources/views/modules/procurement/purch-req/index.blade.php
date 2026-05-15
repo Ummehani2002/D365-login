@@ -448,6 +448,7 @@
         let projectRows = [];
         let warehouseRows = [];
         let budgetResourceRows = [];
+        let fdLocationRows = [];
 
         const showStatus = (msg, type) => {
             const onList = formShell && (formShell.classList.contains('hidden') || formShell.style.display === 'none');
@@ -651,17 +652,52 @@
             }
         }
 
+        function poolNeedsBudgetResource() {
+            return Boolean(getSelectedPool()?.uses_project);
+        }
+
+        function poolNeedsFdLocation() {
+            return Boolean(getSelectedPool()?.has_fd_location);
+        }
+
+        function getFilteredBudgetResourceRows() {
+            if (!poolNeedsBudgetResource()) {
+                return [];
+            }
+            const projectId = String(projectEl?.value ?? '').trim().toUpperCase();
+            if (!projectId) {
+                return [];
+            }
+            return budgetResourceRows.filter((row) => {
+                const rowProject = String(row.project ?? '').trim().toUpperCase();
+                return rowProject === '' || rowProject === projectId;
+            });
+        }
+
+        function applyBudgetResourceUi() {
+            const show = poolNeedsBudgetResource();
+            linesBody.querySelectorAll('.line-budget-res-field').forEach((el) => {
+                el.classList.toggle('hidden', !show);
+            });
+            if (!show) {
+                linesBody.querySelectorAll('select.lf-budget-res').forEach((sel) => { sel.value = ''; });
+                return;
+            }
+            refreshAllLineBudgetResourceSelects();
+        }
+
         function renderBudgetResourceSelectHtml(selectedCode = '') {
             const key = String(selectedCode ?? '').trim();
             const keyU = key.toUpperCase();
-            const options = budgetResourceRows.map((row) => {
+            const rows = getFilteredBudgetResourceRows();
+            const options = rows.map((row) => {
                 const code = String(row.resource_code ?? '').trim();
                 const desc = String(row.description ?? '').trim();
                 const label = desc ? `${code} — ${desc}` : code;
                 const selectedAttr = code.toUpperCase() === keyU ? ' selected' : '';
                 return `<option value="${escapeHtml(code)}"${selectedAttr}>${escapeHtml(label)}</option>`;
             }).join('');
-            const inList = budgetResourceRows.some((r) => String(r.resource_code ?? '').trim().toUpperCase() === keyU);
+            const inList = rows.some((r) => String(r.resource_code ?? '').trim().toUpperCase() === keyU);
             let orphan = '';
             if (key && !inList) {
                 orphan = `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)} (saved)</option>`;
@@ -672,23 +708,28 @@
         async function loadBudgetResourceCodes(companyCode) {
             const company = String(companyCode ?? '').trim().toUpperCase();
             budgetResourceRows = [];
-            if (!company) {
-                refreshAllLineBudgetResourceSelects();
+            if (!company || !poolNeedsBudgetResource()) {
+                applyBudgetResourceUi();
                 return;
             }
             try {
-                const response = await fetch(`{{ route("modules.procurement.purch-req.api.budget-resource-codes") }}?company_id=${encodeURIComponent(company)}`, {
+                const params = new URLSearchParams({ company_id: company });
+                const projectId = String(projectEl?.value ?? '').trim();
+                if (projectId) {
+                    params.set('project_id', projectId);
+                }
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.budget-resource-codes") }}?${params}`, {
                     headers: { Accept: 'application/json' },
                 });
                 const payload = await response.json();
                 if (!response.ok || payload.status === false) {
-                    refreshAllLineBudgetResourceSelects();
+                    applyBudgetResourceUi();
                     return;
                 }
                 budgetResourceRows = Array.isArray(payload.data) ? payload.data : [];
-                refreshAllLineBudgetResourceSelects();
+                applyBudgetResourceUi();
             } catch {
-                refreshAllLineBudgetResourceSelects();
+                applyBudgetResourceUi();
             }
         }
 
@@ -696,6 +737,67 @@
             linesBody.querySelectorAll('tr[data-line-detail] select.lf-budget-res').forEach((sel) => {
                 const prev = sel.value;
                 sel.innerHTML = renderBudgetResourceSelectHtml(prev);
+                sel.value = prev;
+            });
+        }
+
+        function applyFdLocationUi() {
+            const show = poolNeedsFdLocation();
+            linesBody.querySelectorAll('.line-fd-location-field').forEach((el) => {
+                el.classList.toggle('hidden', !show);
+            });
+            if (!show) {
+                linesBody.querySelectorAll('select.lf-fd-location').forEach((sel) => { sel.value = ''; });
+                return;
+            }
+            refreshAllLineFdLocationSelects();
+        }
+
+        function renderFdLocationSelectHtml(selectedId = '') {
+            const key = String(selectedId ?? '').trim();
+            const keyU = key.toUpperCase();
+            const options = fdLocationRows.map((row) => {
+                const id = String(row.fd_location_id ?? '').trim();
+                const desc = String(row.description ?? '').trim();
+                const label = desc ? `${id} — ${desc}` : id;
+                const selectedAttr = id.toUpperCase() === keyU ? ' selected' : '';
+                return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+            }).join('');
+            const inList = fdLocationRows.some((r) => String(r.fd_location_id ?? '').trim().toUpperCase() === keyU);
+            let orphan = '';
+            if (key && !inList) {
+                orphan = `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)} (saved)</option>`;
+            }
+            return `<option value="">— Select FD location —</option>${options}${orphan}`;
+        }
+
+        async function loadFdLocations(companyCode) {
+            const company = String(companyCode ?? '').trim().toUpperCase();
+            fdLocationRows = [];
+            if (!company || !poolNeedsFdLocation()) {
+                applyFdLocationUi();
+                return;
+            }
+            try {
+                const response = await fetch(`{{ route("modules.procurement.purch-req.api.fd-locations") }}?company_id=${encodeURIComponent(company)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const payload = await response.json();
+                if (!response.ok || payload.status === false) {
+                    applyFdLocationUi();
+                    return;
+                }
+                fdLocationRows = Array.isArray(payload.data) ? payload.data : [];
+                applyFdLocationUi();
+            } catch {
+                applyFdLocationUi();
+            }
+        }
+
+        function refreshAllLineFdLocationSelects() {
+            linesBody.querySelectorAll('tr[data-line-detail] select.lf-fd-location').forEach((sel) => {
+                const prev = sel.value;
+                sel.innerHTML = renderFdLocationSelectHtml(prev);
                 sel.value = prev;
             });
         }
@@ -790,6 +892,8 @@
                 attBlock?.classList.add('hidden');
                 applyPoolLineColumns(null);
                 syncAllLineUnitsForPoolMode();
+                applyBudgetResourceUi();
+                applyFdLocationUi();
                 return;
             }
 
@@ -802,6 +906,8 @@
                 linesBody.querySelectorAll('tr[data-line] .lf-item-id').forEach((el) => { el.value = ''; });
             }
             syncAllLineUnitsForPoolMode();
+            applyBudgetResourceUi();
+            applyFdLocationUi();
         }
 
         function getItemsByCategory(categoryId) {
@@ -967,9 +1073,13 @@
                                 <label>Candy Budget</label>
                                 <input class="lf-budget" type="number" min="0" step="any" value="${line.candy_budget ?? 0}" placeholder="Candy Budget">
                             </div>
-                            <div class="line-details-field">
+                            <div class="line-details-field line-budget-res-field hidden">
                                 <label>Budget Resource</label>
                                 <select class="line-select lf-budget-res">${renderBudgetResourceSelectHtml(line.budget_resource_id ?? '')}</select>
+                            </div>
+                            <div class="line-details-field line-fd-location-field hidden">
+                                <label>FD Location</label>
+                                <select class="line-select lf-fd-location">${renderFdLocationSelectHtml(line.fd_location_id ?? '')}</select>
                             </div>
                             <div class="line-details-field">
                                 <label>Warranty</label>
@@ -986,6 +1096,8 @@
             renumberLines();
             applyPoolLineColumns(getSelectedPool());
             syncLineUnitForPoolMode(row);
+            applyBudgetResourceUi();
+            applyFdLocationUi();
         }
 
         document.getElementById('add-line-btn').addEventListener('click', () => addLine());
@@ -1247,6 +1359,7 @@
             loadProjects(cc);
             loadWarehouses(cc);
             loadBudgetResourceCodes(cc);
+            loadFdLocations(cc);
             syncAllLineUnitsForPoolMode();
         });
         departmentManagerEl?.addEventListener('change', applyDepartmentManagerSelection);
@@ -1255,6 +1368,22 @@
             clearStatus();
             applyPoolUi();
             await loadCatalogForCompany(getCurrentCompanyCode(), poolEl.value.trim());
+            if (poolNeedsBudgetResource()) {
+                await loadBudgetResourceCodes(getCurrentCompanyCode());
+            }
+            if (poolNeedsFdLocation()) {
+                await loadFdLocations(getCurrentCompanyCode());
+            } else {
+                applyFdLocationUi();
+            }
+        });
+
+        projectEl?.addEventListener('change', async () => {
+            if (!poolNeedsBudgetResource()) {
+                applyBudgetResourceUi();
+                return;
+            }
+            await loadBudgetResourceCodes(getCurrentCompanyCode());
         });
 
         const attachZone = document.getElementById('attach-zone');
@@ -1364,7 +1493,12 @@
                     currency:           details?.querySelector('.lf-currency')?.value?.trim() ?? 'AED',
                     rate:               details?.querySelector('.lf-rate')?.value ?? 0,
                     candy_budget:       details?.querySelector('.lf-budget')?.value ?? 0,
-                    budget_resource_id: details?.querySelector('.lf-budget-res')?.value?.trim() ?? '',
+                    budget_resource_id: poolNeedsBudgetResource()
+                        ? (details?.querySelector('.lf-budget-res')?.value?.trim() ?? '')
+                        : '',
+                    fd_location_id: poolNeedsFdLocation()
+                        ? (details?.querySelector('.lf-fd-location')?.value?.trim() ?? '')
+                        : '',
                     warranty:           details?.querySelector('.lf-warranty')?.value?.trim() ?? 'N/A',
                 });
             }
@@ -1478,6 +1612,10 @@
                 }
                 if (!ln.required_date) { showStatus(`Line ${i + 1}: Required Date is required.`, 'error'); return; }
                 if (parseFloat(ln.qty) <= 0) { showStatus(`Line ${i + 1}: Qty must be > 0.`, 'error'); return; }
+                if (poolCfg.has_fd_location && !String(ln.fd_location_id ?? '').trim()) {
+                    showStatus(`Line ${i + 1}: FD location is required for this pool.`, 'error');
+                    return;
+                }
             }
 
             postBtn.disabled = true;
@@ -1776,6 +1914,9 @@
                     projectEl.value = j.project_id || '';
                 }
                 applyPoolUi();
+                if (poolNeedsFdLocation()) {
+                    await loadFdLocations(j.company || '');
+                }
                 contactEl.value = j.contact_name || '';
                 remarksEl.value = j.remarks || '';
                 departmentEl.value = j.department || '';
@@ -1835,6 +1976,7 @@
             loadProjects(cc);
             loadWarehouses(cc);
             loadBudgetResourceCodes(cc);
+            loadFdLocations(cc);
             applyPoolUi();
         })();
     })();

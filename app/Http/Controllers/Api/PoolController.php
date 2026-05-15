@@ -215,6 +215,7 @@ class PoolController extends Controller
             'attachment' => 'has_attachment',
             'item_category' => 'has_item_category',
             'item_id' => 'has_item_id',
+            'fd_location' => 'has_fd_location',
         ];
 
         foreach ($aliases as $aliasKey => $targetKey) {
@@ -276,7 +277,7 @@ class PoolController extends Controller
     /** @return list<string> */
     private function poolBooleanFlagKeys(): array
     {
-        return ['uses_project', 'uses_warehouse', 'has_attachment', 'has_item_category', 'has_item_id'];
+        return ['uses_project', 'uses_warehouse', 'has_attachment', 'has_item_category', 'has_item_id', 'has_fd_location'];
     }
 
     /** @return array<string, array<int, string>> */

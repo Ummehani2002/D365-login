@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Modules\Procurement;
 use App\Http\Controllers\Controller;
 use App\Models\BudgetResourceCode;
 use App\Models\Company;
+use App\Models\FdLocation;
 use App\Models\DepartmentManager;
 use App\Models\Item;
 use App\Models\ItemCategory;
@@ -16,6 +17,7 @@ use App\Services\D365PurchReqService;
 use App\Support\DataAreaId;
 use App\Support\PoolCategoryAllowlist;
 use App\Support\PoolPurchReqMode;
+use App\Support\PoolPurchReqRequirements;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -109,6 +111,7 @@ class PurchReqController extends Controller
                 'lines.*.rate' => ['required', 'numeric', 'min:0'],
                 'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
                 'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+                'lines.*.fd_location_id' => ['nullable', 'string', 'max:100'],
                 'lines.*.warranty' => ['nullable', 'string', 'max:100'],
                 'attachments' => ['nullable', 'array'],
                 'attachments.*.file_name' => ['required', 'string', 'max:255'],
@@ -176,6 +179,7 @@ class PurchReqController extends Controller
                             'Rate' => (float) $line['rate'],
                             'CandyBudget' => (float) ($line['candy_budget'] ?? 0),
                             'BudgetResourceId' => (string) ($line['budget_resource_id'] ?? ''),
+                            'FdLocationId' => (string) ($line['fd_location_id'] ?? ''),
                             'Warranty' => (string) ($line['warranty'] ?? 'N/A'),
                         ];
 
@@ -265,6 +269,7 @@ class PurchReqController extends Controller
             'lines.*.rate' => ['nullable', 'numeric', 'min:0'],
             'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
             'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.fd_location_id' => ['nullable', 'string', 'max:100'],
             'lines.*.warranty' => ['nullable', 'string', 'max:100'],
             'attachments' => ['nullable', 'array'],
             'attachments.*.file_name' => ['required', 'string', 'max:255'],
@@ -316,6 +321,7 @@ class PurchReqController extends Controller
             'lines.*.rate' => ['nullable', 'numeric', 'min:0'],
             'lines.*.candy_budget' => ['nullable', 'numeric', 'min:0'],
             'lines.*.budget_resource_id' => ['nullable', 'string', 'max:100'],
+            'lines.*.fd_location_id' => ['nullable', 'string', 'max:100'],
             'lines.*.warranty' => ['nullable', 'string', 'max:100'],
             'attachments' => ['nullable', 'array'],
             'attachments.*.file_name' => ['required', 'string', 'max:255'],
@@ -597,21 +603,27 @@ class PurchReqController extends Controller
                 'has_attachment',
                 'has_item_category',
                 'has_item_id',
+                'has_fd_location',
                 'item_id',
                 'category_item',
             ])
-            ->map(fn (Pool $p) => [
-                'id' => $p->id,
-                'pool_id' => $p->pool_id,
-                'name' => $p->name,
-                'company_id' => $p->company_id,
-                'uses_project' => (bool) $p->uses_project,
-                'uses_warehouse' => (bool) $p->uses_warehouse,
-                'has_attachment' => (bool) $p->has_attachment,
-                'has_item_category' => (bool) $p->has_item_category,
-                'has_item_id' => (bool) $p->has_item_id,
-                'requires_typed_item_id' => PoolPurchReqMode::requiresTypedItemId($p),
-            ])
+            ->map(function (Pool $p) {
+                $flags = PoolPurchReqRequirements::effectiveFlags($p);
+
+                return [
+                    'id' => $p->id,
+                    'pool_id' => $p->pool_id,
+                    'name' => $p->name,
+                    'company_id' => $p->company_id,
+                    'uses_project' => $flags['uses_project'],
+                    'uses_warehouse' => $flags['uses_warehouse'],
+                    'has_attachment' => $flags['has_attachment'],
+                    'has_item_category' => $flags['has_item_category'],
+                    'has_item_id' => $flags['has_item_id'],
+                    'has_fd_location' => $flags['has_fd_location'],
+                    'requires_typed_item_id' => $flags['requires_typed_item_id'],
+                ];
+            })
             ->values();
 
         return response()->json([
@@ -686,7 +698,7 @@ class PurchReqController extends Controller
         ]);
     }
 
-    public function lookupBudgetResourceCodes(Request $request): JsonResponse
+    public function lookupFdLocations(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'company' => ['nullable', 'string', 'max:20'],
@@ -694,6 +706,34 @@ class PurchReqController extends Controller
         ]);
 
         $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        if ($companyCode === '') {
+            return response()->json(['status' => true, 'message' => 'FD locations fetched.', 'data' => []]);
+        }
+
+        $this->assertCompanyAccess($companyCode);
+
+        $rows = FdLocation::query()
+            ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
+            ->orderBy('fd_location_id')
+            ->get(['fd_location_id', 'description']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'FD locations fetched.',
+            'data' => $rows,
+        ]);
+    }
+
+    public function lookupBudgetResourceCodes(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company' => ['nullable', 'string', 'max:20'],
+            'company_id' => ['nullable', 'string', 'max:20'],
+            'project_id' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $companyCode = strtoupper(trim((string) ($validated['company'] ?? $validated['company_id'] ?? '')));
+        $projectId = trim((string) ($validated['project_id'] ?? ''));
         if ($companyCode === '') {
             return response()->json([
                 'status' => true,
@@ -706,6 +746,13 @@ class PurchReqController extends Controller
 
         $rows = BudgetResourceCode::query()
             ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
+            ->when($projectId !== '', function ($q) use ($projectId) {
+                $q->where(function ($inner) use ($projectId) {
+                    $inner->whereNull('project')
+                        ->orWhere('project', '')
+                        ->orWhereRaw('UPPER(TRIM(project)) = ?', [strtoupper($projectId)]);
+                });
+            })
             ->orderBy('resource_code')
             ->get(['resource_code', 'description', 'project']);
 
@@ -776,15 +823,17 @@ class PurchReqController extends Controller
             }
         }
 
-        return array_map(function (array $line) use ($itemCategoryMap, $pool) {
+        $flags = PoolPurchReqRequirements::effectiveFlags($pool);
+
+        return array_map(function (array $line) use ($itemCategoryMap, $pool, $flags) {
             $itemId = trim((string) ($line['item_id'] ?? ''));
             $itemCategory = trim((string) ($line['item_category'] ?? ''));
             $unit = trim((string) ($line['unit'] ?? ''));
 
-            if (! $pool->has_item_id) {
+            if (! $flags['has_item_id']) {
                 $itemId = '';
             }
-            if (! $pool->has_item_category) {
+            if (! $flags['has_item_category']) {
                 $itemCategory = '';
             }
 
@@ -792,18 +841,26 @@ class PurchReqController extends Controller
                 $itemCategory = $itemCategoryMap[strtolower($itemId)] ?? '';
             }
 
-            $categoryDrivenLine = $pool->has_item_category
-                && ! PoolPurchReqMode::requiresTypedItemId($pool)
+            $categoryDrivenLine = $flags['has_item_category']
+                && ! $flags['requires_typed_item_id']
                 && $itemId === '';
             if ($categoryDrivenLine) {
                 $unit = 'NOS';
-            } elseif ($itemId === '' && ! $pool->has_item_category) {
+            } elseif ($itemId === '' && ! $flags['has_item_category']) {
                 $unit = '';
             }
 
             $line['item_id'] = $itemId;
             $line['item_category'] = $itemCategory;
             $line['unit'] = $unit;
+
+            if (! $flags['uses_project']) {
+                $line['budget_resource_id'] = '';
+            }
+
+            if (! $flags['has_fd_location']) {
+                $line['fd_location_id'] = '';
+            }
 
             return $line;
         }, $lines);
@@ -961,14 +1018,16 @@ class PurchReqController extends Controller
      */
     private function assertPurchReqMatchesPool(array &$validated, Pool $pool): void
     {
-        if (! $pool->has_item_category && ! $pool->has_item_id) {
+        $flags = PoolPurchReqRequirements::effectiveFlags($pool);
+
+        if (! $flags['has_item_category'] && ! $flags['has_item_id']) {
             throw ValidationException::withMessages(['pool_id' => ['This pool must allow item category and/or item ID on lines (update Pool Master).']]);
         }
 
         $company = strtoupper(trim((string) $validated['company']));
         $errors = [];
 
-        if ($pool->uses_warehouse) {
+        if ($flags['uses_warehouse']) {
             $w = trim((string) ($validated['warehouse'] ?? ''));
             if ($w === '') {
                 $errors['warehouse'] = ['Warehouse is required for this pool.'];
@@ -982,7 +1041,7 @@ class PurchReqController extends Controller
             $validated['warehouse'] = null;
         }
 
-        if ($pool->uses_project) {
+        if ($flags['uses_project']) {
             $p = trim((string) ($validated['project_id'] ?? ''));
             if ($p === '') {
                 $errors['project_id'] = ['Project is required for this pool.'];
@@ -994,7 +1053,7 @@ class PurchReqController extends Controller
         }
 
         $attachments = $validated['attachments'] ?? [];
-        if ($pool->has_attachment && (! is_array($attachments) || count($attachments) === 0)) {
+        if ($flags['has_attachment'] && (! is_array($attachments) || count($attachments) === 0)) {
             $errors['attachments'] = ['At least one attachment is required for this pool.'];
         }
 
@@ -1002,11 +1061,24 @@ class PurchReqController extends Controller
             $i = $idx + 1;
             $cat = trim((string) ($line['item_category'] ?? ''));
             $iid = trim((string) ($line['item_id'] ?? ''));
-            if ($pool->has_item_category && $cat === '') {
+            $fdLoc = trim((string) ($line['fd_location_id'] ?? ''));
+            if ($flags['has_item_category'] && $cat === '') {
                 $errors["lines.$idx.item_category"] = ["Line {$i}: Item category is required for this pool."];
             }
-            if (PoolPurchReqMode::requiresTypedItemId($pool) && $iid === '') {
+            if ($flags['requires_typed_item_id'] && $iid === '') {
                 $errors["lines.$idx.item_id"] = ["Line {$i}: Item ID is required for this pool."];
+            }
+            if ($flags['has_fd_location']) {
+                if ($fdLoc === '') {
+                    $errors["lines.$idx.fd_location_id"] = ["Line {$i}: FD location is required for this pool."];
+                } elseif (! FdLocation::query()
+                    ->where('fd_location_id', $fdLoc)
+                    ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $company))
+                    ->exists()) {
+                    $errors["lines.$idx.fd_location_id"] = ["Line {$i}: FD location does not exist for this company."];
+                }
+            } else {
+                $validated['lines'][$idx]['fd_location_id'] = '';
             }
         }
 
