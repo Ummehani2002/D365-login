@@ -19,11 +19,15 @@ final class PoolPurchReqRequirements
         'P_LPO' => [
             'uses_project' => true,
             'has_item_category' => false,
+            'has_item_id' => true,
+            'requires_typed_item_id' => true,
             'requires_budget_resource' => true,
         ],
         'P_OPO' => [
             'uses_project' => true,
             'has_item_category' => false,
+            'has_item_id' => true,
+            'requires_typed_item_id' => true,
             'requires_budget_resource' => true,
         ],
     ];
@@ -57,10 +61,12 @@ final class PoolPurchReqRequirements
             'uses_warehouse' => (bool) $pool->uses_warehouse,
             'has_attachment' => $resolve('has_attachment', (bool) $pool->has_attachment),
             'has_item_category' => $resolve('has_item_category', (bool) $pool->has_item_category),
-            'has_item_id' => (bool) $pool->has_item_id,
+            'has_item_id' => $resolve('has_item_id', (bool) $pool->has_item_id),
             'has_fd_location' => $resolve('has_fd_location', (bool) ($pool->getAttributes()['has_fd_location'] ?? false)),
             'requires_budget_resource' => $resolve('requires_budget_resource', false),
-            'requires_typed_item_id' => PoolPurchReqMode::requiresTypedItemId($pool),
+            'requires_typed_item_id' => array_key_exists('requires_typed_item_id', $preset)
+                ? (bool) $preset['requires_typed_item_id']
+                : PoolPurchReqMode::requiresTypedItemId($pool),
         ];
     }
 }
