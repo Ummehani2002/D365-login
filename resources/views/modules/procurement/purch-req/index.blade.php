@@ -297,6 +297,7 @@
                 <div class="crumb">Modules / Procurement &amp; Sourcing / Purchase Requisition</div>
             </div>
             <div style="padding:14px;">
+                <div id="list-status-box" class="status-box" style="margin-bottom:10px;"></div>
                 <div class="toolbar" style="margin-bottom:10px;">
                     <div class="toolbar-row">
                         <div><h1 class="title" style="margin:0;">Purchase Requisition</h1></div>
@@ -410,6 +411,7 @@
         const authUserId = {{ (int) auth()->id() }};
 
         const statusBox     = document.getElementById('status-box');
+        const listStatusBox = document.getElementById('list-status-box');
         const companyEl     = document.getElementById('company');
         const buyingLegalEntityEl = document.getElementById('buying-legal-entity');
         const requestIdEl   = document.getElementById('request-id');
@@ -448,11 +450,17 @@
         let budgetResourceRows = [];
 
         const showStatus = (msg, type) => {
-            statusBox.textContent   = msg;
-            statusBox.className     = `status-box ${type}`;
-            statusBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const onList = formShell && (formShell.classList.contains('hidden') || formShell.style.display === 'none');
+            const box = onList ? listStatusBox : statusBox;
+            if (!box) return;
+            box.textContent = msg;
+            box.className = `status-box ${type}`;
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };
-        const clearStatus = () => { statusBox.textContent = ''; statusBox.className = 'status-box'; };
+        const clearStatus = () => {
+            if (statusBox) { statusBox.textContent = ''; statusBox.className = 'status-box'; }
+            if (listStatusBox) { listStatusBox.textContent = ''; listStatusBox.className = 'status-box'; }
+        };
 
         const todayStr = () => new Date().toISOString().slice(0, 10);
         prDateEl.value = todayStr();
@@ -1310,7 +1318,18 @@
         }
 
         function renderAttachments() {
-            attachList.innerHTML = attachments.map((a, i) => `
+            attachList.innerHTML = attachments.map((a, i) => {
+                if (a.downloadUrl && !a.fileContent) {
+                    return `
+                <div class="attach-chip">
+                    <span class="file-icon">${fileIcon(a.fileType)}</span>
+                    <div class="file-info">
+                        <a class="file-name" href="${a.downloadUrl}" target="_blank" rel="noopener">${a.fileName}</a>
+                        <span class="file-size">${fmtSize(a.sizeBytes)}</span>
+                    </div>
+                </div>`;
+                }
+                return `
                 <div class="attach-chip">
                     <span class="file-icon">${fileIcon(a.fileType)}</span>
                     <div class="file-info">
@@ -1318,8 +1337,8 @@
                         <span class="file-size">${fmtSize(a.sizeBytes)}</span>
                     </div>
                     <span class="remove" data-idx="${i}" title="Remove">✕</span>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         attachList.addEventListener('click', (e) => {
@@ -1392,6 +1411,10 @@
             formShell.querySelectorAll('.icon-btn-danger, .attach-chip .remove').forEach((el) => {
                 el.style.display = viewOnly ? 'none' : '';
             });
+            const attachZone = document.getElementById('attach-zone');
+            const fileInputEl = document.getElementById('file-input');
+            if (attachZone) attachZone.style.display = viewOnly ? 'none' : '';
+            if (fileInputEl) fileInputEl.style.display = 'none';
             if (!viewOnly) {
                 syncAllLineUnitsForPoolMode();
             }
@@ -1708,16 +1731,36 @@
                 return;
             }
 
+            const actionBtn = viewBtn || editBtn;
+            if (actionBtn) {
+                actionBtn.disabled = true;
+                actionBtn.textContent = 'Loading…';
+            }
+            clearStatus();
+            showStatus('Loading purchase requisition…', 'success');
+
             try {
                 const url = `{{ route("modules.procurement.purch-req.journals.show", ["journal" => "__ID__"]) }}`.replace('__ID__', rowId);
                 const res = await fetch(url, { headers: { Accept: 'application/json' } });
-                const payload = await res.json();
+                let payload;
+                try {
+                    payload = await res.json();
+                } catch {
+                    throw new Error('Could not read PR details from server.');
+                }
                 if (!res.ok || !payload.status) throw new Error(payload.message || payload.error || 'Failed to load PR.');
 
                 const j = payload.data;
+                historyShell.classList.add('hidden');
+                formShell.classList.remove('hidden');
+                historyShell.style.display = 'none';
+                formShell.style.display = '';
+
                 resetForm();
                 companyEl.value = j.company || companyEl.value || '';
-                buyingLegalEntityEl.value = j.buying_legal_entity || '';
+                if (buyingLegalEntityEl) {
+                    buyingLegalEntityEl.value = j.buying_legal_entity || '';
+                }
                 await loadDepartmentManagers(j.company || '');
                 await loadPools(j.company || '', j.pool_id || '');
                 await loadCatalogForCompany(j.company || '', String(j.pool_id || '').trim());
@@ -1725,7 +1768,7 @@
                 await loadWarehouses(j.company || '', j.warehouse || '');
                 requestIdEl.value = j.request_id || '';
                 prNoEl.value = j.pr_no || '';
-                prDateEl.value = j.pr_date || '';
+                prDateEl.value = j.pr_date ? String(j.pr_date).slice(0, 10) : '';
                 if (poolEl) {
                     poolEl.value = j.pool_id || '';
                 }
@@ -1752,25 +1795,31 @@
                     mimeType: a.mime_type || '',
                     sizeBytes: Number(a.size_bytes || 0),
                     fileContent: a.file_content || '',
+                    downloadUrl: a.download_url || '',
                     purchId: '',
                 }));
                 renderAttachments();
 
                 if (editBtn && payload.can_manage === false) {
+                    historyShell.classList.remove('hidden');
+                    formShell.classList.add('hidden');
+                    historyShell.style.display = '';
+                    formShell.style.display = 'none';
                     showStatus('You do not have access to edit this purchase requisition. You can view it only.', 'error');
                     return;
                 }
 
                 currentDraftId = payload.is_draft ? j.id : null;
                 setFormViewMode(Boolean(viewBtn));
-
-                historyShell.classList.add('hidden');
-                formShell.classList.remove('hidden');
-                historyShell.style.display = 'none';
-                formShell.style.display = '';
                 clearStatus();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
                 showStatus('✗ ' + err.message, 'error');
+            } finally {
+                if (actionBtn) {
+                    actionBtn.disabled = false;
+                    actionBtn.textContent = viewBtn ? 'View' : 'Edit';
+                }
             }
         });
 

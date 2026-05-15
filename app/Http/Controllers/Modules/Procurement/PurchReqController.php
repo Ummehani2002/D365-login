@@ -57,6 +57,17 @@ class PurchReqController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        foreach ($journals as $journal) {
+            if (! is_array($journal->d365_response)) {
+                continue;
+            }
+            $fromD365 = $this->extractPRNoFromD365($journal->d365_response, (string) ($journal->pr_no ?? ''));
+            if ($fromD365 !== '' && $fromD365 !== (string) $journal->pr_no) {
+                $journal->pr_no = $fromD365;
+                $journal->saveQuietly();
+            }
+        }
+
         return view('modules.procurement.purch-req.index', [
             'companies' => $companies,
             'journals' => $journals,
@@ -329,8 +340,41 @@ class PurchReqController extends Controller
     public function showJournal(PurchReqJournal $journal): JsonResponse
     {
         $this->assertCompanyAccess((string) $journal->company);
+        $journal->load('postedBy:id,name');
 
-        return response()->json(['status' => true, 'data' => $journal, 'is_draft' => ! $journal->request_id && ! $journal->pr_no, 'can_manage' => $journal->canBeManagedBy(auth()->user())]);
+        $attachments = collect($journal->attachments ?? [])->map(function (array $att, int $index) use ($journal) {
+            return [
+                'file_name' => $att['file_name'] ?? '',
+                'file_type' => $att['file_type'] ?? '',
+                'mime_type' => $att['mime_type'] ?? null,
+                'size_bytes' => $att['size_bytes'] ?? null,
+                'download_url' => route('modules.procurement.purch-req.attachment', [$journal->id, $index]),
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'id' => $journal->id,
+                'request_id' => $journal->request_id,
+                'pr_no' => $journal->pr_no,
+                'company' => $journal->company,
+                'buying_legal_entity' => $journal->buying_legal_entity,
+                'pr_date' => $journal->pr_date?->format('Y-m-d'),
+                'warehouse' => $journal->warehouse,
+                'project_id' => $journal->project_id,
+                'pool_id' => $journal->pool_id,
+                'contact_name' => $journal->contact_name,
+                'remarks' => $journal->remarks,
+                'department' => $journal->department,
+                'lines' => $journal->lines ?? [],
+                'attachments' => $attachments,
+                'posted_by_name' => $journal->postedBy?->name,
+                'created_at' => optional($journal->created_at)->toDateTimeString(),
+            ],
+            'is_draft' => ! $journal->request_id && ! $journal->pr_no,
+            'can_manage' => $journal->canBeManagedBy(auth()->user()),
+        ]);
     }
 
     public function destroyJournal(PurchReqJournal $journal): JsonResponse
