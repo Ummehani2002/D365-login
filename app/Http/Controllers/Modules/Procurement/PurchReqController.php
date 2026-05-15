@@ -197,6 +197,9 @@ class PurchReqController extends Controller
                 ], 422);
             }
 
+            // Prefer the PR No that D365 assigned; fall back to locally generated
+            $prNo = $this->extractPRNoFromD365($result, $prNo);
+
             $attachmentsForDb = array_map(fn ($a) => [
                 'file_name' => $a['file_name'],
                 'file_type' => $a['file_type'],
@@ -827,6 +830,39 @@ class PurchReqController extends Controller
         });
 
         return 'PR-'.str_pad($next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Try to read the PR No that D365 assigned back in its response.
+     * Falls back to $fallback (the locally-generated number) if not found.
+     */
+    private function extractPRNoFromD365(array $result, string $fallback): string
+    {
+        $keys = ['PRNo', 'PrNo', 'prNo', 'PurchReqNo', 'PurchaseRequisitionNo', 'RequisitionNo', 'PurchId', 'purchId'];
+
+        $found = $this->searchForScalarValue($result, $keys);
+
+        return ($found !== null && trim($found) !== '') ? trim($found) : $fallback;
+    }
+
+    private function searchForScalarValue(array $payload, array $possibleKeys): ?string
+    {
+        foreach ($possibleKeys as $key) {
+            if (isset($payload[$key]) && is_scalar($payload[$key])) {
+                return (string) $payload[$key];
+            }
+        }
+        foreach ($payload as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+            $found = $this->searchForScalarValue($value, $possibleKeys);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 
     private function isFailedD365Response(array $result): bool
