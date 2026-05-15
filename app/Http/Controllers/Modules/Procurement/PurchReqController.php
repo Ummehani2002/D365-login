@@ -833,16 +833,42 @@ class PurchReqController extends Controller
     }
 
     /**
-     * Try to read the PR No that D365 assigned back in its response.
-     * Falls back to $fallback (the locally-generated number) if not found.
+     * Read the PR number D365 assigned (e.g. PurchReqId: "PR-064662").
+     * Falls back to $fallback only when D365 does not return an id.
      */
     private function extractPRNoFromD365(array $result, string $fallback): string
     {
-        $keys = ['PRNo', 'PrNo', 'prNo', 'PurchReqNo', 'PurchaseRequisitionNo', 'RequisitionNo', 'PurchId', 'purchId'];
+        $keys = [
+            'PurchReqId',
+            'PurchReqID',
+            'purchReqId',
+            'PurchReqNo',
+            'PurchaseRequisitionNo',
+            'RequisitionNo',
+            'PurchId',
+            'purchId',
+            'PRNo',
+            'PrNo',
+            'prNo',
+        ];
 
         $found = $this->searchForScalarValue($result, $keys);
+        if ($found !== null) {
+            $found = trim($found);
+            if ($found !== '' && strcasecmp($found, trim($fallback)) !== 0) {
+                return $found;
+            }
+        }
 
-        return ($found !== null && trim($found) !== '') ? trim($found) : $fallback;
+        $info = $this->searchForScalarValue($result, ['InfoMessage', 'InfoMsg', 'Message', 'message']);
+        if ($info !== null && preg_match('/\b(PR-\d+)\b/i', $info, $matches)) {
+            $parsed = $matches[1];
+            if (strcasecmp($parsed, trim($fallback)) !== 0) {
+                return $parsed;
+            }
+        }
+
+        return $fallback;
     }
 
     private function searchForScalarValue(array $payload, array $possibleKeys): ?string
