@@ -621,6 +621,7 @@ class PurchReqController extends Controller
                     'has_item_category' => $flags['has_item_category'],
                     'has_item_id' => $flags['has_item_id'],
                     'has_fd_location' => $flags['has_fd_location'],
+                    'requires_budget_resource' => $flags['requires_budget_resource'],
                     'requires_typed_item_id' => $flags['requires_typed_item_id'],
                 ];
             })
@@ -1057,11 +1058,14 @@ class PurchReqController extends Controller
             $errors['attachments'] = ['At least one attachment is required for this pool.'];
         }
 
+        $projectId = trim((string) ($validated['project_id'] ?? ''));
+
         foreach ($validated['lines'] as $idx => $line) {
             $i = $idx + 1;
             $cat = trim((string) ($line['item_category'] ?? ''));
             $iid = trim((string) ($line['item_id'] ?? ''));
             $fdLoc = trim((string) ($line['fd_location_id'] ?? ''));
+            $budgetResource = trim((string) ($line['budget_resource_id'] ?? ''));
             if ($flags['has_item_category'] && $cat === '') {
                 $errors["lines.$idx.item_category"] = ["Line {$i}: Item category is required for this pool."];
             }
@@ -1079,6 +1083,26 @@ class PurchReqController extends Controller
                 }
             } else {
                 $validated['lines'][$idx]['fd_location_id'] = '';
+            }
+
+            if ($flags['requires_budget_resource']) {
+                if ($budgetResource === '') {
+                    $errors["lines.$idx.budget_resource_id"] = ["Line {$i}: Budget resource is required for this pool."];
+                } elseif (! BudgetResourceCode::query()
+                    ->where('resource_code', $budgetResource)
+                    ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $company))
+                    ->when($projectId !== '', function ($q) use ($projectId) {
+                        $q->where(function ($inner) use ($projectId) {
+                            $inner->whereNull('project')
+                                ->orWhere('project', '')
+                                ->orWhereRaw('UPPER(TRIM(project)) = ?', [strtoupper($projectId)]);
+                        });
+                    })
+                    ->exists()) {
+                    $errors["lines.$idx.budget_resource_id"] = ["Line {$i}: Budget resource does not exist for this company/project."];
+                }
+            } elseif (! $flags['uses_project']) {
+                $validated['lines'][$idx]['budget_resource_id'] = '';
             }
         }
 

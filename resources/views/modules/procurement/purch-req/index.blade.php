@@ -653,7 +653,12 @@
         }
 
         function poolNeedsBudgetResource() {
-            return Boolean(getSelectedPool()?.uses_project);
+            const p = getSelectedPool();
+            return Boolean(p?.uses_project || p?.requires_budget_resource);
+        }
+
+        function poolRequiresBudgetResource() {
+            return Boolean(getSelectedPool()?.requires_budget_resource);
         }
 
         function poolNeedsFdLocation() {
@@ -1614,6 +1619,10 @@
                 if (parseFloat(ln.qty) <= 0) { showStatus(`Line ${i + 1}: Qty must be > 0.`, 'error'); return; }
                 if (poolCfg.has_fd_location && !String(ln.fd_location_id ?? '').trim()) {
                     showStatus(`Line ${i + 1}: FD location is required for this pool.`, 'error');
+                    return;
+                }
+                if (poolRequiresBudgetResource() && !String(ln.budget_resource_id ?? '').trim()) {
+                    showStatus(`Line ${i + 1}: Budget resource is required for this pool.`, 'error');
                     return;
                 }
             }
