@@ -126,6 +126,19 @@
         .badge-count { background: #deecf9; color: #005a9e; }
         .att-link { display: inline-flex; align-items: center; gap: 3px; color: #106ebe; text-decoration: none; font-size: 11px; padding: 2px 6px; border-radius: 10px; background: #deecf9; margin: 1px; white-space: nowrap; }
         .att-link:hover { background: #c7e0f4; }
+        .table-wrap { overflow-x: auto; border-top: 1px solid #edebe9; }
+        .history-table { min-width: 1080px; }
+        .history-table th:last-child,
+        .history-table td:last-child {
+            position: sticky;
+            right: 0;
+            background: #fff;
+            white-space: nowrap;
+            box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .history-table thead th:last-child { background: #faf9f8; }
+        .history-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .draft-label { color: #8a8886; font-style: italic; font-weight: 500; }
         #appSidebar { flex-shrink: 0; }
     </style>
     @include('settings.rbac.partials.styles')
@@ -292,7 +305,8 @@
                 </div>
                 <div class="card">
                     <div class="card-head">Submitted Requisitions</div>
-                    <table>
+                    <div class="table-wrap">
+                    <table class="history-table">
                         <thead>
                             <tr>
                                 <th>Request ID</th>
@@ -320,9 +334,17 @@
                                 };
                             @endphp
                             @forelse($journals as $j)
+                            @php($isDraft = empty($j->request_id) && empty($j->pr_no))
+                            @php($canManagePr = $j->canBeManagedBy(auth()->user()))
                             <tr>
-                                <td><strong>{{ $j->request_id }}</strong></td>
-                                <td>{{ $j->pr_no }}</td>
+                                <td>
+                                    @if($isDraft)
+                                        <span class="draft-label">Draft #{{ $j->id }}</span>
+                                    @else
+                                        <strong>{{ $j->request_id }}</strong>
+                                    @endif
+                                </td>
+                                <td>{{ $isDraft ? '—' : $j->pr_no }}</td>
                                 <td>{{ $j->company }}</td>
                                 <td>{{ $j->warehouse }}</td>
                                 <td>{{ $j->project_id ?? '—' }}</td>
@@ -353,19 +375,19 @@
                                         <span style="color:#8a8886;font-size:11px;">—</span>
                                     @endif
                                 </td>
-                                @php($isDraft = empty($j->request_id) && empty($j->pr_no))
-                                @php($canManagePr = $j->canBeManagedBy(auth()->user()))
-                                <td><span class="badge {{ $isDraft ? '' : '' }}" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
+                                <td><span class="badge" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
                                 <td>{{ $j->postedBy?->name ?? '—' }}</td>
                                 <td>{{ $j->created_at->format('d M Y H:i') }}</td>
                                 <td>
-                                    <button type="button" class="btn btn-sm pr-view-btn" data-id="{{ $j->id }}">View</button>
-                                    @if($isDraft && $canManagePr)
-                                        <button type="button" class="btn btn-sm pr-edit-btn" data-id="{{ $j->id }}" data-can-manage="1">Edit</button>
-                                    @endif
-                                    @if($canManagePr)
-                                        <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="{{ $j->id }}" data-can-manage="1">Delete</button>
-                                    @endif
+                                    <div class="history-actions">
+                                        <button type="button" class="btn btn-sm pr-view-btn" data-id="{{ $j->id }}">View</button>
+                                        @if($isDraft && $canManagePr)
+                                            <button type="button" class="btn btn-sm pr-edit-btn" data-id="{{ $j->id }}" data-can-manage="1">Edit</button>
+                                        @endif
+                                        @if($canManagePr)
+                                            <button type="button" class="btn btn-danger btn-sm pr-delete-btn" data-id="{{ $j->id }}" data-can-manage="1">Delete</button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @empty
@@ -373,6 +395,7 @@
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1338,8 +1361,13 @@
             return lines;
         }
 
+        const formTitleEl = formShell.querySelector('.form-title');
+
         const setFormViewMode = (viewOnly) => {
             currentViewOnly = viewOnly;
+            if (formTitleEl) {
+                formTitleEl.textContent = viewOnly ? 'View Purchase Requisition' : 'Purchase Requisition';
+            }
             const fields = formShell.querySelectorAll('input, select, textarea, button');
             fields.forEach((el) => {
                 if (['back-to-list-btn'].includes(el.id)) return;
@@ -1358,6 +1386,9 @@
                         el.disabled = false;
                     }
                 }
+            });
+            formShell.querySelectorAll('.icon-btn-danger, .attach-chip .remove').forEach((el) => {
+                el.style.display = viewOnly ? 'none' : '';
             });
             if (!viewOnly) {
                 syncAllLineUnitsForPoolMode();
@@ -1577,8 +1608,10 @@
                 <td>You</td>
                 <td>${fmt}</td>
                 <td>
-                    <button type="button" class="btn btn-sm pr-view-btn" data-id="${data.journal_id}">View</button>
-                    ${deleteBtnHtml}
+                    <div class="history-actions">
+                        <button type="button" class="btn btn-sm pr-view-btn" data-id="${data.journal_id}">View</button>
+                        ${deleteBtnHtml}
+                    </div>
                 </td>
             `;
             historyBody.prepend(tr);
@@ -1635,6 +1668,7 @@
         });
 
         backToListBtn.addEventListener('click', () => {
+            setFormViewMode(false);
             formShell.classList.add('hidden');
             historyShell.classList.remove('hidden');
             formShell.style.display = 'none';
@@ -1664,7 +1698,7 @@
                     const res = await fetch(url, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
                     const data = await res.json();
                     if (!res.ok || !data.status) throw new Error(data.message || data.error || 'Delete failed.');
-                    (viewBtn || editBtn || deleteBtn).closest('tr')?.remove();
+                    deleteBtn.closest('tr')?.remove();
                     showStatus('✓ PR deleted.', 'success');
                 } catch (err) {
                     showStatus('✗ ' + err.message, 'error');
