@@ -1,15 +1,3 @@
-@php
-    $loginBgRel = null;
-    foreach (['gif', 'webp', 'png', 'jpg', 'jpeg'] as $loginBgExt) {
-        $candidate = 'images/login-bg.' . $loginBgExt;
-        if (is_file(public_path($candidate))) {
-            $loginBgRel = $candidate;
-            break;
-        }
-    }
-    $hasLoginBg = $loginBgRel !== null;
-    $loginBgUrl = $hasLoginBg ? asset($loginBgRel) : null;
-@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,29 +20,6 @@
             place-items: center;
             position: relative;
             background: radial-gradient(circle at 12% 12%, #1b3858 0%, #11253c 45%, #0b1828 100%);
-        }
-        .login-bg-layer {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: auto;
-        }
-        .login-bg-img {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            user-select: none;
-        }
-        .login-bg-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background:
-                linear-gradient(rgba(8, 17, 29, 0.38), rgba(8, 17, 29, 0.45)),
-                radial-gradient(circle at 12% 12%, rgba(27, 56, 88, 0.22) 0%, rgba(11, 24, 40, 0.35) 100%);
         }
         .login-container {
             position: relative;
@@ -133,27 +98,9 @@
             border-radius: 8px;
             text-align: left;
         }
-        .login-bg-download {
-            display: inline-block;
-            margin-top: 14px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.85);
-            text-decoration: underline;
-            text-underline-offset: 2px;
-        }
-        .login-bg-download:hover {
-            color: #fff;
-        }
     </style>
 </head>
 <body>
-    @if ($hasLoginBg)
-        <div class="login-bg-layer" aria-hidden="true">
-            <img class="login-bg-img" src="{{ $loginBgUrl }}" alt="Login background">
-            <div class="login-bg-overlay"></div>
-        </div>
-    @endif
-
     <div class="login-container">
         <div class="brand-logo-wrap">
             <img src="{{ asset('images/companies/PS.jpg') }}" alt="Tanseeq logo">
@@ -170,12 +117,6 @@
             <span class="ms-dot" aria-hidden="true"></span>
             Sign in with Microsoft
         </a>
-
-        @if ($hasLoginBg)
-            <div>
-                <a class="login-bg-download" href="{{ $loginBgUrl }}" download="{{ basename($loginBgRel) }}">Download background</a>
-            </div>
-        @endif
     </div>
 </body>
 </html>
