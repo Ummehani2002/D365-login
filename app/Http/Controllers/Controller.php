@@ -40,6 +40,11 @@ abstract class Controller
             ->select($selectColumns)
             ->whereNotNull('d365_id')
             ->when($allowedCompanyCodes !== null, function (Builder $query) use ($allowedCompanyCodes) {
+                if ($allowedCompanyCodes->isEmpty()) {
+                    $query->whereRaw('1 = 0');
+
+                    return;
+                }
                 $query->whereIn(\DB::raw('UPPER(d365_id)'), $allowedCompanyCodes->all());
             });
     }

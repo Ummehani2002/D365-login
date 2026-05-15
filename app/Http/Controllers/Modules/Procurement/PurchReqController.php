@@ -31,11 +31,16 @@ class PurchReqController extends Controller
     public function index(Request $request)
     {
         $allowedCompanyCodes = $this->allowedCompanyCodes(auth()->user());
+        if ($allowedCompanyCodes !== null && $allowedCompanyCodes->isEmpty()) {
+            abort(403, 'You do not have access to any organization.');
+        }
 
         $companies = Company::query()
             ->select(['id', 'd365_id', 'name'])
             ->whereNotNull('d365_id')
-            ->when($allowedCompanyCodes !== null, fn ($query) => $query->whereIn(\DB::raw('UPPER(d365_id)'), $allowedCompanyCodes->all()))
+            ->when($allowedCompanyCodes !== null, function ($query) use ($allowedCompanyCodes) {
+                $query->whereIn(\DB::raw('UPPER(d365_id)'), $allowedCompanyCodes->all());
+            })
             ->orderBy('name')
             ->get();
 
@@ -60,13 +65,17 @@ class PurchReqController extends Controller
             ->get();
 
         foreach ($journals as $journal) {
-            if (! is_array($journal->d365_response)) {
-                continue;
-            }
-            $fromD365 = $this->extractPRNoFromD365($journal->d365_response, (string) ($journal->pr_no ?? ''));
-            if ($fromD365 !== '' && $fromD365 !== (string) $journal->pr_no) {
-                $journal->pr_no = $fromD365;
-                $journal->saveQuietly();
+            try {
+                if (! is_array($journal->d365_response)) {
+                    continue;
+                }
+                $fromD365 = $this->extractPRNoFromD365($journal->d365_response, (string) ($journal->pr_no ?? ''));
+                if ($fromD365 !== '' && $fromD365 !== (string) $journal->pr_no) {
+                    $journal->pr_no = $fromD365;
+                    $journal->saveQuietly();
+                }
+            } catch (Throwable $e) {
+                report($e);
             }
         }
 
@@ -593,20 +602,7 @@ class PurchReqController extends Controller
         $rows = Pool::query()
             ->tap(fn ($q) => DataAreaId::whereUpperTrimEquals($q, 'company_id', $companyCode))
             ->orderBy('pool_id')
-            ->get([
-                'id',
-                'pool_id',
-                'name',
-                'company_id',
-                'uses_project',
-                'uses_warehouse',
-                'has_attachment',
-                'has_item_category',
-                'has_item_id',
-                'has_fd_location',
-                'item_id',
-                'category_item',
-            ])
+            ->get(Pool::purchReqSelectColumns())
             ->map(function (Pool $p) {
                 $flags = PoolPurchReqRequirements::effectiveFlags($p);
 

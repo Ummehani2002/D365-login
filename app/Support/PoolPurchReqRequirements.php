@@ -58,7 +58,7 @@ final class PoolPurchReqRequirements
             'has_attachment' => $resolve('has_attachment', (bool) $pool->has_attachment),
             'has_item_category' => $resolve('has_item_category', (bool) $pool->has_item_category),
             'has_item_id' => (bool) $pool->has_item_id,
-            'has_fd_location' => $resolve('has_fd_location', (bool) ($pool->has_fd_location ?? false)),
+            'has_fd_location' => $resolve('has_fd_location', (bool) ($pool->getAttributes()['has_fd_location'] ?? false)),
             'requires_budget_resource' => $resolve('requires_budget_resource', false),
             'requires_typed_item_id' => PoolPurchReqMode::requiresTypedItemId($pool),
         ];
