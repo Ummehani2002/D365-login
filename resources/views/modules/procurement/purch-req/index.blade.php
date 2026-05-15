@@ -334,8 +334,10 @@
                                 };
                             @endphp
                             @forelse($journals as $j)
-                            @php($isDraft = empty($j->request_id) && empty($j->pr_no))
-                            @php($canManagePr = $j->canBeManagedBy(auth()->user()))
+                            @php
+                                $isDraft = empty($j->request_id) && empty($j->pr_no);
+                                $canManagePr = $j->canBeManagedBy(auth()->user());
+                            @endphp
                             <tr>
                                 <td>
                                     @if($isDraft)
