@@ -16,6 +16,8 @@ class PurchReqJournal extends Model
         'company',
         'buying_legal_entity',
         'pr_date',
+        'start_date',
+        'end_date',
         'warehouse',
         'project_id',
         'pool_id',
@@ -33,6 +35,8 @@ class PurchReqJournal extends Model
         'attachments'   => 'array',
         'd365_response' => 'array',
         'pr_date'       => 'date',
+        'start_date'    => 'date',
+        'end_date'      => 'date',
     ];
 
     public function setCompanyAttribute(mixed $value): void

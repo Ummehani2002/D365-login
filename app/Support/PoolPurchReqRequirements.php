@@ -30,6 +30,12 @@ final class PoolPurchReqRequirements
             'requires_typed_item_id' => true,
             'requires_budget_resource' => true,
         ],
+        'NPHEP' => [
+            'requires_start_end_date' => true,
+        ],
+        'P_HEP' => [
+            'requires_start_end_date' => true,
+        ],
     ];
 
     /**
@@ -41,7 +47,8 @@ final class PoolPurchReqRequirements
      *     has_item_id: bool,
      *     has_fd_location: bool,
      *     requires_budget_resource: bool,
-     *     requires_typed_item_id: bool
+     *     requires_typed_item_id: bool,
+     *     requires_start_end_date: bool
      * }
      */
     public static function effectiveFlags(Pool $pool): array
@@ -67,6 +74,7 @@ final class PoolPurchReqRequirements
             'requires_typed_item_id' => array_key_exists('requires_typed_item_id', $preset)
                 ? (bool) $preset['requires_typed_item_id']
                 : PoolPurchReqMode::requiresTypedItemId($pool),
+            'requires_start_end_date' => $resolve('requires_start_end_date', false),
         ];
     }
 }

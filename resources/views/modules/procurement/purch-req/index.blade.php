@@ -203,6 +203,14 @@
                             <label>PR Date <span style="color:#a4262c">*</span></label>
                             <input id="pr-date" type="date">
                         </div>
+                        <div class="field hidden" id="field-start-date">
+                            <label>Start Date <span style="color:#a4262c">*</span></label>
+                            <input id="start-date" type="date">
+                        </div>
+                        <div class="field hidden" id="field-end-date">
+                            <label>End Date <span style="color:#a4262c">*</span></label>
+                            <input id="end-date" type="date">
+                        </div>
                         <div class="field span-2">
                             <label>Pool <span style="color:#a4262c">*</span></label>
                             <select id="pool-id">
@@ -393,6 +401,10 @@
         const requestIdEl   = document.getElementById('request-id');
         const prNoEl        = document.getElementById('pr-no');
         const prDateEl      = document.getElementById('pr-date');
+        const startDateEl   = document.getElementById('start-date');
+        const endDateEl     = document.getElementById('end-date');
+        const fieldStartDate = document.getElementById('field-start-date');
+        const fieldEndDate   = document.getElementById('field-end-date');
         const warehouseEl   = document.getElementById('warehouse');
         const projectEl     = document.getElementById('project-id');
         const fieldProject  = document.getElementById('field-project');
@@ -637,6 +649,20 @@
             return Boolean(getSelectedPool()?.requires_budget_resource);
         }
 
+        function poolRequiresStartEndDate() {
+            return Boolean(getSelectedPool()?.requires_start_end_date);
+        }
+
+        function applyStartEndDateUi() {
+            const show = poolRequiresStartEndDate();
+            fieldStartDate?.classList.toggle('hidden', !show);
+            fieldEndDate?.classList.toggle('hidden', !show);
+            if (!show) {
+                if (startDateEl) startDateEl.value = '';
+                if (endDateEl) endDateEl.value = '';
+            }
+        }
+
         function poolNeedsFdLocation() {
             return Boolean(getSelectedPool()?.has_fd_location);
         }
@@ -875,6 +901,7 @@
                 syncAllLineUnitsForPoolMode();
                 applyBudgetResourceUi();
                 applyFdLocationUi();
+                applyStartEndDateUi();
                 return;
             }
 
@@ -889,6 +916,7 @@
             syncAllLineUnitsForPoolMode();
             applyBudgetResourceUi();
             applyFdLocationUi();
+            applyStartEndDateUi();
         }
 
         function getItemsByCategory(categoryId) {
@@ -1559,6 +1587,20 @@
                 showStatus('This pool requires at least one attachment.', 'error');
                 return;
             }
+            if (poolRequiresStartEndDate()) {
+                if (!startDateEl?.value) {
+                    showStatus('Start date is required for this pool.', 'error');
+                    return;
+                }
+                if (!endDateEl?.value) {
+                    showStatus('End date is required for this pool.', 'error');
+                    return;
+                }
+                if (endDateEl.value < startDateEl.value) {
+                    showStatus('End date must be on or after start date.', 'error');
+                    return;
+                }
+            }
 
             if (!contactEl.value.trim()) { showStatus('Contact name / phone is required.', 'error'); return; }
             if (!departmentEl.value.trim()) { showStatus('Department is required.', 'error'); return; }
@@ -1611,6 +1653,8 @@
                 company:      company,
                 buying_legal_entity: (buyingLegalEntityEl?.value || company),
                 pr_date:      prDateEl.value,
+                start_date:   poolRequiresStartEndDate() ? (startDateEl?.value ?? '') : '',
+                end_date:     poolRequiresStartEndDate() ? (endDateEl?.value ?? '') : '',
                 warehouse:    warehouseEl.value.trim(),
                 project_id:   (projectEl?.value ?? '').trim(),
                 pool_id:      poolEl.value.trim(),
@@ -1682,6 +1726,8 @@
                 company: getCurrentCompanyCode() || null,
                 buying_legal_entity: (buyingLegalEntityEl?.value || getCurrentCompanyCode() || null),
                 pr_date: prDateEl.value || null,
+                start_date: poolRequiresStartEndDate() ? (startDateEl?.value || null) : null,
+                end_date: poolRequiresStartEndDate() ? (endDateEl?.value || null) : null,
                 warehouse: warehouseEl.value.trim() || null,
                 project_id: (projectEl?.value ?? '').trim() || null,
                 pool_id: poolEl.value.trim() || null,
@@ -1773,6 +1819,8 @@
                 buyingLegalEntityEl.value = ['TM', 'PS'].includes(companyCode) ? companyCode : '';
             }
             prDateEl.value      = todayStr();
+            if (startDateEl) startDateEl.value = '';
+            if (endDateEl) endDateEl.value = '';
             if (warehouseEl) warehouseEl.innerHTML = '<option value="">— Select Warehouse —</option>';
             if (projectEl) projectEl.value = '';
             if (poolEl) {
@@ -1899,6 +1947,12 @@
                     projectEl.value = j.project_id || '';
                 }
                 applyPoolUi();
+                if (startDateEl) {
+                    startDateEl.value = j.start_date ? String(j.start_date).slice(0, 10) : '';
+                }
+                if (endDateEl) {
+                    endDateEl.value = j.end_date ? String(j.end_date).slice(0, 10) : '';
+                }
                 if (poolNeedsFdLocation()) {
                     await loadFdLocations(j.company || '');
                 }
