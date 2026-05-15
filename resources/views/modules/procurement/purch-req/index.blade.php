@@ -326,15 +326,6 @@
                             </tr>
                         </thead>
                         <tbody id="history-body">
-                            @php
-                                $attIcon = function (string $type): string {
-                                    $t = strtolower($type);
-                                    if ($t === 'pdf') return '📄';
-                                    if (in_array($t, ['doc', 'docx'])) return '📝';
-                                    if (in_array($t, ['xls', 'xlsx'])) return '📊';
-                                    return '📎';
-                                };
-                            @endphp
                             @forelse($journals as $j)
                             @php
                                 $isDraft = empty($j->request_id) && empty($j->pr_no);
@@ -354,28 +345,11 @@
                                 <td>{{ $j->project_id ?? '—' }}</td>
                                 <td>{{ $j->pool_id ?: '—' }}</td>
                                 <td>{{ $j->contact_name }}</td>
-                                <td><span class="badge badge-count">{{ is_array($j->lines) ? count($j->lines) : 0 }}</span></td>
+                                <td><span class="badge badge-count">{{ (int) ($j->lines_count ?? 0) }}</span></td>
                                 <td>
-                                    @if(is_array($j->attachments) && count($j->attachments))
-                                        @foreach($j->attachments as $idx => $att)
-                                            @php
-                                                $sizeLabel = isset($att['size_bytes']) ? number_format($att['size_bytes'] / 1024, 1) . ' KB' : '';
-                                            @endphp
-                                            <a class="att-link"
-                                               href="{{ route('modules.procurement.purch-req.attachment', [$j->id, $idx]) }}"
-                                               target="_blank"
-                                               title="{{ $att['file_name'] }} ({{ $sizeLabel }})">
-                                                {{ $attIcon($att['file_type'] ?? '') }}
-                                                {{ $att['file_name'] }}
-                                            </a>
-                                            <a class="att-link"
-                                               href="{{ route('modules.procurement.purch-req.attachment.base64', [$j->id, $idx]) }}"
-                                               target="_blank"
-                                               title="View raw Base64 for {{ $att['file_name'] }}"
-                                               style="background:#fff4ce;color:#8a6914;">
-                                                B64
-                                            </a>
-                                        @endforeach
+                                    @php $attCount = (int) ($j->attachments_count ?? 0); @endphp
+                                    @if($attCount > 0)
+                                        <span class="badge badge-count" title="Open View to download files">{{ $attCount }} file{{ $attCount === 1 ? '' : 's' }}</span>
                                     @else
                                         <span style="color:#8a8886;font-size:11px;">—</span>
                                     @endif

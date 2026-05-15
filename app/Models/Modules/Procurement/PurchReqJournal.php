@@ -4,6 +4,7 @@ namespace App\Models\Modules\Procurement;
 
 use App\Support\DataAreaId;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -56,5 +57,42 @@ class PurchReqJournal extends Model
         }
 
         return (int) $this->posted_by === (int) $user->getAuthIdentifier();
+    }
+
+    /**
+     * List view: omit lines, attachments (base64), and d365_response to avoid memory exhaustion.
+     */
+    public function scopeForList(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+        $prefix = "{$table}.";
+
+        $query->select([
+            "{$prefix}id",
+            "{$prefix}request_id",
+            "{$prefix}pr_no",
+            "{$prefix}company",
+            "{$prefix}pr_date",
+            "{$prefix}warehouse",
+            "{$prefix}project_id",
+            "{$prefix}pool_id",
+            "{$prefix}contact_name",
+            "{$prefix}department",
+            "{$prefix}posted_by",
+            "{$prefix}created_at",
+        ]);
+
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'mysql') {
+            $query->selectRaw("COALESCE(JSON_LENGTH({$prefix}lines), 0) as lines_count");
+            $query->selectRaw("COALESCE(JSON_LENGTH({$prefix}attachments), 0) as attachments_count");
+        } elseif ($driver === 'sqlite') {
+            $query->selectRaw("COALESCE(json_array_length({$prefix}lines), 0) as lines_count");
+            $query->selectRaw("COALESCE(json_array_length({$prefix}attachments), 0) as attachments_count");
+        } else {
+            $query->selectRaw('0 as lines_count')->selectRaw('0 as attachments_count');
+        }
+
+        return $query;
     }
 }

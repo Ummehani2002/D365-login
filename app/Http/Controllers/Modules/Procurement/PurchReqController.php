@@ -57,27 +57,14 @@ class PurchReqController extends Controller
         }
 
         $journals = PurchReqJournal::query()
+            ->forList()
             ->with('postedBy:id,name')
             ->when($selectedCompany, function ($q) use ($selectedCompany) {
                 DataAreaId::whereUpperTrimEquals($q, 'company', (string) $selectedCompany->d365_id);
             })
             ->orderByDesc('created_at')
+            ->limit(300)
             ->get();
-
-        foreach ($journals as $journal) {
-            try {
-                if (! is_array($journal->d365_response)) {
-                    continue;
-                }
-                $fromD365 = $this->extractPRNoFromD365($journal->d365_response, (string) ($journal->pr_no ?? ''));
-                if ($fromD365 !== '' && $fromD365 !== (string) $journal->pr_no) {
-                    $journal->pr_no = $fromD365;
-                    $journal->saveQuietly();
-                }
-            } catch (Throwable $e) {
-                report($e);
-            }
-        }
 
         return view('modules.procurement.purch-req.index', [
             'companies' => $companies,
