@@ -315,6 +315,7 @@
                                 <th>Company</th>
                                 <th>Warehouse</th>
                                 <th>Project</th>
+                                <th>Pool</th>
                                 <th>Contact</th>
                                 <th>Lines</th>
                                 <th>Attachments</th>
@@ -351,6 +352,7 @@
                                 <td>{{ $j->company }}</td>
                                 <td>{{ $j->warehouse }}</td>
                                 <td>{{ $j->project_id ?? '—' }}</td>
+                                <td>{{ $j->pool_id ?: '—' }}</td>
                                 <td>{{ $j->contact_name }}</td>
                                 <td><span class="badge badge-count">{{ is_array($j->lines) ? count($j->lines) : 0 }}</span></td>
                                 <td>
@@ -380,7 +382,7 @@
                                 </td>
                                 <td><span class="badge" style="{{ $isDraft ? 'background:#fff4ce;color:#8a6914;' : '' }}">{{ $isDraft ? 'Draft' : 'Submitted' }}</span></td>
                                 <td>{{ $j->postedBy?->name ?? '—' }}</td>
-                                <td>{{ $j->created_at->format('d M Y H:i') }}</td>
+                                <td>{{ $j->created_at?->format('d M Y H:i') ?? '—' }}</td>
                                 <td>
                                     <div class="history-actions">
                                         <button type="button" class="btn btn-sm pr-view-btn" data-id="{{ $j->id }}">View</button>
@@ -394,7 +396,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="12" class="empty-note">No requisitions submitted yet.</td></tr>
+                            <tr><td colspan="13" class="empty-note">No requisitions submitted yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
